@@ -84,7 +84,7 @@ export function LoginPage() {
       <p className="mt-6 text-center text-sm text-slate-600">
         Ainda não tem conta?{" "}
         <Link to="/registrar" className="font-medium text-facil-600 hover:underline">
-          Criar conta
+          Criar minha conta
         </Link>
       </p>
     </AuthLayout>
