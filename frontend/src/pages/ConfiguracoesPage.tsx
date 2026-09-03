@@ -287,7 +287,9 @@ export function ConfiguracoesPage() {
         </div>
       </form>
 
-      {mostrarOnboarding && <OnboardingWizard aoFechar={() => setMostrarOnboarding(false)} />}
+      {mostrarOnboarding && (
+        <OnboardingWizard passoInicial={0} aoFechar={() => setMostrarOnboarding(false)} />
+      )}
     </AppLayout>
   );
 }

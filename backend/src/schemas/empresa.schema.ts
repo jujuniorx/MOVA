@@ -41,6 +41,7 @@ export const empresaUpdateSchema = z
     corPrimaria: corOpcional,
     corSecundaria: corOpcional,
     onboardingConcluido: z.boolean().optional(),
+    onboardingPasso: z.number().int().min(0).max(5).optional(),
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualizar.",

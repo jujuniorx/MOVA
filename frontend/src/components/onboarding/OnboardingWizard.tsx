@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { useAuth } from "../../context/AuthContext";
@@ -11,6 +11,25 @@ const EXEMPLOS_PRODUTO = [
   "Tatuagem",
   "Higienização de sofá",
 ];
+
+const CONFIRMACAO_AO_CHEGAR: Record<number, { titulo: string; proximo: string }> = {
+  2: {
+    titulo: "✓ Perfeito! Sua empresa está configurada.",
+    proximo: "Próximo: cadastre o que você vende.",
+  },
+  3: {
+    titulo: "✓ Ótimo! Agora você já tem algo para vender.",
+    proximo: "Próximo: diga o que você precisa saber do cliente.",
+  },
+  4: {
+    titulo: "✓ Show! Suas informações estão prontas.",
+    proximo: "Próximo: vamos criar seu primeiro orçamento.",
+  },
+  5: {
+    titulo: "✓ Muito bem! Seu orçamento foi criado.",
+    proximo: "Próximo: envie pelo WhatsApp.",
+  },
+};
 
 function Progresso({ passoAtual }: { passoAtual: number }) {
   return (
@@ -33,6 +52,17 @@ function Progresso({ passoAtual }: { passoAtual: number }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function ConfirmacaoPassoAnterior({ indice }: { indice: number }) {
+  const confirmacao = CONFIRMACAO_AO_CHEGAR[indice];
+  if (!confirmacao) return null;
+  return (
+    <div className="mb-4 rounded-lg bg-success-50 px-3 py-2.5">
+      <p className="text-sm font-medium text-success-700">{confirmacao.titulo}</p>
+      <p className="mt-0.5 text-xs text-success-600">{confirmacao.proximo}</p>
     </div>
   );
 }
@@ -75,14 +105,35 @@ function Controles({
 
 interface OnboardingWizardProps {
   aoFechar: () => void;
+  passoInicial?: number;
 }
 
-export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
-  const [indice, setIndice] = useState(0); // 0 = boas-vindas, 1-5 = passos, 6 = conclusão
+export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizardProps) {
+  const [indice, setIndice] = useState(passoInicial); // 0 = boas-vindas, 1-5 = passos, 6 = conclusão
   const navigate = useNavigate();
-  const { atualizarEmpresa } = useAuth();
+  const { empresa, atualizarEmpresa } = useAuth();
+
+  // Se o tour já estava concluído quando o usuário abriu (ex.: "Rever tour"
+  // em Configurações), isso é uma revisão — não deve alterar o progresso
+  // salvo nem "reabrir" o aviso de continuar configuração para quem já
+  // terminou.
+  const modoRevisao = useRef(empresa?.onboardingConcluido === true).current;
+
+  function concluirPasso(numeroPasso: number) {
+    if (modoRevisao) return;
+    const passoSalvo = empresa?.onboardingPasso ?? 0;
+    if (numeroPasso <= passoSalvo) return;
+    empresaApi
+      .atualizar({ onboardingPasso: numeroPasso })
+      .then(atualizarEmpresa)
+      .catch(() => {
+        // não bloqueia a navegação se isso falhar — o pior caso é o
+        // progresso não avançar e a próxima visita pedir esse passo de novo
+      });
+  }
 
   function avancar() {
+    if (indice >= 1 && indice <= 5) concluirPasso(indice);
     setIndice((atual) => Math.min(atual + 1, 6));
   }
 
@@ -90,20 +141,39 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
     setIndice((atual) => Math.max(atual - 1, 0));
   }
 
-  function finalizar() {
+  function irPara(caminho: string) {
+    if (indice >= 1 && indice <= 5) concluirPasso(indice);
     aoFechar();
+    navigate(caminho);
+  }
+
+  function pausarTour() {
+    // Fecha sem marcar como concluído — o progresso já salvo (se houver)
+    // continua disponível para retomar depois, pelo aviso no Início.
+    aoFechar();
+  }
+
+  function pularTourCompleto() {
+    aoFechar();
+    if (modoRevisao) return;
     empresaApi
       .atualizar({ onboardingConcluido: true })
       .then(atualizarEmpresa)
-      .catch(() => {
-        // não bloqueia o uso do sistema se isso falhar — na pior das
-        // hipóteses o tour aparece de novo na próxima visita
-      });
+      .catch(() => {});
   }
 
-  function irPara(caminho: string) {
-    finalizar();
-    navigate(caminho);
+  function concluirTour() {
+    aoFechar();
+    if (modoRevisao) return;
+    empresaApi
+      .atualizar({ onboardingPasso: 5, onboardingConcluido: true })
+      .then(atualizarEmpresa)
+      .catch(() => {});
+  }
+
+  function aoClicarFechar() {
+    if (indice === 0) pularTourCompleto();
+    else pausarTour();
   }
 
   return (
@@ -111,8 +181,9 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
       <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl motion-safe:animate-fade-in-up sm:p-8">
         <button
           type="button"
-          onClick={finalizar}
-          aria-label="Sair do tour"
+          onClick={aoClicarFechar}
+          aria-label="Continuar mais tarde"
+          title="Continuar mais tarde"
           className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -131,13 +202,14 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
             <p className="text-4xl">👋</p>
             <h2 className="mt-3 text-xl font-bold text-slate-900">Vamos deixar seu OrçaFácil pronto?</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Vamos configurar algumas coisas juntos. É rápido e você pode pular e voltar depois.
+              São 5 passos rápidos. Você pode sair a qualquer momento — a gente guarda seu
+              progresso e você continua de onde parou.
             </p>
             <div className="mt-6 flex flex-col items-center gap-3">
               <Button onClick={avancar} className="w-full sm:w-auto">
                 Vamos começar
               </Button>
-              <button type="button" onClick={finalizar} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              <button type="button" onClick={pularTourCompleto} className="text-sm font-medium text-slate-500 hover:text-slate-700">
                 Pular por enquanto
               </button>
             </div>
@@ -146,6 +218,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
 
         {indice === 1 && (
           <div>
+            <ConfirmacaoPassoAnterior indice={indice} />
             <h2 className="text-lg font-bold text-slate-900">1. Primeiro, vamos conhecer sua empresa.</h2>
             <p className="mt-2 text-sm text-slate-600">
               Essas informações aparecem no orçamento que seu cliente recebe: nome, contato, logo e
@@ -166,6 +239,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
               <Button onClick={() => irPara("/configuracoes")} className="w-full sm:w-auto">
                 Configurar minha empresa
               </Button>
+              <p className="mt-2 text-xs text-slate-400">Próximo: cadastre o que você vende.</p>
             </div>
 
             <Controles aoVoltar={voltar} aoPular={avancar} aoContinuar={avancar} mostrarVoltar={false} />
@@ -174,6 +248,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
 
         {indice === 2 && (
           <div>
+            <ConfirmacaoPassoAnterior indice={indice} />
             <h2 className="text-lg font-bold text-slate-900">2. Agora vamos cadastrar o que sua empresa vende.</h2>
             <p className="mt-2 text-sm text-slate-600">Pode ser um produto ou um serviço.</p>
 
@@ -195,6 +270,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
               <Button onClick={() => irPara("/produtos?novo=1")} className="w-full sm:w-auto">
                 Cadastrar produto ou serviço
               </Button>
+              <p className="mt-2 text-xs text-slate-400">Próximo: diga o que você precisa saber do cliente.</p>
             </div>
 
             <Controles aoVoltar={voltar} aoPular={avancar} aoContinuar={avancar} />
@@ -203,6 +279,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
 
         {indice === 3 && (
           <div>
+            <ConfirmacaoPassoAnterior indice={indice} />
             <h2 className="text-lg font-bold text-slate-900">3. Diga o que você precisa saber do cliente.</h2>
             <p className="mt-2 text-sm text-slate-600">
               Cada serviço pode precisar de informações diferentes. Você escolhe o que precisa saber
@@ -230,6 +307,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
               <Button onClick={() => irPara("/produtos?novo=1")} className="w-full sm:w-auto">
                 Ver como funciona
               </Button>
+              <p className="mt-2 text-xs text-slate-400">Próximo: vamos criar seu primeiro orçamento.</p>
             </div>
 
             <Controles aoVoltar={voltar} aoPular={avancar} aoContinuar={avancar} />
@@ -238,6 +316,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
 
         {indice === 4 && (
           <div>
+            <ConfirmacaoPassoAnterior indice={indice} />
             <h2 className="text-lg font-bold text-slate-900">4. Agora vamos criar seu primeiro orçamento.</h2>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs font-medium text-slate-600 sm:gap-2 sm:text-sm">
@@ -253,6 +332,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
               <Button onClick={() => irPara("/orcamentos/novo")} className="w-full sm:w-auto">
                 Criar orçamento
               </Button>
+              <p className="mt-2 text-xs text-slate-400">Próximo: envie pelo WhatsApp.</p>
             </div>
 
             <Controles aoVoltar={voltar} aoPular={avancar} aoContinuar={avancar} />
@@ -261,6 +341,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
 
         {indice === 5 && (
           <div>
+            <ConfirmacaoPassoAnterior indice={indice} />
             <h2 className="text-lg font-bold text-slate-900">5. Seu orçamento está pronto!</h2>
             <p className="mt-2 text-sm text-slate-600">
               Agora você pode enviar para seu cliente pelo WhatsApp.
@@ -284,7 +365,7 @@ export function OnboardingWizard({ aoFechar }: OnboardingWizardProps) {
               Seu OrçaFácil já está preparado para criar e enviar seus orçamentos.
             </p>
             <div className="mt-6">
-              <Button onClick={finalizar} className="w-full sm:w-auto">
+              <Button onClick={concluirTour} className="w-full sm:w-auto">
                 Começar a usar
               </Button>
             </div>

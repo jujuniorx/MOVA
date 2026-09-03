@@ -58,6 +58,7 @@ export interface Empresa {
   corPrimaria: string | null;
   corSecundaria: string | null;
   onboardingConcluido: boolean;
+  onboardingPasso: number;
 }
 
 export interface EmpresaInput {
@@ -71,6 +72,7 @@ export interface EmpresaInput {
   corPrimaria?: string;
   corSecundaria?: string;
   onboardingConcluido?: boolean;
+  onboardingPasso?: number;
 }
 
 export const empresaApi = {

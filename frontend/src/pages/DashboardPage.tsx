@@ -50,12 +50,19 @@ export function DashboardPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
+  const [passoOnboarding, setPassoOnboarding] = useState(0);
 
   useEffect(() => {
-    if (empresa && !empresa.onboardingConcluido) {
+    if (empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) === 0) {
+      setPassoOnboarding(0);
       setMostrarOnboarding(true);
     }
   }, [empresa]);
+
+  function continuarConfiguracao() {
+    setPassoOnboarding(Math.min((empresa?.onboardingPasso ?? 0) + 1, 6));
+    setMostrarOnboarding(true);
+  }
 
   useEffect(() => {
     orcamentosApi
@@ -87,6 +94,20 @@ export function DashboardPage() {
           </Button>
         </Link>
       </div>
+
+      {empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) > 0 && (
+        <Card className="mt-4 flex flex-col gap-3 border-facil-200 bg-facil-50 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-orca-800">Você está configurando sua empresa</p>
+            <p className="text-sm text-slate-600">
+              {empresa.onboardingPasso} de 5 etapas concluídas
+            </p>
+          </div>
+          <Button variante="secundario" className="w-full sm:w-auto" onClick={continuarConfiguracao}>
+            Continuar configuração →
+          </Button>
+        </Card>
+      )}
 
       {erro && (
         <div className="mt-6">
@@ -194,7 +215,9 @@ export function DashboardPage() {
         </div>
       )}
 
-      {mostrarOnboarding && <OnboardingWizard aoFechar={() => setMostrarOnboarding(false)} />}
+      {mostrarOnboarding && (
+        <OnboardingWizard passoInicial={passoOnboarding} aoFechar={() => setMostrarOnboarding(false)} />
+      )}
     </AppLayout>
   );
 }

@@ -18,9 +18,13 @@ model Empresa {
   logoUrl       String?
   corPrimaria   String?
   corSecundaria String?
-  /// Já viu (concluiu ou pulou) o tour de boas-vindas — controla se ele
-  /// aparece automaticamente ao entrar em "Início".
+  /// Verdadeiro quando o tour de boas-vindas foi finalizado até o fim ou
+  /// dispensado por completo na tela inicial — nesses casos ele não aparece
+  /// mais sozinho nem mostra o aviso de "continuar configuração".
   onboardingConcluido Boolean @default(false)
+  /// Quantos dos 5 passos do tour já foram concluídos (0-5) — permite
+  /// retomar exatamente de onde a empresa parou, mesmo saindo no meio.
+  onboardingPasso     Int     @default(0)
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
 
