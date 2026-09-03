@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id            String   @id @default(uuid())
+  nome          String
+  telefone      String?
+  whatsapp      String?
+  email         String?
+  endereco      String?
+  descricao     String?
+  logoUrl       String?
+  corPrimaria   String?
+  corSecundaria String?
+  /// Já viu (concluiu ou pulou) o tour de boas-vindas — controla se ele
+  /// aparece automaticamente ao entrar em "Início".
+  onboardingConcluido Boolean @default(false)
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  usuarios   Usuario[]
+  clientes   Cliente[]
+  produtos   Produto[]
+  orcamentos Orcamento[]
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  criadoEm  DateTime @default(now())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId])
+}
+
+model Cliente {
+  id           String   @id @default(uuid())
+  nome         String
+  telefone     String?
+  whatsapp     String?
+  email        String?
+  observacoes  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  orcamentos Orcamento[]
+
+  @@index([empresaId])
+}
+
+model Produto {
+  id           String   @id @default(uuid())
+  nome         String
+  descricao    String?
+  preco        Decimal  @db.Decimal(12, 2)
+  unidade      String?
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  itens  ItemOrcamento[]
+  campos CampoProduto[]
+
+  @@index([empresaId])
+}
+
+enum TipoCampoProduto {
+  TEXTO
+  NUMERO
+  SELECAO_UNICA
+  SELECAO_MULTIPLA
+}
+
+/// Campo configurável definido pela própria empresa para descrever um
+/// produto/serviço (ex.: "Largura", "Material"). Genérico por natureza — o
+/// OrçaFácil não sabe o que a empresa vende, só fornece o construtor.
+model CampoProduto {
+  id          String           @id @default(uuid())
+  nome        String
+  tipo        TipoCampoProduto
+  unidade     String?
+  obrigatorio Boolean          @default(false)
+  ordem       Int              @default(0)
+  criadoEm    DateTime         @default(now())
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  opcoes OpcaoCampoProduto[]
+
+  @@index([produtoId])
+}
+
+/// Opção cadastrada pela empresa para um campo de seleção única/múltipla
+/// (ex.: "Ferro galvanizado"). Cadastrada e mantida pela própria empresa.
+model OpcaoCampoProduto {
+  id     String @id @default(uuid())
+  rotulo String
+  ordem  Int    @default(0)
+
+  campoId String
+  campo   CampoProduto @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  @@index([campoId])
+}
+
+enum StatusOrcamento {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  RECUSADO
+}
+
+model Orcamento {
+  id           String          @id @default(uuid())
+  numero       Int             @default(autoincrement())
+  data         DateTime        @default(now())
+  validade     DateTime?
+  observacoes  String?
+  desconto     Decimal         @default(0) @db.Decimal(12, 2)
+  subtotal     Decimal         @default(0) @db.Decimal(12, 2)
+  total        Decimal         @default(0) @db.Decimal(12, 2)
+  status       StatusOrcamento @default(RASCUNHO)
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  itens ItemOrcamento[]
+
+  @@index([empresaId])
+  @@index([clienteId])
+}
+
+model ItemOrcamento {
+  id            String  @id @default(uuid())
+  nome          String
+  quantidade    Decimal @db.Decimal(12, 2)
+  precoUnitario Decimal @db.Decimal(12, 2)
+  subtotal      Decimal @db.Decimal(12, 2)
+  /// Snapshot resolvido dos campos configuráveis preenchidos para este item,
+  /// no formato [{ "nome": "Largura", "valor": "3,50 m" }, ...]. Congelado no
+  /// momento da criação, assim como nome/precoUnitario — não muda se a
+  /// empresa editar os campos do produto depois.
+  detalhes      Json?
+
+  orcamentoId String
+  orcamento   Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  @@index([orcamentoId])
+  @@index([produtoId])
+}
