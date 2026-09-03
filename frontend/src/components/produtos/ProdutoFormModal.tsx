@@ -208,7 +208,7 @@ export function ProdutoFormModal({
           erro={erros.descricao}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             rotulo="Preço (R$)"
             type="number"

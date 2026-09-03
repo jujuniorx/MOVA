@@ -33,7 +33,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <span className="text-facil-600">Fácil</span>
             </Link>
 
-            <nav className="hidden items-center gap-6 sm:flex">
+            <nav className="hidden items-center gap-6 lg:flex">
               {itensNav.map((item) => (
                 <NavLink
                   key={item.caminho}
@@ -47,15 +47,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
 
-          <div className="hidden items-center gap-4 sm:flex">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-900">{empresa?.nome}</p>
-              <p className="text-xs text-slate-500">{usuario?.nome}</p>
+          <div className="hidden items-center gap-4 lg:flex">
+            <div className="max-w-[160px] text-right">
+              <p className="truncate text-sm font-medium text-slate-900">{empresa?.nome}</p>
+              <p className="truncate text-xs text-slate-500">{usuario?.nome}</p>
             </div>
             <button
               type="button"
               onClick={sair}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Sair
             </button>
@@ -63,7 +63,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           <button
             type="button"
-            className="sm:hidden rounded-lg border border-slate-300 p-2 text-slate-700"
+            className="lg:hidden rounded-lg border border-slate-300 p-2.5 text-slate-700"
             aria-label="Abrir menu"
             aria-expanded={menuAberto}
             onClick={() => setMenuAberto((aberto) => !aberto)}
@@ -75,7 +75,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
 
         {menuAberto && (
-          <div className="border-t border-slate-200 px-4 py-3 sm:hidden">
+          <div className="border-t border-slate-200 px-4 py-3 lg:hidden">
             <nav className="flex flex-col gap-3">
               {itensNav.map((item) => (
                 <NavLink

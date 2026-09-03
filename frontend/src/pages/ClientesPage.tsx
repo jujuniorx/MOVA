@@ -192,7 +192,7 @@ export function ClientesPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   <Button variante="secundario" onClick={() => abrirEdicao(cliente)}>
                     Editar
                   </Button>
