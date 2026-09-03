@@ -232,6 +232,8 @@ export function ProdutosPage() {
                     <p className="mt-0.5 truncate text-sm text-slate-500">
                       {formatoMoeda.format(Number(produto.preco))}
                       {produto.unidade ? ` / ${produto.unidade}` : ""}
+                      {produto.campos.length > 0 &&
+                        ` · ${produto.campos.length} ${produto.campos.length === 1 ? "informação configurada" : "informações configuradas"}`}
                     </p>
                   </div>
                 </div>
