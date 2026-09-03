@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const itensNav = [
@@ -21,6 +21,7 @@ function classeNav(ativo: boolean) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { usuario, empresa, sair } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="min-h-svh bg-slate-50">
@@ -101,7 +102,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div key={location.pathname} className="motion-safe:animate-fade-in">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

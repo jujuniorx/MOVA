@@ -9,7 +9,10 @@ const classesPorTipo: Record<Tipo, string> = {
 
 export function Alert({ tipo = "erro", children }: { tipo?: Tipo; children: ReactNode }) {
   return (
-    <div role="alert" className={`rounded-lg px-4 py-3 text-sm font-medium ${classesPorTipo[tipo]}`}>
+    <div
+      role="alert"
+      className={`rounded-lg px-4 py-3 text-sm font-medium motion-safe:animate-fade-in ${classesPorTipo[tipo]}`}
+    >
       {children}
     </div>
   );

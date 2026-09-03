@@ -163,7 +163,7 @@ export function OrcamentoDetailPage() {
               Status do orçamento
             </p>
             <div className="mt-1.5">
-              <StatusBadge status={orcamento.status} />
+              <StatusBadge key={orcamento.status} status={orcamento.status} />
             </div>
           </div>
 
@@ -227,7 +227,7 @@ export function OrcamentoDetailPage() {
           desconto={orcamento.desconto}
           total={orcamento.total}
           observacoes={orcamento.observacoes}
-          statusBadge={<StatusBadge status={orcamento.status} />}
+          statusBadge={<StatusBadge key={orcamento.status} status={orcamento.status} />}
         />
       </div>
 

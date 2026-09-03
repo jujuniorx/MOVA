@@ -10,7 +10,9 @@ const configuracao: Record<Status, { rotulo: string; className: string }> = {
 export function StatusBadge({ status }: { status: Status }) {
   const { rotulo, className } = configuracao[status];
   return (
-    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium motion-safe:animate-fade-in ${className}`}
+    >
       {rotulo}
     </span>
   );
