@@ -195,7 +195,7 @@ export function ProdutosPage() {
               />
             </svg>
           </span>
-          <p className="text-sm text-slate-600">Nenhum produto ou serviço cadastrado ainda.</p>
+          <p className="text-sm text-slate-600">Você ainda não tem produtos ou serviços cadastrados.</p>
           <p className="max-w-sm text-sm text-slate-500">
             Cadastre o que sua empresa vende para começar.
           </p>
@@ -206,8 +206,17 @@ export function ProdutosPage() {
       )}
 
       {!carregando && !erro && produtos.length === 0 && filtro !== "todos" && (
-        <Card className="mt-6 text-center">
-          <p className="text-sm text-slate-600">Nenhum produto {filtro === "ativos" ? "ativo" : "inativo"} no momento.</p>
+        <Card className="mt-6 flex flex-col items-center gap-2 py-8 text-center">
+          <p className="text-sm text-slate-600">
+            Nenhum produto {filtro === "ativos" ? "ativo" : "inativo"} no momento.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFiltro("todos")}
+            className="text-sm font-medium text-facil-600 hover:underline"
+          >
+            Ver todos os produtos
+          </button>
         </Card>
       )}
 

@@ -154,9 +154,9 @@ export function ClientesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m5-4a4 4 0 100-8 4 4 0 000 8zm6 4a4 4 0 00-3-3.87m-8 3.87a4 4 0 013-3.87" />
             </svg>
           </span>
-          <p className="text-sm text-slate-600">Nenhum cliente cadastrado ainda.</p>
+          <p className="text-sm text-slate-600">Você ainda não tem clientes cadastrados.</p>
           <p className="max-w-sm text-sm text-slate-500">
-            Cadastre seu primeiro cliente para criar um orçamento.
+            Cadastre seu primeiro cliente para começar a criar orçamentos.
           </p>
           <Button variante="secundario" onClick={abrirNovoCliente}>
             Cadastrar meu primeiro cliente
@@ -165,8 +165,15 @@ export function ClientesPage() {
       )}
 
       {!carregando && clientes.length > 0 && clientesFiltrados.length === 0 && (
-        <Card className="mt-6 text-center">
+        <Card className="mt-6 flex flex-col items-center gap-2 py-8 text-center">
           <p className="text-sm text-slate-600">Nenhum cliente encontrado para "{busca}".</p>
+          <button
+            type="button"
+            onClick={() => setBusca("")}
+            className="text-sm font-medium text-facil-600 hover:underline"
+          >
+            Limpar busca
+          </button>
         </Card>
       )}
 

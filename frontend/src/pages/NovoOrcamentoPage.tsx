@@ -403,8 +403,8 @@ export function NovoOrcamentoPage() {
           </div>
           {clientes.length === 0 && (
             <p className="mt-3 text-sm text-slate-500">
-              Você ainda não tem clientes cadastrados. Cadastre o cliente para quem vai orçar clicando
-              em "+ Novo cliente".
+              Você ainda não tem clientes cadastrados. Use o botão "+ Novo cliente" acima para
+              cadastrar quem vai receber este orçamento.
             </p>
           )}
         </Card>
