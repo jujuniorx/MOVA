@@ -11,7 +11,11 @@ const itensNav = [
 ];
 
 function classeNav(ativo: boolean) {
-  return `text-sm font-medium ${ativo ? "text-facil-600" : "text-slate-600 hover:text-slate-900"}`;
+  return `border-b-2 pb-1 text-sm font-medium transition-colors ${
+    ativo
+      ? "border-facil-600 text-facil-600"
+      : "border-transparent text-slate-600 hover:text-slate-900"
+  }`;
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -21,7 +25,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-svh bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-8">
             <Link to="/painel" className="text-lg font-semibold tracking-tight">
               <span className="text-orca-800">Orça</span>
@@ -97,7 +101,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
     </div>
   );
 }

@@ -130,7 +130,7 @@ export function ProdutosPage() {
     <AppLayout>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900">
             Produtos e serviços
             {!carregando && (
               <span className="ml-2 text-sm font-normal text-slate-400">({produtos.length})</span>

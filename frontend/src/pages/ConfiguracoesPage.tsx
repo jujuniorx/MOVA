@@ -96,7 +96,7 @@ export function ConfiguracoesPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-xl font-semibold text-slate-900">Configurações do negócio</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Configurações do negócio</h1>
       <p className="mt-1 text-sm text-slate-500">
         Essas informações aparecem nos orçamentos enviados aos seus clientes — é a identidade da
         sua empresa, não do OrçaFácil.

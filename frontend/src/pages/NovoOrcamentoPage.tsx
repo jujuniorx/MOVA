@@ -337,7 +337,7 @@ export function NovoOrcamentoPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-xl font-semibold text-slate-900">Novo orçamento</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Novo orçamento</h1>
       <p className="mt-1 text-sm text-slate-500">
         Selecione o cliente, adicione os itens e revise os valores antes de salvar.
       </p>

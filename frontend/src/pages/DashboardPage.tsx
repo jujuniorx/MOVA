@@ -82,7 +82,7 @@ export function DashboardPage() {
     <AppLayout>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Olá, {usuario?.nome}</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Olá, {usuario?.nome}</h1>
           <p className="mt-1 text-sm text-slate-500">Veja como estão seus orçamentos.</p>
         </div>
         <Link to="/orcamentos/novo">

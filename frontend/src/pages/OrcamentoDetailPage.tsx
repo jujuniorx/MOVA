@@ -152,6 +152,10 @@ export function OrcamentoDetailPage() {
         </Button>
       </div>
 
+      <h1 className="mt-4 text-2xl font-bold text-slate-900">
+        Orçamento #{orcamento.numero} — {orcamento.cliente.nome}
+      </h1>
+
       <Card className="mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
