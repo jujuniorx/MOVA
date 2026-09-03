@@ -31,13 +31,36 @@ function calcularSubtotalItem(item: LinhaItem): number {
   return quantidade * preco;
 }
 
-function TituloSecao({ numero, titulo }: { numero: number; titulo: string }) {
+function TituloSecao({
+  numero,
+  titulo,
+  subtitulo,
+  concluido = false,
+}: {
+  numero: number;
+  titulo: string;
+  subtitulo?: string;
+  concluido?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orca-900 text-xs font-semibold text-white">
-        {numero}
-      </span>
-      <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
+    <div>
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+            concluido ? "bg-success-600 text-white" : "bg-orca-900 text-white"
+          }`}
+        >
+          {concluido ? (
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            numero
+          )}
+        </span>
+        <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
+      </div>
+      {subtitulo && <p className="mt-1 pl-9 text-sm text-slate-500">{subtitulo}</p>}
     </div>
   );
 }
@@ -346,7 +369,12 @@ export function NovoOrcamentoPage() {
         {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
 
         <Card>
-          <TituloSecao numero={1} titulo="Cliente" />
+          <TituloSecao
+            numero={1}
+            titulo="Cliente"
+            subtitulo="Escolha para quem é este orçamento."
+            concluido={Boolean(clienteId)}
+          />
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="text-sm font-medium text-slate-700" htmlFor="cliente-select">
@@ -382,7 +410,12 @@ export function NovoOrcamentoPage() {
         </Card>
 
         <Card>
-          <TituloSecao numero={2} titulo="Itens do orçamento" />
+          <TituloSecao
+            numero={2}
+            titulo="Itens do orçamento"
+            subtitulo="Adicione o que você vai vender e preencha as informações que pedimos para calcular certinho."
+            concluido={itens.length > 0}
+          />
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
@@ -497,7 +530,11 @@ export function NovoOrcamentoPage() {
         </Card>
 
         <Card>
-          <TituloSecao numero={3} titulo="Resumo e condições" />
+          <TituloSecao
+            numero={3}
+            titulo="Resumo e condições"
+            subtitulo="Confira o valor final antes de criar o orçamento."
+          />
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
@@ -527,18 +564,20 @@ export function NovoOrcamentoPage() {
             />
           </div>
 
-          <div className="mt-6 flex flex-col gap-1 border-t border-slate-100 pt-4 text-sm">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal</span>
-              <span>{formatoMoeda.format(subtotalPreview)}</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>Desconto</span>
-              <span>{formatoMoeda.format(descontoPreview)}</span>
-            </div>
-            <div className="mt-1 flex justify-between text-base font-semibold text-slate-900">
-              <span>Total</span>
-              <span>{formatoMoeda.format(totalPreview)}</span>
+          <div className="mt-6 rounded-lg bg-slate-50 p-4">
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex justify-between text-slate-600">
+                <span>Subtotal</span>
+                <span>{formatoMoeda.format(subtotalPreview)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Desconto</span>
+                <span>{formatoMoeda.format(descontoPreview)}</span>
+              </div>
+              <div className="mt-1.5 flex justify-between border-t border-slate-200 pt-2 text-lg font-bold text-slate-900">
+                <span>Total</span>
+                <span>{formatoMoeda.format(totalPreview)}</span>
+              </div>
             </div>
           </div>
         </Card>
@@ -548,7 +587,7 @@ export function NovoOrcamentoPage() {
             Cancelar
           </Button>
           <Button type="submit" carregando={enviando}>
-            Salvar orçamento
+            Criar orçamento
           </Button>
         </div>
       </form>
