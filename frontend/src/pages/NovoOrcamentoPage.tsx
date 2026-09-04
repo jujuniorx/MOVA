@@ -8,6 +8,7 @@ import { Select } from "../components/ui/Select";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
 import { Skeleton } from "../components/ui/Skeleton";
+import { PageHeader } from "../components/ui/PageHeader";
 import { ClienteFormModal } from "../components/clientes/ClienteFormModal";
 import { ApiError, clientesApi, produtosApi, orcamentosApi } from "../lib/api";
 import type { Cliente, Produto, CampoProduto, ValorCampoInput } from "../lib/api";
@@ -358,10 +359,10 @@ export function NovoOrcamentoPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-2xl font-bold tracking-tight text-ink-900">Novo orçamento</h1>
-      <p className="mt-1 text-sm text-ink-500">
-        Escolha para quem é, o que será vendido, e o total é calculado automaticamente.
-      </p>
+      <PageHeader
+        titulo="Novo orçamento"
+        subtitulo="Escolha para quem é, o que será vendido, e o total é calculado automaticamente."
+      />
 
       <form className="mt-6 flex flex-col gap-6" onSubmit={aoEnviar} noValidate>
         {erroGeral && (

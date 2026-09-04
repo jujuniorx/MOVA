@@ -443,34 +443,47 @@ function EditorComponentesKit({
         </div>
       )}
 
-      <div className="mt-3 flex flex-col gap-2">
+      <ul className="mt-3 flex flex-col gap-3">
         {itens.map((item, indice) => (
-          <div key={indice} className="flex gap-2">
-            <Select
-              className="flex-1"
-              value={item.componenteProdutoId}
-              onChange={(e) => atualizarItem(indice, "componenteProdutoId", e.target.value)}
-            >
-              <option value="">Selecione um produto...</option>
-              {disponiveis.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </Select>
-            <Input
-              rotulo="Qtd."
-              className="w-20"
-              type="number"
-              min={1}
-              value={item.quantidade}
-              onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)}
-            />
-            <Button tamanho="sm" variante="discreto" type="button" onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}>
-              Remover
-            </Button>
-          </div>
+          <li key={indice} className="rounded-lg border border-ink-200 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <Select
+                rotulo="Componente"
+                className="flex-1"
+                value={item.componenteProdutoId}
+                onChange={(e) => atualizarItem(indice, "componenteProdutoId", e.target.value)}
+              >
+                <option value="">Selecione um produto...</option>
+                {disponiveis.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </Select>
+              <button
+                type="button"
+                onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
+                aria-label="Remover componente"
+                className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mt-3 w-32">
+              <Input
+                rotulo="Quantidade"
+                type="number"
+                min={1}
+                value={item.quantidade}
+                onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)}
+              />
+            </div>
+          </li>
         ))}
+      </ul>
+      <div className="mt-3 flex flex-col gap-2">
         <Button
           tamanho="sm"
           variante="secundario"

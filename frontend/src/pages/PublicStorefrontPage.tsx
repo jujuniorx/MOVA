@@ -56,7 +56,7 @@ export function PublicStorefrontPage() {
           {pagina.empresa.logoUrl ? (
             <img src={pagina.empresa.logoUrl} alt={pagina.empresa.nome} className="h-16 w-16 rounded-xl object-cover" />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-bold text-white" style={{ backgroundColor: cor ?? "#167b73" }}>
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-bold text-white" style={{ backgroundColor: cor ?? "var(--color-brand-600)" }}>
               {pagina.empresa.nome.charAt(0).toUpperCase()}
             </div>
           )}

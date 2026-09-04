@@ -9,7 +9,7 @@ import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { cn } from "../../lib/cn";
+import { Badge } from "../../components/ui/Badge";
 import { ApiError, adminApi } from "../../lib/api";
 import type { DuracaoAcessoEspecial, EmpresaAdmin, EmpresaAdminDetalhe, LogAuditoriaAdmin, StatusTecnico, PlanoTipo } from "../../lib/api";
 
@@ -22,10 +22,6 @@ const ROTULOS_DURACAO: Record<DuracaoAcessoEspecial, string> = {
   ANO_1: "1 ano",
   VITALICIO: "Vitalício",
 };
-
-function Badge({ className, children }: { className: string; children: React.ReactNode }) {
-  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium", className)}>{children}</span>;
-}
 
 export function AdminEmpresasPage() {
   const [status, setStatus] = useState<StatusTecnico | null>(null);

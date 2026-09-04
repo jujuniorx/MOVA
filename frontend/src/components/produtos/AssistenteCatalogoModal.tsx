@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Textarea } from "../ui/Textarea";
 import { Alert } from "../ui/Alert";
 import { cn } from "../../lib/cn";
 import { ApiError, iaApi, produtosApi } from "../../lib/api";
@@ -182,17 +183,12 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
 
         {!propostas && (
           <>
-            <div>
-              <label className="text-sm font-medium text-ink-700">
-                Descreva seu negócio, ou os produtos/serviços que você vende (com preços, se souber)
-              </label>
-              <textarea
-                className="mt-1.5 min-h-32 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                placeholder='Ex: "Faço higienização de sofá. Cobro R$150 para dois lugares, R$180 para três lugares."'
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-              />
-            </div>
+            <Textarea
+              rotulo="Descreva seu negócio, ou os produtos/serviços que você vende (com preços, se souber)"
+              placeholder='Ex: "Faço higienização de sofá. Cobro R$150 para dois lugares, R$180 para três lugares."'
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+            />
 
             {temEstruturacao && (
               <div className="flex items-center gap-3">
@@ -227,40 +223,53 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
               preencha antes de confirmar.
             </p>
 
-            <div className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-3">
               {propostas.map((item) => {
                 const badge = badgeConfianca(item.confianca);
                 return (
-                  <div key={item.chave} className="flex items-center gap-2 rounded-lg border border-ink-200 p-2">
-                    <input
-                      type="checkbox"
-                      checked={item.selecionado}
-                      onChange={() => alternarSelecao(item.chave)}
-                      className="h-4 w-4 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <Input
-                      rotulo="Nome"
-                      className="flex-[2]"
-                      value={item.nome}
-                      onChange={(e) => atualizarProposta(item.chave, "nome", e.target.value)}
-                    />
-                    <Input
-                      rotulo="Preço (R$)"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="w-28 shrink-0"
-                      value={item.preco}
-                      onChange={(e) => atualizarProposta(item.chave, "preco", e.target.value)}
-                    />
-                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>{badge.texto}</span>
-                    <Button tamanho="sm" variante="discreto" type="button" onClick={() => removerProposta(item.chave)}>
-                      Remover
-                    </Button>
-                  </div>
+                  <li key={item.chave} className="rounded-lg border border-ink-200 p-3">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={item.selecionado}
+                        onChange={() => alternarSelecao(item.chave)}
+                        aria-label={`Incluir "${item.nome}"`}
+                        className="mt-7 h-4 w-4 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <Input
+                        rotulo="Nome"
+                        className="flex-1"
+                        value={item.nome}
+                        onChange={(e) => atualizarProposta(item.chave, "nome", e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removerProposta(item.chave)}
+                        aria-label="Remover item"
+                        className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-end gap-3">
+                      <div className="w-32">
+                        <Input
+                          rotulo="Preço (R$)"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.preco}
+                          onChange={(e) => atualizarProposta(item.chave, "preco", e.target.value)}
+                        />
+                      </div>
+                      <span className={cn("mb-2.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>{badge.texto}</span>
+                    </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
 
             {algumSelecionadoSemPreco && (
               <Alert tipo="aviso">Preencha o preço de todos os itens selecionados antes de confirmar.</Alert>

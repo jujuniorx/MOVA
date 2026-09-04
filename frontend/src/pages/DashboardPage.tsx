@@ -8,6 +8,7 @@ import { Alert } from "../components/ui/Alert";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
+import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { AssistenteIACard } from "../components/dashboard/AssistenteIACard";
 import { useAuth } from "../context/AuthContext";
@@ -115,20 +116,20 @@ export function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink-900">Olá, {primeiroNome}</h1>
-          <p className="mt-1 text-sm text-ink-500">Aqui está o retrato atual dos seus orçamentos.</p>
-        </div>
-        <Link to="/orcamentos/novo">
-          <Button className="w-full sm:w-auto">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Novo orçamento
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        titulo={`Olá, ${primeiroNome}`}
+        subtitulo="Aqui está o retrato atual dos seus orçamentos."
+        acao={
+          <Link to="/orcamentos/novo">
+            <Button className="w-full sm:w-auto">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Novo orçamento
+            </Button>
+          </Link>
+        }
+      />
 
       {empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) > 0 && (
         <Card className="mt-4 flex flex-col gap-3 border-brand-200 bg-brand-50 sm:flex-row sm:items-center sm:justify-between">

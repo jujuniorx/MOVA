@@ -10,6 +10,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Modal } from "../components/ui/Modal";
+import { Badge } from "../components/ui/Badge";
 import { cn } from "../lib/cn";
 import {
   ApiError,
@@ -46,10 +47,6 @@ const ABAS: { valor: Aba; rotulo: string }[] = [
   { valor: "pedidos", rotulo: "Pedidos" },
   { valor: "devolucoes", rotulo: "Devoluções" },
 ];
-
-function Badge({ className, children }: { className: string; children: React.ReactNode }) {
-  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium", className)}>{children}</span>;
-}
 
 export function OperacoesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,39 +146,38 @@ function AbaEstoque() {
       )}
 
       {!carregando && itens.length > 0 && (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-ink-100 text-xs uppercase text-ink-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Produto</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 font-medium">Disponível</th>
-                <th className="px-4 py-3 font-medium">Quarentena</th>
-                <th className="px-4 py-3 font-medium">Mínimo</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {itens.map((item) => (
-                <tr key={item.produtoId} className="border-b border-ink-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink-900">{item.nome}</td>
-                  <td className="px-4 py-3 text-ink-500">{item.sku ?? "—"}</td>
-                  <td className="px-4 py-3 text-ink-700">{item.totalDisponivel}</td>
-                  <td className="px-4 py-3 text-ink-700">{item.totalQuarentena}</td>
-                  <td className="px-4 py-3 text-ink-500">{item.estoqueMinimo ?? "—"}</td>
-                  <td className="px-4 py-3">
+        <ul className="flex flex-col gap-3 motion-safe:animate-fade-in-up">
+          {itens.map((item) => (
+            <li key={item.produtoId}>
+              <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium text-ink-900">{item.nome}</p>
                     <Badge className={statusInfo[item.status].className}>{statusInfo[item.status].rotulo}</Badge>
-                    {item.status === "BAIXO" && item.estoqueMinimo !== null && (
-                      <p className="mt-1 text-xs text-ink-400">
-                        Você possui {item.totalDisponivel} unidades. O mínimo configurado é {item.estoqueMinimo}.
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                  </div>
+                  <p className="mt-0.5 text-sm text-ink-500">
+                    SKU: {item.sku ?? "—"} · Mínimo: {item.estoqueMinimo ?? "—"}
+                  </p>
+                  {item.status === "BAIXO" && item.estoqueMinimo !== null && (
+                    <p className="mt-1 text-xs text-warning-600">
+                      Você possui {item.totalDisponivel} unidades. O mínimo configurado é {item.estoqueMinimo}.
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-6">
+                  <div className="text-right">
+                    <p className="text-xs text-ink-500">Disponível</p>
+                    <p className="text-lg font-semibold text-ink-900">{item.totalDisponivel}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-ink-500">Quarentena</p>
+                    <p className="text-lg font-semibold text-ink-900">{item.totalQuarentena}</p>
+                  </div>
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ul>
       )}
 
       <ModalMovimentacao
@@ -485,43 +481,46 @@ function ModalNovaVenda({
 
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-ink-700">Itens</p>
-          {itens.map((item, indice) => (
-            <div key={indice} className="flex gap-2">
-              <Select
-                className="flex-1"
-                value={item.produtoId}
-                onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}
-              >
-                <option value="">Selecione um produto...</option>
-                {produtos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome} — {formatoMoeda.format(Number(p.preco))}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                rotulo="Qtd."
-                className="w-24"
-                type="number"
-                min={1}
-                value={item.quantidade}
-                onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)}
-              />
-              <Button
-                tamanho="sm"
-                variante="discreto"
-                type="button"
-                onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
-              >
-                Remover
-              </Button>
-            </div>
-          ))}
+          <ul className="flex flex-col gap-3">
+            {itens.map((item, indice) => (
+              <li key={indice} className="rounded-lg border border-ink-200 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Select
+                    rotulo="Produto"
+                    className="flex-1"
+                    value={item.produtoId}
+                    onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}
+                  >
+                    <option value="">Selecione um produto...</option>
+                    {produtos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome} — {formatoMoeda.format(Number(p.preco))}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
+                    aria-label="Remover item"
+                    className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-3 w-32">
+                  <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
+                </div>
+              </li>
+            ))}
+          </ul>
           <Button
             tamanho="sm"
             variante="secundario"
             type="button"
             onClick={() => setItens((atual) => [...atual, { produtoId: "", quantidade: "1" }])}
+            className="self-start"
           >
             + Adicionar item
           </Button>
@@ -679,17 +678,30 @@ function ModalNovoPedido({ aberto, aoFechar, aoSalvar }: { aberto: boolean; aoFe
       <div className="flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
         <div className="flex flex-col gap-2">
-          {itens.map((item, indice) => (
-            <div key={indice} className="flex gap-2">
-              <Input rotulo="Item" className="flex-1" placeholder="Nome do item" value={item.nome} onChange={(e) => atualizarItem(indice, "nome", e.target.value)} />
-              <Input rotulo="Qtd." className="w-20" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
-              <Input rotulo="Preço unit." className="w-28" type="number" min={0} step="0.01" value={item.precoUnitario} onChange={(e) => atualizarItem(indice, "precoUnitario", e.target.value)} />
-              <Button tamanho="sm" variante="discreto" type="button" onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}>
-                Remover
-              </Button>
-            </div>
-          ))}
-          <Button tamanho="sm" variante="secundario" type="button" onClick={() => setItens((atual) => [...atual, { nome: "", quantidade: "1", precoUnitario: "0" }])}>
+          <ul className="flex flex-col gap-3">
+            {itens.map((item, indice) => (
+              <li key={indice} className="rounded-lg border border-ink-200 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Input rotulo="Item" className="flex-1" placeholder="Nome do item" value={item.nome} onChange={(e) => atualizarItem(indice, "nome", e.target.value)} />
+                  <button
+                    type="button"
+                    onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
+                    aria-label="Remover item"
+                    className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
+                  <Input rotulo="Preço unit. (R$)" type="number" min={0} step="0.01" value={item.precoUnitario} onChange={(e) => atualizarItem(indice, "precoUnitario", e.target.value)} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Button tamanho="sm" variante="secundario" type="button" onClick={() => setItens((atual) => [...atual, { nome: "", quantidade: "1", precoUnitario: "0" }])} className="self-start">
             + Adicionar item
           </Button>
         </div>
@@ -894,23 +906,36 @@ function ModalNovaDevolucao({
       <div className="flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
         <div className="flex flex-col gap-2">
-          {itens.map((item, indice) => (
-            <div key={indice} className="flex gap-2">
-              <Select className="flex-1" value={item.produtoId} onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}>
-                <option value="">Selecione um produto...</option>
-                {produtos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </Select>
-              <Input rotulo="Qtd." className="w-24" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
-              <Button tamanho="sm" variante="discreto" type="button" onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}>
-                Remover
-              </Button>
-            </div>
-          ))}
-          <Button tamanho="sm" variante="secundario" type="button" onClick={() => setItens((atual) => [...atual, { produtoId: "", quantidade: "1" }])}>
+          <ul className="flex flex-col gap-3">
+            {itens.map((item, indice) => (
+              <li key={indice} className="rounded-lg border border-ink-200 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Select rotulo="Produto" className="flex-1" value={item.produtoId} onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}>
+                    <option value="">Selecione um produto...</option>
+                    {produtos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
+                    aria-label="Remover item"
+                    className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-3 w-32">
+                  <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Button tamanho="sm" variante="secundario" type="button" onClick={() => setItens((atual) => [...atual, { produtoId: "", quantidade: "1" }])} className="self-start">
             + Adicionar item
           </Button>
         </div>
