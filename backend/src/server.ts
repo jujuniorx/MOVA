@@ -20,6 +20,8 @@ import integracoesRoutes, { callbackMercadoLivre } from "./routes/integracoes.ro
 import whatsappRoutes, { verificarWebhookWhatsApp, receberWebhookWhatsApp } from "./routes/whatsapp.routes";
 import iaRoutes from "./routes/ia.routes";
 import publicoRoutes from "./routes/publico.routes";
+import adminAuthRoutes from "./routes/adminAuth.routes";
+import adminRoutes from "./routes/admin.routes";
 
 const app = express();
 
@@ -88,6 +90,10 @@ app.get("/webhooks/whatsapp", verificarWebhookWhatsApp);
 app.post("/webhooks/whatsapp", receberWebhookWhatsApp);
 app.use("/ia", iaRoutes);
 app.use("/publico", publicoRoutes);
+// Autenticação administrativa (login) fica fora do middleware de admin — o
+// resto de /admin/api exige um token administrativo válido.
+app.use("/admin/auth", adminAuthRoutes);
+app.use("/admin/api", adminRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ erro: "Rota não encontrada." });

@@ -15,6 +15,10 @@ import { PlanosPage } from "./pages/PlanosPage";
 import { IndicacaoPage } from "./pages/IndicacaoPage";
 import { OperacoesPage } from "./pages/OperacoesPage";
 import { PublicStorefrontPage } from "./pages/PublicStorefrontPage";
+import { AdminProtectedRoute } from "./components/layout/AdminProtectedRoute";
+import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
+import { AdminEmpresasPage } from "./pages/admin/AdminEmpresasPage";
+import { AdminAuditoriaPage } from "./pages/admin/AdminAuditoriaPage";
 
 function App() {
   return (
@@ -102,6 +106,23 @@ function App() {
           <ProtectedRoute>
             <IndicacaoPage />
           </ProtectedRoute>
+        }
+      />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route
+        path="/admin"
+        element={
+          <AdminProtectedRoute>
+            <AdminEmpresasPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/auditoria"
+        element={
+          <AdminProtectedRoute>
+            <AdminAuditoriaPage />
+          </AdminProtectedRoute>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

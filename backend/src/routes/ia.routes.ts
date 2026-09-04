@@ -21,9 +21,9 @@ router.use(autenticar);
 router.get("/capacidades", async (req, res) => {
   const empresa = await prisma.empresa.findUniqueOrThrow({
     where: { id: req.usuario!.empresaId },
-    select: { planoTipo: true, trialBonusAteEm: true },
+    select: { id: true, planoTipo: true, trialBonusAteEm: true },
   });
-  const plano = planoEfetivo(empresa);
+  const plano = await planoEfetivo(empresa);
   return res.json({ configurado: iaConfigurada(), plano, capacidades: capacidadesDisponiveis(plano) });
 });
 
@@ -38,9 +38,9 @@ router.post("/perguntar", async (req, res) => {
   const empresaId = req.usuario!.empresaId;
   const empresa = await prisma.empresa.findUniqueOrThrow({
     where: { id: empresaId },
-    select: { planoTipo: true, trialBonusAteEm: true },
+    select: { id: true, planoTipo: true, trialBonusAteEm: true },
   });
-  const plano = planoEfetivo(empresa);
+  const plano = await planoEfetivo(empresa);
 
   if (!capacidadesDisponiveis(plano).includes(resultado.data.capacidade)) {
     return res.status(403).json({
@@ -114,9 +114,9 @@ router.post("/catalogo/transcrever", async (req, res) => {
   const empresaId = req.usuario!.empresaId;
   const empresa = await prisma.empresa.findUniqueOrThrow({
     where: { id: empresaId },
-    select: { planoTipo: true, trialBonusAteEm: true },
+    select: { id: true, planoTipo: true, trialBonusAteEm: true },
   });
-  const plano = planoEfetivo(empresa);
+  const plano = await planoEfetivo(empresa);
 
   if (!capacidadesDisponiveis(plano).includes("estruturar_catalogo_texto")) {
     return res.status(403).json({ erro: "Cadastro por áudio não está disponível no seu plano.", codigo: "IA_NAO_DISPONIVEL_NO_PLANO" });

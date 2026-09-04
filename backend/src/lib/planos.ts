@@ -11,12 +11,25 @@ export interface LimiteExcedidoInfo {
 }
 
 /**
- * Plano efetivo de uma empresa para fins de limite/recurso: o plano pago real
- * (quando a cobrança existir) tem prioridade; na ausência dele, um bônus de
- * indicação ativo (trialBonusAteEm no futuro) dá acesso aos limites do plano
- * Start. Nunca é derivado de nada que venha do frontend.
+ * Plano efetivo de uma empresa para fins de limite/recurso, em ordem de
+ * prioridade: (1) acesso especial administrativo ativo e não expirado —
+ * SEPARADO do plano comercial, concedido só por um admin via /admin, nunca
+ * altera Empresa.planoTipo; (2) o plano pago real; (3) na ausência dele, um
+ * bônus de indicação ativo dá acesso aos limites do plano Start. Nunca é
+ * derivado de nada que venha do frontend.
  */
-export function planoEfetivo(empresa: Pick<Empresa, "planoTipo" | "trialBonusAteEm">): PlanoTipo {
+export async function planoEfetivo(empresa: Pick<Empresa, "id" | "planoTipo" | "trialBonusAteEm">): Promise<PlanoTipo> {
+  const acessoEspecial = await prisma.acessoEspecial.findFirst({
+    where: {
+      empresaId: empresa.id,
+      ativo: true,
+      OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
+    },
+    orderBy: { concedidoEm: "desc" },
+    select: { planoTipo: true },
+  });
+  if (acessoEspecial) return acessoEspecial.planoTipo;
+
   if (empresa.planoTipo !== "GRATUITO") return empresa.planoTipo;
   if (empresa.trialBonusAteEm && empresa.trialBonusAteEm.getTime() > Date.now()) {
     return "START";
@@ -53,7 +66,7 @@ export async function verificarLimite(
   empresa: Pick<Empresa, "id" | "planoTipo" | "trialBonusAteEm">,
   recurso: "clientes" | "produtos" | "orcamentos"
 ): Promise<LimiteExcedidoInfo | null> {
-  const efetivo = planoEfetivo(empresa);
+  const efetivo = await planoEfetivo(empresa);
   const config = await obterConfigPlano(efetivo);
 
   const limiteCampo =

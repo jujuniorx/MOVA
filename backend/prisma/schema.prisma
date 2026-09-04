@@ -92,6 +92,12 @@ model Empresa {
   slugPublico         String? @unique
   exibirPrecosPublico Boolean @default(true)
 
+  /// Suspensão administrativa (nunca comercial) — bloqueia login e uso da
+  /// API imediatamente. Sempre acompanhada de um LogAuditoriaAdmin.
+  suspensa       Boolean   @default(false)
+  suspensaEm     DateTime?
+  suspensaMotivo String?
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -115,6 +121,9 @@ model Empresa {
   contaWhatsApp        ContaWhatsApp?
   conversasWhatsApp    ConversaWhatsApp[]
   usosIA               UsoIA[]
+
+  acessosEspeciais AcessoEspecial[]
+  logsAdmin        LogAuditoriaAdmin[]
 }
 
 /// Um registro por empresa indicada (relação 1:1 com quem foi indicado —
@@ -875,12 +884,98 @@ model UsoIA {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  operacao String
-  modelo   String?
-  tokensEntrada  Int?
-  tokensSaida    Int?
+  operacao         String
+  modelo           String?
+  tokensEntrada    Int?
+  tokensSaida      Int?
   custoEstimadoUsd Decimal? @db.Decimal(10, 6)
+  criadoEm         DateTime @default(now())
+
+  @@index([empresaId, criadoEm])
+}
+
+// ============================================================================
+// ADMINISTRAÇÃO DA PLATAFORMA — completamente separado da autenticação de
+// empresas/usuários comuns. Nenhuma rota pública cria um AdminUsuario: a
+// única forma de existir é o script backend/scripts/criarAdmin.ts, rodado
+// localmente por quem já tem acesso ao ambiente. O JWT de admin nunca carrega
+// empresaId nem é aceito pelo middleware `autenticar` de usuário comum, e
+// vice-versa — são dois sistemas de autenticação sem superfície em comum.
+// ============================================================================
+
+enum RoleAdmin {
+  ADMIN_MOVA
+}
+
+model AdminUsuario {
+  id        String    @id @default(uuid())
+  nome      String
+  email     String    @unique
+  senhaHash String
+  role      RoleAdmin @default(ADMIN_MOVA)
+  ativo     Boolean   @default(true)
+
+  criadoEm      DateTime  @default(now())
+  ultimoLoginEm DateTime?
+
+  acoesAuditoria    LogAuditoriaAdmin[]
+  acessosConcedidos AcessoEspecial[]
+}
+
+enum DuracaoAcessoEspecial {
+  DIAS_15
+  DIAS_30
+  DIAS_90
+  ANO_1
+  VITALICIO
+}
+
+/// Acesso especial administrativo — SEPARADO do plano comercial
+/// (Empresa.planoTipo) e de qualquer cobrança real. Quando ativo e não
+/// expirado, define o plano EFETIVO da empresa para fins de limites/recursos
+/// (ver lib/planos.ts), sem jamais alterar o campo comercial da Empresa.
+model AcessoEspecial {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  planoTipo PlanoTipo
+  duracao   DuracaoAcessoEspecial
+
+  concedidoEm DateTime  @default(now())
+  /// null = vitalício (nunca expira sozinho).
+  expiraEm    DateTime?
+  ativo       Boolean   @default(true)
+
+  concedidoPorAdminId String
+  concedidoPorAdmin   AdminUsuario @relation(fields: [concedidoPorAdminId], references: [id])
+
+  motivo String?
+
+  revogadoEm DateTime?
+
+  @@index([empresaId, ativo])
+}
+
+/// Toda ação administrativa relevante grava um registro aqui — nunca
+/// sobrescrito, nunca apagado por uma rota normal.
+model LogAuditoriaAdmin {
+  id String @id @default(uuid())
+
+  adminId String
+  admin   AdminUsuario @relation(fields: [adminId], references: [id])
+
+  empresaId String?
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+
+  acao           String
+  estadoAnterior Json?
+  estadoNovo     Json?
+  motivo         String?
+
   criadoEm DateTime @default(now())
 
   @@index([empresaId, criadoEm])
+  @@index([adminId, criadoEm])
 }

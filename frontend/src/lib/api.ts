@@ -53,6 +53,55 @@ async function apiFetch<T>(caminho: string, opcoes: RequestInit = {}): Promise<T
   return corpo as T;
 }
 
+// --- Cliente administrativo (separado do cliente de usuário comum) --------
+//
+// Chave de localStorage própria — uma sessão de empresa e uma sessão
+// administrativa podem coexistir no mesmo navegador sem se misturar. Nunca
+// reutiliza `obterToken`/`salvarToken` acima.
+const CHAVE_TOKEN_ADMIN = "mova_admin_token";
+
+export function obterTokenAdmin(): string | null {
+  return localStorage.getItem(CHAVE_TOKEN_ADMIN);
+}
+
+export function salvarTokenAdmin(token: string) {
+  localStorage.setItem(CHAVE_TOKEN_ADMIN, token);
+}
+
+export function limparTokenAdmin() {
+  localStorage.removeItem(CHAVE_TOKEN_ADMIN);
+}
+
+async function apiFetchAdmin<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+  const token = obterTokenAdmin();
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      ...opcoes,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...opcoes.headers,
+      },
+    });
+  } catch {
+    throw new ApiError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+  }
+
+  const corpo = resposta.status === 204 ? null : await resposta.json().catch(() => null);
+
+  if (!resposta.ok) {
+    const mensagem =
+      corpo && typeof corpo === "object" && "erro" in corpo
+        ? String((corpo as { erro: unknown }).erro)
+        : "Não foi possível concluir a operação. Tente novamente.";
+    throw new ApiError(mensagem);
+  }
+
+  return corpo as T;
+}
+
 export interface Usuario {
   id: string;
   nome: string;
@@ -772,5 +821,105 @@ export const assinaturasApi = {
     }),
 
   cancelar: () => apiFetch<null>("/assinaturas/cancelar", { method: "POST" }),
+};
+
+// --- Painel administrativo ---------------------------------------------
+
+export interface AdminAutenticado {
+  id: string;
+  nome: string;
+  email: string;
+}
+
+export interface EmpresaAdmin {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  planoTipo: PlanoTipo;
+  cicloFaturamento: "MENSAL" | "ANUAL";
+  trialBonusAteEm: string | null;
+  suspensa: boolean;
+  suspensaEm: string | null;
+  suspensaMotivo: string | null;
+  criadoEm: string;
+  _count: { usuarios: number; clientes: number; produtos: number; orcamentos: number };
+}
+
+export type DuracaoAcessoEspecial = "DIAS_15" | "DIAS_30" | "DIAS_90" | "ANO_1" | "VITALICIO";
+
+export interface AcessoEspecialInfo {
+  id: string;
+  planoTipo: PlanoTipo;
+  duracao: DuracaoAcessoEspecial;
+  concedidoEm: string;
+  expiraEm: string | null;
+  motivo: string | null;
+  concedidoPorAdmin: { nome: string };
+}
+
+export interface EmpresaAdminDetalhe {
+  empresa: EmpresaAdmin;
+  planoComercial: { planoTipo: PlanoTipo; cicloFaturamento: "MENSAL" | "ANUAL" };
+  assinatura: { planoTipo: PlanoTipo; cicloFaturamento: string; status: string; proximaCobranca: string | null; canceladaEm: string | null } | null;
+  acessoEspecial: AcessoEspecialInfo | null;
+  cobranca: string;
+}
+
+export interface LogAuditoriaAdmin {
+  id: string;
+  acao: string;
+  estadoAnterior: unknown;
+  estadoNovo: unknown;
+  motivo: string | null;
+  criadoEm: string;
+  admin: { nome: string; email: string };
+  empresa?: { nome: string } | null;
+}
+
+export interface StatusTecnico {
+  totalEmpresas: number;
+  empresasSuspensas: number;
+  integracoes: {
+    mercadoPago: { configurado: boolean };
+    mercadoLivre: { configurado: boolean; empresasConectadas: number };
+    whatsapp: { configurado: boolean; empresasConectadas: number };
+    ia: { configurado: boolean };
+    transcricaoAudio: { configurado: boolean };
+  };
+  erros: { notificacoesMercadoLivreComErro: number };
+}
+
+export const adminApi = {
+  login: (email: string, senha: string) =>
+    apiFetchAdmin<{ token: string; admin: AdminAutenticado }>("/admin/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, senha }),
+    }),
+
+  me: () => apiFetchAdmin<{ admin: AdminAutenticado }>("/admin/auth/me"),
+
+  listarEmpresas: (q?: string, campo?: "nome" | "id" | "email_admin") =>
+    apiFetchAdmin<EmpresaAdmin[]>(`/admin/api/empresas${q ? `?q=${encodeURIComponent(q)}&campo=${campo ?? "nome"}` : ""}`),
+
+  obterEmpresa: (id: string) => apiFetchAdmin<EmpresaAdminDetalhe>(`/admin/api/empresas/${id}`),
+
+  suspenderEmpresa: (id: string, motivo: string) =>
+    apiFetchAdmin<EmpresaAdmin>(`/admin/api/empresas/${id}/suspender`, { method: "POST", body: JSON.stringify({ motivo }) }),
+
+  reativarEmpresa: (id: string, motivo?: string) =>
+    apiFetchAdmin<EmpresaAdmin>(`/admin/api/empresas/${id}/reativar`, { method: "POST", body: JSON.stringify({ motivo }) }),
+
+  concederAcessoEspecial: (id: string, dados: { planoTipo: Exclude<PlanoTipo, "GRATUITO">; duracao: DuracaoAcessoEspecial; motivo?: string }) =>
+    apiFetchAdmin<AcessoEspecialInfo>(`/admin/api/empresas/${id}/acesso-especial`, { method: "POST", body: JSON.stringify(dados) }),
+
+  revogarAcessoEspecial: (id: string, motivo?: string) =>
+    apiFetchAdmin<null>(`/admin/api/empresas/${id}/acesso-especial/revogar`, { method: "POST", body: JSON.stringify({ motivo }) }),
+
+  auditoriaEmpresa: (id: string) => apiFetchAdmin<LogAuditoriaAdmin[]>(`/admin/api/empresas/${id}/auditoria`),
+
+  auditoriaGlobal: () => apiFetchAdmin<LogAuditoriaAdmin[]>("/admin/api/auditoria"),
+
+  statusTecnico: () => apiFetchAdmin<StatusTecnico>("/admin/api/status-tecnico"),
 };
 

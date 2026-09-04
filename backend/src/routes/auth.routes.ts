@@ -70,7 +70,7 @@ router.post("/login", limiteAuth, async (req, res) => {
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { email },
-      include: { empresa: { select: empresaSelectPropria } },
+      include: { empresa: { select: { ...empresaSelectPropria, suspensa: true } } },
     });
 
     if (!usuario) {
@@ -80,6 +80,10 @@ router.post("/login", limiteAuth, async (req, res) => {
     const senhaValida = await bcrypt.compare(senha, usuario.senhaHash);
     if (!senhaValida) {
       return res.status(401).json({ erro: "E-mail ou senha inválidos." });
+    }
+
+    if (usuario.empresa.suspensa) {
+      return res.status(403).json({ erro: "Esta conta está suspensa. Entre em contato com o suporte." });
     }
 
     const token = gerarToken({ sub: usuario.id, empresaId: usuario.empresaId, email: usuario.email });

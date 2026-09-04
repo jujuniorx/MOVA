@@ -6,6 +6,11 @@ declare global {
         empresaId: string;
         email: string;
       };
+      admin?: {
+        id: string;
+        email: string;
+        nome: string;
+      };
     }
   }
 }
