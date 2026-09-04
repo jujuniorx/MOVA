@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Alert } from "../components/ui/Alert";
 import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
 import { Skeleton } from "../components/ui/Skeleton";
+import { SolicitarOrcamentoModal } from "../components/publico/SolicitarOrcamentoModal";
 import { ApiError, publicoApi } from "../lib/api";
 import type { PaginaPublicaEmpresa } from "../lib/api";
 
@@ -13,6 +15,7 @@ export function PublicStorefrontPage() {
   const [pagina, setPagina] = useState<PaginaPublicaEmpresa | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -92,11 +95,14 @@ export function PublicStorefrontPage() {
                   <p className="font-medium text-ink-900">{produto.nome}</p>
                   {produto.descricao && <p className="text-sm text-ink-500">{produto.descricao}</p>}
                   {pagina.exibirPrecos && produto.preco && (
-                    <p className="mt-auto pt-2 text-sm font-semibold text-ink-900">
+                    <p className="pt-2 text-sm font-semibold text-ink-900">
                       {formatoMoeda.format(Number(produto.preco))}
                       {produto.unidade ? ` / ${produto.unidade}` : ""}
                     </p>
                   )}
+                  <Button tamanho="sm" variante="secundario" className="mt-auto" onClick={() => setProdutoSelecionadoId(produto.id)}>
+                    Solicitar orçamento
+                  </Button>
                 </Card>
               </li>
             ))}
@@ -105,6 +111,15 @@ export function PublicStorefrontPage() {
       </div>
 
       <p className="pb-8 text-center text-xs text-ink-400">Página criada com MOVA</p>
+
+      {slug && (
+        <SolicitarOrcamentoModal
+          aberto={produtoSelecionadoId !== null}
+          aoFechar={() => setProdutoSelecionadoId(null)}
+          slug={slug}
+          produtoId={produtoSelecionadoId}
+        />
+      )}
     </div>
   );
 }

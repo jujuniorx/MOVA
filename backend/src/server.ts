@@ -35,7 +35,9 @@ if (process.env.NODE_ENV === "production" && !FRONTEND_URL) {
 
 app.use(helmet());
 app.use(cors({ origin: FRONTEND_URL ?? "http://localhost:5173" }));
-app.use(express.json());
+// Limite elevado (padrão do Express é 100kb) para acomodar áudio em base64
+// no cadastro de catálogo por voz — ainda assim finito, nunca "sem limite".
+app.use(express.json({ limit: "15mb" }));
 
 // express.json() lança um SyntaxError (não uma rejeição HTTP) quando o corpo
 // não é JSON válido — sem este handler, ele cairia no error handler genérico

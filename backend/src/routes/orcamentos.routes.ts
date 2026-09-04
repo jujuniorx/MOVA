@@ -15,7 +15,7 @@ const router = Router();
 
 router.use(autenticar);
 
-interface ItemPreparado {
+export interface ItemPreparado {
   produtoId: string;
   nome: string;
   quantidade: Prisma.Decimal;
@@ -95,7 +95,7 @@ function resolverDetalhesItem(
   return { detalhes };
 }
 
-async function prepararItens(
+export async function prepararItens(
   empresaId: string,
   itensInput: ItemInput[]
 ): Promise<{ itens: ItemPreparado[] } | { erro: string }> {
@@ -139,7 +139,7 @@ async function prepararItens(
   return { itens };
 }
 
-function calcularTotais(itens: ItemPreparado[], descontoInput: number | undefined) {
+export function calcularTotais(itens: ItemPreparado[], descontoInput: number | undefined) {
   const subtotal = itens.reduce(
     (acc, item) => acc.plus(item.subtotal),
     new Prisma.Decimal(0)

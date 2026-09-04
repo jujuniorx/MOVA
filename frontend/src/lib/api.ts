@@ -631,12 +631,42 @@ export type CapacidadeIA =
   | "comparativo_vendas_3_meses"
   | "clientes_top"
   | "rascunhar_mensagem_cliente"
-  | "rascunhar_orcamento";
+  | "rascunhar_orcamento"
+  | "sugerir_produtos_segmento"
+  | "estruturar_catalogo_texto";
+
+export interface SugestaoSegmentoResposta {
+  produtos: string[];
+}
+
+export interface CatalogoEstruturadoResposta {
+  itens: Array<{
+    nome: string;
+    confianca?: "alta" | "media" | "baixa";
+    variacoes: Array<{ nome: string; preco: number | null }>;
+  }>;
+}
 
 export const iaApi = {
   capacidades: () => apiFetch<{ configurado: boolean; plano: PlanoTipo; capacidades: CapacidadeIA[] }>("/ia/capacidades"),
+
   perguntar: (capacidade: CapacidadeIA, extra?: { clienteId?: string; observacoes?: string }) =>
     apiFetch<{ resposta: string }>("/ia/perguntar", { method: "POST", body: JSON.stringify({ capacidade, ...extra }) }),
+
+  sugerirProdutosPorSegmento: (observacoes: string) =>
+    apiFetch<{ dados: SugestaoSegmentoResposta }>("/ia/perguntar", {
+      method: "POST",
+      body: JSON.stringify({ capacidade: "sugerir_produtos_segmento", observacoes }),
+    }),
+
+  estruturarCatalogo: (observacoes: string) =>
+    apiFetch<{ dados: CatalogoEstruturadoResposta }>("/ia/perguntar", {
+      method: "POST",
+      body: JSON.stringify({ capacidade: "estruturar_catalogo_texto", observacoes }),
+    }),
+
+  transcreverAudio: (audioBase64: string, tipoMime: string) =>
+    apiFetch<{ texto: string }>("/ia/catalogo/transcrever", { method: "POST", body: JSON.stringify({ audioBase64, tipoMime }) }),
 };
 
 // --- Página pública da empresa ---------------------------------------------
@@ -656,8 +686,31 @@ export interface PaginaPublicaEmpresa {
   produtos: { id: string; nome: string; descricao: string | null; imagemUrl: string | null; unidade: string | null; preco?: string }[];
 }
 
+export interface ProdutoPublicoDetalhe {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  imagemUrl: string | null;
+  unidade: string | null;
+  preco?: string;
+  campos: CampoProduto[];
+}
+
+export interface SolicitacaoOrcamentoInput {
+  clienteNome: string;
+  clienteTelefone?: string;
+  clienteEmail?: string;
+  observacoes?: string;
+  itens: { produtoId: string; quantidade: number; valoresCampos?: ValorCampoInput[] }[];
+}
+
 export const publicoApi = {
   obterPagina: (slug: string) => apiFetch<PaginaPublicaEmpresa>(`/publico/${slug}`),
+
+  obterProduto: (slug: string, produtoId: string) => apiFetch<ProdutoPublicoDetalhe>(`/publico/${slug}/produtos/${produtoId}`),
+
+  solicitarOrcamento: (slug: string, dados: SolicitacaoOrcamentoInput) =>
+    apiFetch<{ numero: number }>(`/publico/${slug}/orcamentos`, { method: "POST", body: JSON.stringify(dados) }),
 };
 
 export interface PlanoConfig {

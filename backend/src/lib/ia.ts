@@ -1,4 +1,5 @@
 import type { PlanoTipo } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "./prisma";
 
 // Único lugar do MOVA onde nomes de modelo de IA aparecem — trocar de
@@ -17,10 +18,13 @@ export type CapacidadeIA =
   | "comparativo_vendas_3_meses"
   | "clientes_top"
   | "rascunhar_mensagem_cliente"
-  | "rascunhar_orcamento";
+  | "rascunhar_orcamento"
+  | "sugerir_produtos_segmento"
+  | "estruturar_catalogo_texto";
 
-// Capacidades "simples" (leitura de dados agregados) usam o modelo mais
-// barato; só as de redação livre usam o modelo mais caro.
+// Capacidades "simples" (leitura de dados agregados, ou geração de uma lista
+// curta) usam o modelo mais barato; redação livre e estruturação de texto
+// mais longo (catálogo) usam o modelo mais caro.
 const MODELO_POR_CAPACIDADE: Record<CapacidadeIA, string> = {
   produtos_mais_vendidos: MODELO_SIMPLES,
   produtos_estoque_baixo: MODELO_SIMPLES,
@@ -28,12 +32,23 @@ const MODELO_POR_CAPACIDADE: Record<CapacidadeIA, string> = {
   clientes_top: MODELO_SIMPLES,
   rascunhar_mensagem_cliente: MODELO_COMPLEXO,
   rascunhar_orcamento: MODELO_COMPLEXO,
+  sugerir_produtos_segmento: MODELO_SIMPLES,
+  estruturar_catalogo_texto: MODELO_COMPLEXO,
 };
 
+// START tem só uma pequena amostra (sugestão de produtos por segmento, com
+// teto mensal baixo) — o suficiente para o usuário sentir o valor da IA sem
+// virar uma ferramenta de trabalho completa nesse plano.
 const CAPACIDADES_POR_PLANO: Record<PlanoTipo, CapacidadeIA[]> = {
   GRATUITO: [],
-  START: [],
-  BUSINESS: ["produtos_mais_vendidos", "produtos_estoque_baixo", "rascunhar_mensagem_cliente"],
+  START: ["sugerir_produtos_segmento"],
+  BUSINESS: [
+    "produtos_mais_vendidos",
+    "produtos_estoque_baixo",
+    "rascunhar_mensagem_cliente",
+    "sugerir_produtos_segmento",
+    "estruturar_catalogo_texto",
+  ],
   PRO: [
     "produtos_mais_vendidos",
     "produtos_estoque_baixo",
@@ -41,6 +56,8 @@ const CAPACIDADES_POR_PLANO: Record<PlanoTipo, CapacidadeIA[]> = {
     "clientes_top",
     "rascunhar_mensagem_cliente",
     "rascunhar_orcamento",
+    "sugerir_produtos_segmento",
+    "estruturar_catalogo_texto",
   ],
 };
 
@@ -48,16 +65,21 @@ export function capacidadesDisponiveis(planoTipo: PlanoTipo): CapacidadeIA[] {
   return CAPACIDADES_POR_PLANO[planoTipo] ?? [];
 }
 
-const LIMITE_MENSAL_BUSINESS = 100;
+// START: só uma amostra do valor da IA. BUSINESS: uso real de trabalho, mas
+// com teto. PRO: sem teto artificial (todo uso continua registrado em UsoIA).
+const LIMITE_MENSAL_POR_PLANO: Partial<Record<PlanoTipo, number>> = {
+  START: 10,
+  BUSINESS: 100,
+};
 
-/** Business tem uso limitado por mês; Pro não tem teto artificial (mas todo uso é sempre registrado). */
 export async function limiteMensalExcedido(empresaId: string, planoTipo: PlanoTipo): Promise<boolean> {
-  if (planoTipo !== "BUSINESS") return false;
+  const limite = LIMITE_MENSAL_POR_PLANO[planoTipo];
+  if (limite === undefined) return false;
   const inicioDoMes = new Date();
   inicioDoMes.setDate(1);
   inicioDoMes.setHours(0, 0, 0, 0);
   const contagem = await prisma.usoIA.count({ where: { empresaId, criadoEm: { gte: inicioDoMes } } });
-  return contagem >= LIMITE_MENSAL_BUSINESS;
+  return contagem >= limite;
 }
 
 /**
@@ -136,7 +158,7 @@ interface ChamadaIAResultado {
 }
 
 /** Único ponto que efetivamente fala com o provedor de IA (Anthropic Messages API). */
-async function chamarModelo(modelo: string, prompt: string): Promise<ChamadaIAResultado> {
+async function chamarModelo(modelo: string, prompt: string, maxTokens = 1024): Promise<ChamadaIAResultado> {
   const apiKey = process.env.IA_API_KEY;
   if (!apiKey) {
     throw new Error("Integração de IA não configurada — defina IA_API_KEY no .env.");
@@ -151,7 +173,7 @@ async function chamarModelo(modelo: string, prompt: string): Promise<ChamadaIARe
     },
     body: JSON.stringify({
       model: modelo,
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -212,9 +234,114 @@ export async function executarCapacidadeIA(
       prompt = `Escreva uma descrição curta e profissional para um item de orçamento, em português, com base nestas observações do usuário: ${contexto?.observacoes ?? "nenhuma"}. Não invente valores.`;
       break;
     }
+    case "sugerir_produtos_segmento": {
+      const descricao = contexto?.observacoes?.trim();
+      if (!descricao) throw new Error("Descreva o segmento do seu negócio para receber sugestões.");
+      prompt = `Um empresário brasileiro descreveu o segmento do negócio dele assim: "${descricao}".
+Sugira de 6 a 15 produtos ou serviços TÍPICOS e genéricos desse segmento (nomes curtos, sem preço, sem inventar detalhes que o empresário não mencionou).
+Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
+{"produtos": ["Nome do produto ou serviço 1", "Nome 2"]}`;
+      break;
+    }
+    case "estruturar_catalogo_texto": {
+      const descricao = contexto?.observacoes?.trim();
+      if (!descricao) throw new Error("Descreva os produtos/serviços e preços para estruturar o catálogo.");
+      prompt = `Um empresário brasileiro descreveu, em texto livre, produtos/serviços que vende e seus preços:
+"${descricao}"
+
+Estruture essas informações. Cada produto pode ter uma ou mais variações de preço (ex.: tamanhos, medidas). Se um preço ou detalhe não estiver claro no texto, NÃO invente um valor — deixe o campo "preco" como null e marque "confianca" como "baixa" para aquele item. Nunca chute um preço que não foi dito.
+
+Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
+{"itens": [
+  {"nome": "Nome do produto/serviço", "confianca": "alta"|"media"|"baixa", "variacoes": [{"nome": "descrição da variação (ex: 2 lugares)", "preco": 150.00 ou null}]}
+]}
+Se um item não tiver variações, use uma única variação com nome igual ao nome do produto.`;
+      break;
+    }
     default:
       throw new Error(`Capacidade de IA não reconhecida: ${capacidade}`);
   }
 
-  return chamarModelo(modelo, prompt);
+  const maxTokens = capacidade === "estruturar_catalogo_texto" ? 4096 : 1024;
+  return chamarModelo(modelo, prompt, maxTokens);
+}
+
+const sugestaoSegmentoSchema = z.object({ produtos: z.array(z.string().trim().min(1)).min(1).max(30) });
+
+const catalogoItemSchema = z.object({
+  nome: z.string().trim().min(1),
+  confianca: z.enum(["alta", "media", "baixa"]).optional(),
+  variacoes: z
+    .array(z.object({ nome: z.string().trim().min(1), preco: z.number().positive().nullable() }))
+    .min(1)
+    .max(20),
+});
+const catalogoRespostaSchema = z.object({ itens: z.array(catalogoItemSchema).min(1).max(50) });
+
+/**
+ * A IA nunca é confiável por padrão: qualquer resposta que devia vir em JSON
+ * estruturado é validada aqui antes de qualquer outra camada do MOVA
+ * enxergá-la. Se o modelo devolver algo fora do formato esperado — texto
+ * solto, JSON incompleto, campo com tipo errado — o pedido falha
+ * explicitamente em vez de tentar "adivinhar" o que ele quis dizer.
+ */
+function extrairJsonSeguro<T>(texto: string, schema: z.ZodType<T>): T {
+  const semCercas = texto.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  let bruto: unknown;
+  try {
+    bruto = JSON.parse(semCercas);
+  } catch {
+    throw new Error("A IA não conseguiu estruturar uma resposta válida. Tente descrever de outra forma.");
+  }
+  const validado = schema.safeParse(bruto);
+  if (!validado.success) {
+    throw new Error("A IA não conseguiu estruturar uma resposta válida. Tente descrever de outra forma.");
+  }
+  return validado.data;
+}
+
+export function validarSugestaoSegmento(texto: string) {
+  return extrairJsonSeguro(texto, sugestaoSegmentoSchema);
+}
+
+export function validarCatalogoEstruturado(texto: string) {
+  return extrairJsonSeguro(texto, catalogoRespostaSchema);
+}
+
+export function transcricaoConfigurada(): boolean {
+  return Boolean(process.env.TRANSCRICAO_API_KEY);
+}
+
+/**
+ * Transcreve áudio para texto (Whisper, via API da OpenAI) — usado no
+ * cadastro de catálogo por voz. Serviço INDEPENDENTE da chave de texto
+ * (IA_API_KEY): sem TRANSCRICAO_API_KEY configurada, falha de forma
+ * controlada em vez de simular uma transcrição.
+ */
+export async function transcreverAudio(audioBase64: string, tipoMime: string): Promise<string> {
+  const apiKey = process.env.TRANSCRICAO_API_KEY;
+  if (!apiKey) {
+    throw new Error("Transcrição de áudio não configurada — defina TRANSCRICAO_API_KEY no .env.");
+  }
+
+  const bufferAudio = Buffer.from(audioBase64, "base64");
+  const extensao = tipoMime.includes("mp4") ? "mp4" : tipoMime.includes("wav") ? "wav" : tipoMime.includes("ogg") ? "ogg" : "webm";
+  const formData = new FormData();
+  formData.append("file", new Blob([bufferAudio], { type: tipoMime }), `audio.${extensao}`);
+  formData.append("model", "whisper-1");
+  formData.append("language", "pt");
+
+  const resposta = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (!resposta.ok) {
+    const corpo = await resposta.text();
+    throw new Error(`Falha ao transcrever áudio (status ${resposta.status}): ${corpo}`);
+  }
+
+  const dados = (await resposta.json()) as { text?: string };
+  return dados.text ?? "";
 }

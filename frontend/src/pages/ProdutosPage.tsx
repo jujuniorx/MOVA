@@ -9,8 +9,9 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ProdutoFormModal } from "../components/produtos/ProdutoFormModal";
-import { ApiError, produtosApi } from "../lib/api";
-import type { Produto } from "../lib/api";
+import { AssistenteCatalogoModal } from "../components/produtos/AssistenteCatalogoModal";
+import { ApiError, iaApi, produtosApi } from "../lib/api";
+import type { CapacidadeIA, Produto } from "../lib/api";
 import { cn } from "../lib/cn";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -56,6 +57,19 @@ export function ProdutosPage() {
   const [produtoParaExcluir, setProdutoParaExcluir] = useState<Produto | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+
+  const [capacidadesIA, setCapacidadesIA] = useState<CapacidadeIA[]>([]);
+  const [assistenteAberto, setAssistenteAberto] = useState(false);
+
+  useEffect(() => {
+    iaApi
+      .capacidades()
+      .then((r) => setCapacidadesIA(r.capacidades))
+      .catch(() => setCapacidadesIA([]));
+  }, []);
+
+  const podeUsarAssistenteIA =
+    capacidadesIA.includes("sugerir_produtos_segmento") || capacidadesIA.includes("estruturar_catalogo_texto");
 
   function carregarProdutos() {
     setCarregando(true);
@@ -141,12 +155,19 @@ export function ProdutosPage() {
         }
         subtitulo="O que você vende — aparece na hora de montar um orçamento."
         acao={
-          <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Novo produto
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {podeUsarAssistenteIA && (
+              <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setAssistenteAberto(true)}>
+                ✨ Cadastrar com IA
+              </Button>
+            )}
+            <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Novo produto
+            </Button>
+          </div>
         }
       />
 
@@ -273,6 +294,16 @@ export function ProdutosPage() {
         produtoEmEdicao={produtoEmEdicao}
         aoFechar={() => setModalAberto(false)}
         aoSalvar={aoSalvarProduto}
+      />
+
+      <AssistenteCatalogoModal
+        aberto={assistenteAberto}
+        aoFechar={() => setAssistenteAberto(false)}
+        aoConcluir={() => {
+          setAssistenteAberto(false);
+          carregarProdutos();
+        }}
+        capacidadesIA={capacidadesIA}
       />
 
       <ConfirmDialog
