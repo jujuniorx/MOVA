@@ -8,6 +8,8 @@ import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
 import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
+import { PaginaPublicaCard } from "../components/configuracoes/PaginaPublicaCard";
+import { IntegracoesCard } from "../components/configuracoes/IntegracoesCard";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, empresaApi } from "../lib/api";
 import { empresaFormSchema } from "../schemas/empresa.schema";
@@ -229,6 +231,10 @@ export function ConfiguracoesPage() {
               </Link>
             </div>
           </Card>
+
+          <PaginaPublicaCard />
+
+          <IntegracoesCard />
 
           <Card>
             <CardHeader titulo="Ajuda" descricao="Reveja as dicas de como configurar sua empresa, cadastrar produtos e criar orçamentos." />

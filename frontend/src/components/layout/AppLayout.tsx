@@ -7,7 +7,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import { cn } from "../../lib/cn";
 
-type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/configuracoes";
+type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/operacoes" | "/configuracoes";
 
 function IconeInicio() {
   return (
@@ -50,6 +50,15 @@ function IconeConfig() {
   );
 }
 
+function IconeOperacoes() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.5 12 4l9 5.5M4 9v10a1 1 0 0 0 1 1h4v-6h6v6h4a1 1 0 0 0 1-1V9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 13h.01M16 13h.01" />
+    </svg>
+  );
+}
+
 function IconeMais() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -71,6 +80,7 @@ const itensNav: Array<{ rotulo: string; caminho: Caminho; icone: ReactNode }> = 
   { rotulo: "Orçamentos", caminho: "/orcamentos", icone: <IconeOrcamentos /> },
   { rotulo: "Clientes", caminho: "/clientes", icone: <IconeClientes /> },
   { rotulo: "Produtos", caminho: "/produtos", icone: <IconeProdutos /> },
+  { rotulo: "Operações", caminho: "/operacoes", icone: <IconeOperacoes /> },
   { rotulo: "Configurações", caminho: "/configuracoes", icone: <IconeConfig /> },
 ];
 

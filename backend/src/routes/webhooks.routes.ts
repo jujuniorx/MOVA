@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { prisma } from "../lib/prisma";
 import { validarAssinaturaWebhook, buscarAssinaturaMercadoPago } from "../lib/mercadoPago";
 import { mapearStatusMercadoPago, aplicarStatusAssinatura } from "../lib/assinaturas";
+import { processarNotificacaoMercadoLivre } from "../lib/mercadoLivreSync";
 
 const router = Router();
 
@@ -102,6 +103,39 @@ router.post("/mercado-pago", limiteWebhook, async (req, res) => {
     // nosso (ex.: banco temporariamente indisponível).
     return res.status(500).send();
   }
+});
+
+// Notificação do Mercado Livre: `_id` é o identificador único do evento —
+// única chave de idempotência confiável (o mesmo evento pode ser reenviado
+// pelo ML em caso de timeout na resposta anterior). O handler SÓ valida e
+// registra a notificação antes de responder; o processamento de verdade
+// (buscar o recurso na API, aplicar no MOVA) roda depois, sem bloquear a
+// resposta — o ML exige resposta rápida e penaliza handlers lentos.
+router.post("/mercado-livre", limiteWebhook, async (req, res) => {
+  const { _id, resource, topic, user_id } = req.body ?? {};
+  if (!_id || !resource || !topic || !user_id) {
+    return res.status(400).send();
+  }
+
+  try {
+    await prisma.notificacaoMercadoLivre.create({
+      data: { notificacaoId: String(_id), topico: String(topic), recursoId: String(resource) },
+    });
+  } catch (erro) {
+    if (erro && typeof erro === "object" && "code" in erro && (erro as { code?: string }).code === "P2002") {
+      // Já recebemos e registramos este evento antes — confirma 200 sem
+      // reprocessar, exatamente o comportamento esperado de idempotência.
+      return res.status(200).send();
+    }
+    console.error("Erro ao registrar notificação do Mercado Livre:", erro);
+    return res.status(500).send();
+  }
+
+  res.status(200).send();
+
+  processarNotificacaoMercadoLivre({ topico: String(topic), recurso: String(resource), mlUserId: String(user_id) }).catch(
+    (erro) => console.error("Erro ao processar notificação do Mercado Livre (assíncrono):", erro)
+  );
 });
 
 export default router;

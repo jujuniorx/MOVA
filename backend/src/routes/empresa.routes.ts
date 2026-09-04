@@ -44,6 +44,9 @@ router.patch("/", async (req, res) => {
 
     return res.json(empresa);
   } catch (erro) {
+    if (erro && typeof erro === "object" && "code" in erro && (erro as { code?: string }).code === "P2002") {
+      return res.status(409).json({ erro: "Este endereço de página pública já está em uso. Escolha outro." });
+    }
     console.error("Erro ao atualizar dados da empresa:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar os dados da empresa." });
   }

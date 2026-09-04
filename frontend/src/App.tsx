@@ -13,6 +13,8 @@ import { PublicOrcamentoPage } from "./pages/PublicOrcamentoPage";
 import { ConfiguracoesPage } from "./pages/ConfiguracoesPage";
 import { PlanosPage } from "./pages/PlanosPage";
 import { IndicacaoPage } from "./pages/IndicacaoPage";
+import { OperacoesPage } from "./pages/OperacoesPage";
+import { PublicStorefrontPage } from "./pages/PublicStorefrontPage";
 
 function App() {
   return (
@@ -69,6 +71,15 @@ function App() {
         }
       />
       <Route path="/orcamentos/publico/:id" element={<PublicOrcamentoPage />} />
+      <Route path="/loja/:slug" element={<PublicStorefrontPage />} />
+      <Route
+        path="/operacoes"
+        element={
+          <ProtectedRoute>
+            <OperacoesPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/configuracoes"
         element={

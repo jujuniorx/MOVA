@@ -63,11 +63,30 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout
+      titulo="Sua operação comercial inteira, em um só lugar."
+      subtitulo="Orçamentos, clientes, produtos, estoque e vendas organizados do primeiro contato até a venda fechada."
+      legendaMobile="A plataforma comercial do seu negócio"
+      beneficios={[
+        {
+          titulo: "Do orçamento à venda, sem retrabalho",
+          descricao: "Aprove um orçamento e ele vira venda — com o estoque atualizado automaticamente.",
+        },
+        {
+          titulo: "Estoque sob controle",
+          descricao: "Saiba o que tem, o que está acabando e o que precisa repor, sem planilha.",
+        },
+        {
+          titulo: "Leva 2 minutos para começar",
+          descricao: "Sem cartão de crédito, sem instalar nada — comece a usar agora mesmo.",
+        },
+      ]}
+    >
       <Card>
-        <h1 className="mb-6 text-lg font-semibold text-ink-900">Criar sua conta</h1>
+        <h1 className="text-lg font-semibold text-ink-900">Criar sua conta</h1>
+        <p className="mt-1 text-sm text-ink-500">Gratuito para começar. Leva menos de 2 minutos.</p>
 
-        <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
+        <form className="mt-6 flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
           {codigoIndicacao && !erroGeral && (
             <Alert tipo="sucesso">Você foi convidado para o MOVA — ao começar a usar, ganha dias de bônus.</Alert>
@@ -75,6 +94,7 @@ export function RegisterPage() {
 
           <Input
             rotulo="Nome da empresa"
+            autoFocus
             value={valores.nomeEmpresa}
             onChange={(evento) => atualizarCampo("nomeEmpresa", evento.target.value)}
             erro={erros.nomeEmpresa}
@@ -103,6 +123,7 @@ export function RegisterPage() {
             rotulo="Senha"
             type="password"
             autoComplete="new-password"
+            dica="Mínimo de 8 caracteres."
             value={valores.senha}
             onChange={(evento) => atualizarCampo("senha", evento.target.value)}
             erro={erros.senha}
@@ -110,7 +131,7 @@ export function RegisterPage() {
           />
 
           <Button type="submit" carregando={enviando} className="mt-2 w-full">
-            Criar conta
+            Criar conta gratuita
           </Button>
         </form>
       </Card>

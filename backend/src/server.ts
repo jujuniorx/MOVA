@@ -12,6 +12,14 @@ import planosRoutes from "./routes/planos.routes";
 import indicacaoRoutes from "./routes/indicacao.routes";
 import assinaturasRoutes from "./routes/assinaturas.routes";
 import webhooksRoutes from "./routes/webhooks.routes";
+import estoqueRoutes from "./routes/estoque.routes";
+import vendasRoutes from "./routes/vendas.routes";
+import pedidosRoutes from "./routes/pedidos.routes";
+import devolucoesRoutes from "./routes/devolucoes.routes";
+import integracoesRoutes, { callbackMercadoLivre } from "./routes/integracoes.routes";
+import whatsappRoutes, { verificarWebhookWhatsApp, receberWebhookWhatsApp } from "./routes/whatsapp.routes";
+import iaRoutes from "./routes/ia.routes";
+import publicoRoutes from "./routes/publico.routes";
 
 const app = express();
 
@@ -65,6 +73,19 @@ app.use("/planos", planosRoutes);
 app.use("/indicacao", indicacaoRoutes);
 app.use("/assinaturas", assinaturasRoutes);
 app.use("/webhooks", webhooksRoutes);
+app.use("/estoque", estoqueRoutes);
+app.use("/vendas", vendasRoutes);
+app.use("/pedidos", pedidosRoutes);
+app.use("/devolucoes", devolucoesRoutes);
+// Callback OAuth do Mercado Livre é um redirect de navegador sem
+// Authorization header — precisa ficar fora do router autenticado.
+app.get("/integracoes/mercado-livre/callback", callbackMercadoLivre);
+app.use("/integracoes", integracoesRoutes);
+app.use("/whatsapp", whatsappRoutes);
+app.get("/webhooks/whatsapp", verificarWebhookWhatsApp);
+app.post("/webhooks/whatsapp", receberWebhookWhatsApp);
+app.use("/ia", iaRoutes);
+app.use("/publico", publicoRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ erro: "Rota não encontrada." });

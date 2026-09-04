@@ -9,8 +9,9 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
+import { AssistenteIACard } from "../components/dashboard/AssistenteIACard";
 import { useAuth } from "../context/AuthContext";
-import { ApiError, orcamentosApi } from "../lib/api";
+import { ApiError, devolucoesApi, estoqueApi, orcamentosApi, vendasApi } from "../lib/api";
 import type { ResumoOrcamentos } from "../lib/api";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -54,6 +55,12 @@ function IconeOrcamentos() {
   );
 }
 
+interface ResumoOperacoes {
+  vendasNoMes: number;
+  produtosEstoqueBaixo: number;
+  devolucoesEmConferencia: number;
+}
+
 export function DashboardPage() {
   const { usuario, empresa } = useAuth();
   const [resumo, setResumo] = useState<ResumoOrcamentos | null>(null);
@@ -61,6 +68,22 @@ export function DashboardPage() {
   const [carregando, setCarregando] = useState(true);
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
   const [passoOnboarding, setPassoOnboarding] = useState(0);
+  const [resumoOperacoes, setResumoOperacoes] = useState<ResumoOperacoes | null>(null);
+
+  useEffect(() => {
+    Promise.all([vendasApi.listar(), estoqueApi.listar(), devolucoesApi.listar()])
+      .then(([vendas, estoque, devolucoes]) => {
+        const inicioDoMes = new Date();
+        inicioDoMes.setDate(1);
+        inicioDoMes.setHours(0, 0, 0, 0);
+        setResumoOperacoes({
+          vendasNoMes: vendas.filter((v) => v.status === "CONFIRMADA" && new Date(v.criadoEm) >= inicioDoMes).length,
+          produtosEstoqueBaixo: estoque.filter((i) => i.status === "BAIXO" || i.status === "SEM_ESTOQUE").length,
+          devolucoesEmConferencia: devolucoes.filter((d) => d.status === "EM_CONFERENCIA" || d.status === "RECEBIDA").length,
+        });
+      })
+      .catch(() => setResumoOperacoes(null));
+  }, []);
 
   useEffect(() => {
     if (empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) === 0) {
@@ -227,6 +250,33 @@ export function DashboardPage() {
           </Card>
         </div>
       )}
+
+      {resumoOperacoes && (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Link to="/operacoes?aba=vendas">
+            <Card className="transition-shadow hover:shadow-md">
+              <p className="text-sm text-ink-500">Vendas este mês</p>
+              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.vendasNoMes}</p>
+            </Card>
+          </Link>
+          <Link to="/operacoes?aba=estoque">
+            <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.produtosEstoqueBaixo > 0 ? "border-warning-600" : ""}`}>
+              <p className="text-sm text-ink-500">Produtos com estoque baixo</p>
+              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.produtosEstoqueBaixo}</p>
+            </Card>
+          </Link>
+          <Link to="/operacoes?aba=devolucoes">
+            <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.devolucoesEmConferencia > 0 ? "border-warning-600" : ""}`}>
+              <p className="text-sm text-ink-500">Devoluções aguardando conferência</p>
+              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.devolucoesEmConferencia}</p>
+            </Card>
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <AssistenteIACard />
+      </div>
 
       {mostrarOnboarding && (
         <OnboardingWizard passoInicial={passoOnboarding} aoFechar={() => setMostrarOnboarding(false)} />

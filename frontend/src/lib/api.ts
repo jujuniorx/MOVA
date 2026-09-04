@@ -78,6 +78,9 @@ export interface Empresa {
   cicloFaturamento: "MENSAL" | "ANUAL";
   trialBonusAteEm: string | null;
   codigoIndicacao: string;
+  paginaPublicaAtiva: boolean;
+  slugPublico: string | null;
+  exibirPrecosPublico: boolean;
 }
 
 export interface EmpresaInput {
@@ -92,6 +95,9 @@ export interface EmpresaInput {
   corSecundaria?: string;
   onboardingConcluido?: boolean;
   onboardingPasso?: number;
+  paginaPublicaAtiva?: boolean;
+  slugPublico?: string;
+  exibirPrecosPublico?: boolean;
 }
 
 export const empresaApi = {
@@ -317,6 +323,15 @@ export interface CampoInput {
   opcoes?: OpcaoCampoInput[];
 }
 
+export type TipoProduto = "SIMPLES" | "KIT";
+
+export interface ItemKit {
+  id: string;
+  componenteProdutoId: string;
+  quantidade: number;
+  componenteProduto: { id: string; nome: string; sku: string | null; preco?: string };
+}
+
 export interface Produto {
   id: string;
   nome: string;
@@ -327,6 +342,13 @@ export interface Produto {
   criadoEm: string;
   atualizadoEm: string;
   campos: CampoProduto[];
+  tipoProduto: TipoProduto;
+  controlaEstoque: boolean;
+  estoqueMinimo: number | null;
+  sku: string | null;
+  exibirNaPaginaPublica: boolean;
+  imagemUrl: string | null;
+  itensDoKit: ItemKit[];
 }
 
 export interface ProdutoInput {
@@ -335,6 +357,12 @@ export interface ProdutoInput {
   preco: number;
   unidade?: string;
   ativo?: boolean;
+  tipoProduto?: TipoProduto;
+  controlaEstoque?: boolean;
+  estoqueMinimo?: number;
+  sku?: string;
+  exibirNaPaginaPublica?: boolean;
+  imagemUrl?: string;
 }
 
 export const produtosApi = {
@@ -350,7 +378,286 @@ export const produtosApi = {
   atualizarCampos: (id: string, campos: CampoInput[]) =>
     apiFetch<Produto>(`/produtos/${id}/campos`, { method: "PUT", body: JSON.stringify({ campos }) }),
 
+  atualizarKit: (id: string, itens: { componenteProdutoId: string; quantidade: number }[]) =>
+    apiFetch<Produto>(`/produtos/${id}/kit`, { method: "PUT", body: JSON.stringify({ itens }) }),
+
   excluir: (id: string) => apiFetch<null>(`/produtos/${id}`, { method: "DELETE" }),
+};
+
+// --- Estoque -----------------------------------------------------------
+
+export type TipoLocalEstoque = "LOJA" | "DEPOSITO" | "OFICINA" | "OUTRO";
+export type TipoMovimentacaoEstoque = "ENTRADA" | "SAIDA" | "AJUSTE" | "TRANSFERENCIA";
+export type StatusEstoqueCalculado = "SEM_ESTOQUE" | "BAIXO" | "NORMAL" | "NAO_CONTROLADO";
+
+export interface LocalEstoque {
+  id: string;
+  nome: string;
+  tipo: TipoLocalEstoque;
+  ativo: boolean;
+}
+
+export interface ItemEstoque {
+  produtoId: string;
+  nome: string;
+  sku: string | null;
+  tipoProduto: TipoProduto;
+  estoqueMinimo: number | null;
+  totalDisponivel: number;
+  totalQuarentena: number;
+  status: StatusEstoqueCalculado;
+  porLocal: { localId: string; localNome: string; quantidade: number; quantidadeQuarentena: number }[];
+  variacoes: unknown[];
+}
+
+export interface MovimentacaoEstoque {
+  id: string;
+  produtoId: string;
+  localId: string;
+  localOrigemId: string | null;
+  tipo: TipoMovimentacaoEstoque | string;
+  quantidade: number;
+  saldoResultante: number;
+  motivo: string | null;
+  criadoEm: string;
+}
+
+export interface MovimentarEstoqueInput {
+  produtoId: string;
+  variacaoId?: string;
+  localId: string;
+  localOrigemId?: string;
+  tipo: TipoMovimentacaoEstoque;
+  quantidade: number;
+  motivo?: string;
+}
+
+export const estoqueApi = {
+  listarLocais: () => apiFetch<LocalEstoque[]>("/estoque/locais"),
+  criarLocal: (dados: { nome: string; tipo?: TipoLocalEstoque }) =>
+    apiFetch<LocalEstoque>("/estoque/locais", { method: "POST", body: JSON.stringify(dados) }),
+
+  listar: () => apiFetch<ItemEstoque[]>("/estoque"),
+
+  movimentacoesDoProduto: (produtoId: string) =>
+    apiFetch<MovimentacaoEstoque[]>(`/estoque/produtos/${produtoId}/movimentacoes`),
+
+  movimentar: (dados: MovimentarEstoqueInput) =>
+    apiFetch<MovimentacaoEstoque>("/estoque/movimentar", { method: "POST", body: JSON.stringify(dados) }),
+};
+
+// --- Vendas --------------------------------------------------------------
+
+export type StatusVenda = "CONFIRMADA" | "CANCELADA";
+export type OrigemVenda = "MOVA" | "WHATSAPP" | "MERCADO_LIVRE" | "SITE_PROPRIO" | "OUTRO";
+
+export interface ItemVenda {
+  id: string;
+  produtoId: string;
+  nome: string;
+  quantidade: string;
+  precoUnitario: string;
+  subtotal: string;
+}
+
+export interface Venda {
+  id: string;
+  numero: number;
+  status: StatusVenda;
+  origem: OrigemVenda;
+  subtotal: string;
+  desconto: string;
+  total: string;
+  criadoEm: string;
+  cliente: { id: string; nome: string } | null;
+  itens?: ItemVenda[];
+  _count?: { itens: number };
+}
+
+export interface VendaInput {
+  clienteId?: string;
+  origem?: OrigemVenda;
+  desconto?: number;
+  itens: { produtoId: string; variacaoId?: string; quantidade: number }[];
+}
+
+export const vendasApi = {
+  listar: () => apiFetch<Venda[]>("/vendas"),
+  obter: (id: string) => apiFetch<Venda>(`/vendas/${id}`),
+  criar: (dados: VendaInput) => apiFetch<Venda>("/vendas", { method: "POST", body: JSON.stringify(dados) }),
+  cancelar: (id: string) => apiFetch<Venda>(`/vendas/${id}/cancelar`, { method: "POST" }),
+  criarAPartirDeOrcamento: (orcamentoId: string) =>
+    apiFetch<Venda>(`/vendas/a-partir-de-orcamento/${orcamentoId}`, { method: "POST" }),
+};
+
+// --- Pedidos --------------------------------------------------------------
+
+export type StatusPedido = "RECEBIDO" | "PROCESSANDO" | "CONFIRMADO" | "CANCELADO";
+export type CanalPedido = "WHATSAPP" | "MERCADO_LIVRE" | "SITE_PROPRIO" | "MANUAL";
+
+export interface Pedido {
+  id: string;
+  numero: number;
+  canal: CanalPedido;
+  status: StatusPedido;
+  total: string;
+  referenciaExterna: string | null;
+  itens: { nome: string; quantidade: number; precoUnitario: number }[];
+  criadoEm: string;
+  cliente: { id: string; nome: string } | null;
+}
+
+export interface PedidoInput {
+  canal: CanalPedido;
+  clienteId?: string;
+  referenciaExterna?: string;
+  itens: { nome: string; quantidade: number; precoUnitario: number }[];
+}
+
+export const pedidosApi = {
+  listar: () => apiFetch<Pedido[]>("/pedidos"),
+  obter: (id: string) => apiFetch<Pedido>(`/pedidos/${id}`),
+  criar: (dados: PedidoInput) => apiFetch<Pedido>("/pedidos", { method: "POST", body: JSON.stringify(dados) }),
+  atualizarStatus: (id: string, status: StatusPedido) =>
+    apiFetch<Pedido>(`/pedidos/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+};
+
+// --- Devoluções ------------------------------------------------------------
+
+export type StatusDevolucao =
+  | "IDENTIFICADA"
+  | "AGUARDANDO_RECEBIMENTO"
+  | "RECEBIDA"
+  | "EM_CONFERENCIA"
+  | "APROVADA"
+  | "REPROVADA"
+  | "SINCRONIZACAO_PENDENTE"
+  | "SINCRONIZADA"
+  | "ERRO_SINCRONIZACAO";
+
+export type ResultadoConferencia = "INTEGRO" | "AVARIA" | "INCOMPLETO" | "DIVERGENTE";
+
+export interface ItemDevolucao {
+  id: string;
+  produtoId: string;
+  variacaoId: string | null;
+  quantidade: number;
+  resultadoConferencia: ResultadoConferencia | null;
+  liberadoEm: string | null;
+  produto?: { id: string; nome: string; sku: string | null };
+}
+
+export interface Devolucao {
+  id: string;
+  origem: "MERCADO_LIVRE" | "MANUAL";
+  status: StatusDevolucao;
+  observacoes: string | null;
+  criadoEm: string;
+  itens: ItemDevolucao[];
+  venda: { id: string; numero: number } | null;
+  pedido: { id: string; numero: number } | null;
+}
+
+export interface DevolucaoInput {
+  vendaId?: string;
+  pedidoId?: string;
+  observacoes?: string;
+  itens: { produtoId: string; variacaoId?: string; quantidade: number }[];
+}
+
+export const devolucoesApi = {
+  listar: () => apiFetch<Devolucao[]>("/devolucoes"),
+  obter: (id: string) => apiFetch<Devolucao>(`/devolucoes/${id}`),
+  criar: (dados: DevolucaoInput) => apiFetch<Devolucao>("/devolucoes", { method: "POST", body: JSON.stringify(dados) }),
+  receber: (id: string) => apiFetch<Devolucao>(`/devolucoes/${id}/receber`, { method: "POST" }),
+  conferirItem: (devolucaoId: string, itemId: string, resultado: ResultadoConferencia, observacoes?: string) =>
+    apiFetch<Devolucao>(`/devolucoes/${devolucaoId}/itens/${itemId}/conferir`, {
+      method: "POST",
+      body: JSON.stringify({ resultado, observacoes }),
+    }),
+};
+
+// --- Integrações (Mercado Livre / WhatsApp) --------------------------------
+
+export interface StatusMercadoLivre {
+  configurado: boolean;
+  conectado: boolean;
+  conta: { mlUserId: string; conectadoEm: string; atualizadoEm: string } | null;
+}
+
+export const integracoesApi = {
+  statusMercadoLivre: () => apiFetch<StatusMercadoLivre>("/integracoes/mercado-livre/status"),
+  conectarMercadoLivre: () => apiFetch<{ url: string }>("/integracoes/mercado-livre/conectar"),
+  desconectarMercadoLivre: () => apiFetch<null>("/integracoes/mercado-livre/desconectar", { method: "POST" }),
+};
+
+export interface StatusWhatsApp {
+  configurado: boolean;
+  conta: { numeroTelefone: string | null; conectada: boolean } | null;
+}
+
+export interface ConversaWhatsApp {
+  id: string;
+  contatoTelefone: string;
+  ultimaMensagemEm: string;
+  cliente: { id: string; nome: string } | null;
+}
+
+export interface MensagemWhatsApp {
+  id: string;
+  direcao: "ENVIADA" | "RECEBIDA";
+  conteudo: string;
+  criadoEm: string;
+}
+
+export const whatsappApi = {
+  status: () => apiFetch<StatusWhatsApp>("/whatsapp/status"),
+  conectar: (numeroTelefone: string) =>
+    apiFetch<StatusWhatsApp["conta"]>("/whatsapp/conectar", { method: "POST", body: JSON.stringify({ numeroTelefone }) }),
+  listarConversas: () => apiFetch<ConversaWhatsApp[]>("/whatsapp/conversas"),
+  listarMensagens: (conversaId: string) => apiFetch<MensagemWhatsApp[]>(`/whatsapp/conversas/${conversaId}/mensagens`),
+  enviarMensagem: (conversaId: string, texto: string) =>
+    apiFetch<MensagemWhatsApp>(`/whatsapp/conversas/${conversaId}/mensagens`, {
+      method: "POST",
+      body: JSON.stringify({ texto }),
+    }),
+};
+
+// --- IA ---------------------------------------------------------------------
+
+export type CapacidadeIA =
+  | "produtos_mais_vendidos"
+  | "produtos_estoque_baixo"
+  | "comparativo_vendas_3_meses"
+  | "clientes_top"
+  | "rascunhar_mensagem_cliente"
+  | "rascunhar_orcamento";
+
+export const iaApi = {
+  capacidades: () => apiFetch<{ configurado: boolean; plano: PlanoTipo; capacidades: CapacidadeIA[] }>("/ia/capacidades"),
+  perguntar: (capacidade: CapacidadeIA, extra?: { clienteId?: string; observacoes?: string }) =>
+    apiFetch<{ resposta: string }>("/ia/perguntar", { method: "POST", body: JSON.stringify({ capacidade, ...extra }) }),
+};
+
+// --- Página pública da empresa ---------------------------------------------
+
+export interface PaginaPublicaEmpresa {
+  empresa: {
+    nome: string;
+    descricao: string | null;
+    logoUrl: string | null;
+    corPrimaria: string | null;
+    corSecundaria: string | null;
+    telefone: string | null;
+    whatsapp: string | null;
+    endereco: string | null;
+  };
+  exibirPrecos: boolean;
+  produtos: { id: string; nome: string; descricao: string | null; imagemUrl: string | null; unidade: string | null; preco?: string }[];
+}
+
+export const publicoApi = {
+  obterPagina: (slug: string) => apiFetch<PaginaPublicaEmpresa>(`/publico/${slug}`),
 };
 
 export interface PlanoConfig {

@@ -42,6 +42,19 @@ export const empresaUpdateSchema = z
     corSecundaria: corOpcional,
     onboardingConcluido: z.boolean().optional(),
     onboardingPasso: z.number().int().min(0).max(5).optional(),
+    paginaPublicaAtiva: z.boolean().optional(),
+    slugPublico: z.preprocess(
+      paraUndefinedSeVazio,
+      z
+        .string()
+        .trim()
+        .toLowerCase()
+        .min(3, "O endereço da página deve ter ao menos 3 caracteres.")
+        .max(60)
+        .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "Use apenas letras minúsculas, números e hífen (sem espaços).")
+        .optional()
+    ),
+    exibirPrecosPublico: z.boolean().optional(),
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualizar.",

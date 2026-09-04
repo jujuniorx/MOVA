@@ -34,13 +34,13 @@ model PlanoConfig {
   precoAnual  Decimal @db.Decimal(10, 2)
 
   /// null = ilimitado.
-  limiteClientes      Int?
-  limiteProdutos      Int?
-  limiteOrcamentos    Int?
+  limiteClientes         Int?
+  limiteProdutos         Int?
+  limiteOrcamentos       Int?
   /// Verdadeiro = limiteOrcamentos conta só o mês corrente (planos pagos).
   /// Falso = limiteOrcamentos é um teto total, para sempre (plano gratuito).
   limiteOrcamentosMensal Boolean @default(true)
-  limiteUsuarios      Int?
+  limiteUsuarios         Int?
 
   /// Flags de recursos — preparação para o futuro (estoque, IA, Mercado
   /// Livre, automações). Nenhum desses recursos existe no produto ainda;
@@ -54,16 +54,16 @@ model PlanoConfig {
 }
 
 model Empresa {
-  id            String   @id @default(uuid())
-  nome          String
-  telefone      String?
-  whatsapp      String?
-  email         String?
-  endereco      String?
-  descricao     String?
-  logoUrl       String?
-  corPrimaria   String?
-  corSecundaria String?
+  id                  String  @id @default(uuid())
+  nome                String
+  telefone            String?
+  whatsapp            String?
+  email               String?
+  endereco            String?
+  descricao           String?
+  logoUrl             String?
+  corPrimaria         String?
+  corSecundaria       String?
   /// Verdadeiro quando o tour de boas-vindas foi finalizado até o fim ou
   /// dispensado por completo na tela inicial — nesses casos ele não aparece
   /// mais sozinho nem mostra o aviso de "continuar configuração".
@@ -86,6 +86,12 @@ model Empresa {
   /// pago real. Null ou no passado = sem bônus ativo.
   trialBonusAteEm DateTime?
 
+  /// Página pública da empresa (Stage 2) — nada disso é a Landing Page do
+  /// MOVA, é a vitrine própria de CADA empresa cliente.
+  paginaPublicaAtiva  Boolean @default(false)
+  slugPublico         String? @unique
+  exibirPrecosPublico Boolean @default(true)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -98,6 +104,17 @@ model Empresa {
   indicacaoRecebida Indicacao?  @relation("IndicacaoRecebida")
 
   assinatura Assinatura?
+
+  movimentacoesEstoque MovimentacaoEstoque[]
+  vendas               Venda[]
+  pedidos              Pedido[]
+  devolucoes           Devolucao[]
+  locais               Local[]
+  eventosHistorico     EventoHistorico[]
+  contaMercadoLivre    ContaMercadoLivre?
+  contaWhatsApp        ContaWhatsApp?
+  conversasWhatsApp    ConversaWhatsApp[]
+  usosIA               UsoIA[]
 }
 
 /// Um registro por empresa indicada (relação 1:1 com quem foi indicado —
@@ -108,8 +125,8 @@ model Indicacao {
   indicadorId String
   indicador   Empresa @relation("IndicacoesFeitas", fields: [indicadorId], references: [id])
 
-  indicadoId String    @unique
-  indicado   Empresa   @relation("IndicacaoRecebida", fields: [indicadoId], references: [id])
+  indicadoId String  @unique
+  indicado   Empresa @relation("IndicacaoRecebida", fields: [indicadoId], references: [id])
 
   status     StatusIndicacao @default(PENDENTE)
   criadoEm   DateTime        @default(now())
@@ -128,6 +145,9 @@ model Usuario {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
+  movimentacoesEstoque  MovimentacaoEstoque[]
+  conferenciasDevolucao ConferenciaDevolucao[]
+
   @@index([empresaId])
 }
 
@@ -144,9 +164,17 @@ model Cliente {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  orcamentos Orcamento[]
+  orcamentos        Orcamento[]
+  vendas            Venda[]
+  pedidos           Pedido[]
+  conversasWhatsApp ConversaWhatsApp[]
 
   @@index([empresaId])
+}
+
+enum TipoProduto {
+  SIMPLES
+  KIT
 }
 
 model Produto {
@@ -159,13 +187,134 @@ model Produto {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  /// Controle de estoque é opt-in por produto (null = esta empresa não
+  /// controla estoque deste item — ex.: serviços). Quando ativado, o saldo
+  /// de verdade mora em EstoqueLocal (um produto pode existir em vários
+  /// locais); este campo é só o limite mínimo GLOBAL usado para o alerta de
+  /// "estoque baixo", somando todos os locais.
+  controlaEstoque Boolean @default(false)
+  estoqueMinimo   Int?
+  sku             String?
+
+  /// KIT = produto composto, sem estoque próprio — vender um kit consome o
+  /// estoque dos componentes (ItemKit). SIMPLES é o padrão de sempre.
+  tipoProduto TipoProduto @default(SIMPLES)
+
+  /// Visibilidade na página pública da empresa — opt-in, nunca automático.
+  exibirNaPaginaPublica Boolean @default(false)
+  imagemUrl             String?
+
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
   itens  ItemOrcamento[]
   campos CampoProduto[]
 
+  variacoes            ProdutoVariacao[]
+  estoqueLocais        EstoqueLocal[]
+  movimentacoesEstoque MovimentacaoEstoque[]
+  itensVenda           ItemVenda[]
+  itensDevolucao       ItemDevolucao[]
+
+  /// Quando este produto É um kit: seus componentes.
+  itensDoKit     ItemKit[] @relation("KitComponentes")
+  /// Quando este produto é componente de outros kits.
+  presenteEmKits ItemKit[] @relation("ComponenteDeKit")
+
+  @@unique([empresaId, sku])
   @@index([empresaId])
+}
+
+/// Variação de um produto (ex.: tamanho P/M/G, voltagem 110V/220V). Cada
+/// variação tem seu próprio estoque (via EstoqueLocal.variacaoId) e pode
+/// ter preço/SKU/código de barras próprios. Totalmente opcional — produtos
+/// simples não precisam ter nenhuma linha aqui.
+model ProdutoVariacao {
+  id        String  @id @default(uuid())
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  nome           String
+  sku            String?
+  codigoBarras   String?
+  precoAdicional Decimal @default(0) @db.Decimal(12, 2)
+  ativa          Boolean @default(true)
+
+  estoqueLocais EstoqueLocal[]
+
+  @@index([produtoId])
+}
+
+/// Componente de um produto do tipo KIT. `kitProdutoId` é o kit;
+/// `componenteProdutoId` é o produto simples consumido na venda do kit.
+model ItemKit {
+  id String @id @default(uuid())
+
+  kitProdutoId String
+  kitProduto   Produto @relation("KitComponentes", fields: [kitProdutoId], references: [id], onDelete: Cascade)
+
+  componenteProdutoId String
+  componenteProduto   Produto @relation("ComponenteDeKit", fields: [componenteProdutoId], references: [id])
+
+  quantidade Int
+
+  @@unique([kitProdutoId, componenteProdutoId])
+  @@index([kitProdutoId])
+}
+
+enum TipoLocalEstoque {
+  LOJA
+  DEPOSITO
+  OFICINA
+  OUTRO
+}
+
+/// Local físico de estoque (Stage 3 — "múltiplos locais"). Toda empresa que
+/// não precisa disso continua funcionando com um único local padrão criado
+/// automaticamente no primeiro uso do estoque.
+model Local {
+  id        String  @id @default(uuid())
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  nome  String
+  tipo  TipoLocalEstoque @default(OUTRO)
+  ativo Boolean          @default(true)
+
+  criadoEm DateTime @default(now())
+
+  estoques             EstoqueLocal[]
+  movimentacoesDestino MovimentacaoEstoque[] @relation("MovimentacaoDestino")
+  movimentacoesOrigem  MovimentacaoEstoque[] @relation("MovimentacaoOrigem")
+
+  @@index([empresaId])
+}
+
+/// Saldo de um produto (ou variação) em UM local — a fonte de verdade real
+/// do estoque. `quantidade` é o disponível para venda; `quantidadeQuarentena`
+/// é separado de propósito (ver Devolucao) e NUNCA soma automaticamente em
+/// `quantidade` — só uma conferência aprovada move quarentena → disponível.
+model EstoqueLocal {
+  id String @id @default(uuid())
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  variacaoId String?
+  variacao   ProdutoVariacao? @relation(fields: [variacaoId], references: [id])
+
+  localId String
+  local   Local  @relation(fields: [localId], references: [id])
+
+  quantidade           Int @default(0)
+  quantidadeQuarentena Int @default(0)
+  quantidadeReservada  Int @default(0)
+
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([produtoId, variacaoId, localId])
+  @@index([produtoId])
+  @@index([localId])
 }
 
 enum TipoCampoProduto {
@@ -234,7 +383,8 @@ model Orcamento {
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id])
 
-  itens ItemOrcamento[]
+  itens       ItemOrcamento[]
+  vendaGerada Venda?
 
   @@index([empresaId])
   @@index([clienteId])
@@ -275,8 +425,8 @@ enum StatusAssinatura {
 /// EventoAssinatura, não aqui. O status real vem sempre do Mercado Pago,
 /// nunca é setado diretamente por uma requisição do usuário.
 model Assinatura {
-  id        String @id @default(uuid())
-  empresaId String @unique
+  id        String  @id @default(uuid())
+  empresaId String  @unique
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
   planoTipo        PlanoTipo
@@ -289,9 +439,9 @@ model Assinatura {
   mercadoPagoPreapprovalId String? @unique
   payerEmail               String?
 
-  iniciadaEm       DateTime?
-  proximaCobranca  DateTime?
-  canceladaEm      DateTime?
+  iniciadaEm      DateTime?
+  proximaCobranca DateTime?
+  canceladaEm     DateTime?
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -321,4 +471,416 @@ model EventoAssinatura {
   processadoEm DateTime @default(now())
 
   @@index([assinaturaId])
+}
+
+// =========================================================================
+// STAGE 3 — Estoque, Vendas, Pedidos, Histórico e integrações externas.
+// Tudo genérico (nenhuma regra específica de segmento/empresa), tudo
+// isolado por empresaId.
+// =========================================================================
+
+enum TipoMovimentacaoEstoque {
+  ENTRADA
+  SAIDA
+  AJUSTE
+  TRANSFERENCIA
+  DEVOLUCAO_QUARENTENA
+  DEVOLUCAO_LIBERADA
+  DEVOLUCAO_AVARIA
+}
+
+/// Toda mudança de saldo de estoque passa por aqui — nunca por um UPDATE
+/// direto em EstoqueLocal fora de uma transação que também grave esta
+/// linha. `saldoResultante` é o saldo (do local de destino) já calculado no
+/// momento da movimentação, para auditoria sem precisar reprocessar tudo.
+model MovimentacaoEstoque {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  variacaoId String?
+
+  /// Local afetado (destino, na prática) — obrigatório em toda movimentação.
+  localId String
+  local   Local  @relation("MovimentacaoDestino", fields: [localId], references: [id])
+
+  /// Só preenchido em TRANSFERENCIA: de onde a quantidade saiu.
+  localOrigemId String?
+  localOrigem   Local?  @relation("MovimentacaoOrigem", fields: [localOrigemId], references: [id])
+
+  tipo            TipoMovimentacaoEstoque
+  /// Sempre positivo — o efeito (soma ou subtrai do saldo) depende do tipo.
+  quantidade      Int
+  saldoResultante Int
+  motivo          String?
+
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+
+  /// Referência opcional à operação que originou o movimento (ex.: uma
+  /// Venda ou Devolução) — só para navegação/auditoria, nunca lida como
+  /// fonte de verdade.
+  referenciaTipo String?
+  referenciaId   String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId])
+  @@index([produtoId])
+  @@index([localId])
+}
+
+enum StatusVenda {
+  CONFIRMADA
+  CANCELADA
+}
+
+enum OrigemVenda {
+  MOVA
+  WHATSAPP
+  MERCADO_LIVRE
+  SITE_PROPRIO
+  OUTRO
+}
+
+model Venda {
+  id     String @id @default(uuid())
+  numero Int    @default(autoincrement())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  status StatusVenda @default(CONFIRMADA)
+  origem OrigemVenda @default(MOVA)
+
+  subtotal Decimal @default(0) @db.Decimal(12, 2)
+  desconto Decimal @default(0) @db.Decimal(12, 2)
+  total    Decimal @default(0) @db.Decimal(12, 2)
+
+  /// Quando a venda nasceu da aprovação de um orçamento — preserva o
+  /// histórico original, nunca sobrescreve o Orcamento.
+  orcamentoOrigemId String?    @unique
+  orcamentoOrigem   Orcamento? @relation(fields: [orcamentoOrigemId], references: [id])
+
+  pedidoOrigemId String? @unique
+  pedidoOrigem   Pedido? @relation(fields: [pedidoOrigemId], references: [id])
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  itens      ItemVenda[]
+  devolucoes Devolucao[]
+
+  @@index([empresaId])
+  @@index([clienteId])
+}
+
+model ItemVenda {
+  id String @id @default(uuid())
+
+  vendaId String
+  venda   Venda  @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  nome          String
+  quantidade    Decimal @db.Decimal(12, 2)
+  precoUnitario Decimal @db.Decimal(12, 2)
+  subtotal      Decimal @db.Decimal(12, 2)
+
+  @@index([vendaId])
+  @@index([produtoId])
+}
+
+enum StatusPedido {
+  RECEBIDO
+  PROCESSANDO
+  CONFIRMADO
+  CANCELADO
+}
+
+enum CanalPedido {
+  WHATSAPP
+  MERCADO_LIVRE
+  SITE_PROPRIO
+  MANUAL
+}
+
+/// Representa um pedido recebido de qualquer canal ANTES de virar Venda —
+/// existe para dar lugar estrutural a canais externos (Mercado Livre,
+/// WhatsApp) sem depender deles estarem de fato conectados: hoje já dá para
+/// registrar manualmente ("MANUAL") um pedido vindo de qualquer lugar.
+model Pedido {
+  id     String @id @default(uuid())
+  numero Int    @default(autoincrement())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  canal CanalPedido
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  status StatusPedido @default(RECEBIDO)
+  total  Decimal      @default(0) @db.Decimal(12, 2)
+
+  /// ID do pedido no canal externo (ex.: id do pedido no Mercado Livre) —
+  /// junto com `canal`, evita registrar o mesmo pedido externo duas vezes.
+  referenciaExterna String?
+
+  /// Snapshot simples dos itens informados na entrada do pedido — um pedido
+  /// externo pode chegar antes de qualquer mapeamento para Produto.
+  itens Json
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  venda      Venda?
+  devolucoes Devolucao[]
+
+  @@unique([empresaId, canal, referenciaExterna])
+  @@index([empresaId])
+}
+
+// -------------------------------------------------------------------------
+// Devoluções — NUNCA libera estoque automaticamente. Toda devolução entra
+// em quarentena; só uma conferência aprovada move a quantidade para
+// disponível. Ver backend/src/lib/devolucoes.ts para as regras aplicadas.
+// -------------------------------------------------------------------------
+
+enum OrigemDevolucao {
+  MERCADO_LIVRE
+  MANUAL
+}
+
+/// Estado INTERNO do MOVA — deliberadamente separado do estado que o
+/// Mercado Livre usa (que só existe dentro de `payloadExterno`, nunca
+/// confundido com este enum).
+enum StatusDevolucao {
+  IDENTIFICADA
+  AGUARDANDO_RECEBIMENTO
+  RECEBIDA
+  EM_CONFERENCIA
+  APROVADA
+  REPROVADA
+  SINCRONIZACAO_PENDENTE
+  SINCRONIZADA
+  ERRO_SINCRONIZACAO
+}
+
+enum ResultadoConferencia {
+  INTEGRO
+  AVARIA
+  INCOMPLETO
+  DIVERGENTE
+}
+
+model Devolucao {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  origem OrigemDevolucao @default(MANUAL)
+
+  vendaId String?
+  venda   Venda?  @relation(fields: [vendaId], references: [id])
+
+  pedidoId String?
+  pedido   Pedido? @relation(fields: [pedidoId], references: [id])
+
+  /// ID da devolução no Mercado Livre — junto com `origem`, é a chave de
+  /// idempotência: o mesmo evento externo nunca cria uma segunda linha.
+  referenciaExterna String?
+  /// Payload relevante recebido do canal externo, só para auditoria.
+  payloadExterno    Json?
+
+  status      StatusDevolucao @default(IDENTIFICADA)
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  itens        ItemDevolucao[]
+  conferencias ConferenciaDevolucao[]
+
+  @@unique([empresaId, origem, referenciaExterna])
+  @@index([empresaId])
+}
+
+model ItemDevolucao {
+  id String @id @default(uuid())
+
+  devolucaoId String
+  devolucao   Devolucao @relation(fields: [devolucaoId], references: [id], onDelete: Cascade)
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  variacaoId String?
+
+  quantidade           Int
+  resultadoConferencia ResultadoConferencia?
+  /// Preenchido só quando o item é efetivamente liberado para estoque
+  /// disponível — nunca antes disso.
+  liberadoEm           DateTime?
+
+  @@index([devolucaoId])
+  @@index([produtoId])
+}
+
+/// Um registro por conferência feita — histórico completo de quem decidiu
+/// o quê, mesmo que a decisão de um item mude depois (nunca é editado, só
+/// cria uma nova linha).
+model ConferenciaDevolucao {
+  id String @id @default(uuid())
+
+  devolucaoId String
+  devolucao   Devolucao @relation(fields: [devolucaoId], references: [id], onDelete: Cascade)
+
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+
+  resultado   ResultadoConferencia
+  observacoes String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([devolucaoId])
+}
+
+/// Log append-only dos eventos comerciais relevantes de cada empresa —
+/// alimenta a tela de Histórico. Nunca é editado nem apagado, só criado.
+model EventoHistorico {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  tipo         String
+  entidadeTipo String
+  entidadeId   String?
+  descricao    String
+
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId, criadoEm])
+}
+
+/// Uma conexão Mercado Livre por empresa. Tokens sempre cifrados em repouso
+/// (ver lib/crypto.ts) — nunca gravados nem lidos em texto puro fora do
+/// processo de cifra/decifra centralizado ali.
+model ContaMercadoLivre {
+  id String @id @default(uuid())
+
+  empresaId String  @unique
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  mlUserId String @unique
+
+  accessTokenCifrado  String
+  refreshTokenCifrado String
+  expiraEm            DateTime
+
+  conectadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+/// Idempotência das notificações do Mercado Livre — mesmo padrão já usado
+/// para o Mercado Pago (EventoAssinatura).
+model NotificacaoMercadoLivre {
+  id            String    @id @default(uuid())
+  notificacaoId String    @unique
+  topico        String
+  recursoId     String
+  recebidoEm    DateTime  @default(now())
+  /// Só é preenchido quando o processamento (buscar recurso + aplicar no
+  /// MOVA) termina com sucesso de verdade — nunca marcar como concluído um
+  /// evento cujo processamento falhou.
+  processadoEm  DateTime?
+  erro          String?
+}
+
+/// Uma conexão WhatsApp por empresa. `conectada` só vira true quando um
+/// provedor real (Meta/BSP) estiver configurado — nunca setado manualmente.
+model ContaWhatsApp {
+  id String @id @default(uuid())
+
+  empresaId String  @unique
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  numeroTelefone String?
+  conectada      Boolean @default(false)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+enum DirecaoMensagem {
+  ENVIADA
+  RECEBIDA
+}
+
+model ConversaWhatsApp {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  contatoTelefone  String
+  ultimaMensagemEm DateTime @default(now())
+  criadoEm         DateTime @default(now())
+
+  mensagens MensagemWhatsApp[]
+
+  @@unique([empresaId, contatoTelefone])
+  @@index([empresaId])
+}
+
+model MensagemWhatsApp {
+  id String @id @default(uuid())
+
+  conversaId String
+  conversa   ConversaWhatsApp @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+
+  direcao  DirecaoMensagem
+  conteudo String
+
+  /// ID da mensagem no WhatsApp (wamid) — só existe em mensagens recebidas
+  /// via webhook; garante idempotência contra reentrega do mesmo evento.
+  externoId String? @unique
+
+  criadoEm DateTime @default(now())
+
+  @@index([conversaId])
+}
+
+/// Registro de cada chamada de IA feita por uma empresa — usado tanto para
+/// controle de limite por plano quanto para auditoria futura de custo.
+model UsoIA {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  operacao String
+  modelo   String?
+  tokensEntrada  Int?
+  tokensSaida    Int?
+  custoEstimadoUsd Decimal? @db.Decimal(10, 6)
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId, criadoEm])
 }

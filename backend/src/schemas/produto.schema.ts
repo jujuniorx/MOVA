@@ -11,6 +11,12 @@ export const produtoCreateSchema = z.object({
     .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais."),
   unidade: stringOpcional(20),
   ativo: z.boolean().optional(),
+  tipoProduto: z.enum(["SIMPLES", "KIT"]).optional(),
+  controlaEstoque: z.boolean().optional(),
+  estoqueMinimo: z.number().int().min(0).max(999999).optional(),
+  sku: stringOpcional(60),
+  exibirNaPaginaPublica: z.boolean().optional(),
+  imagemUrl: stringOpcional(500),
 });
 
 export const produtoUpdateSchema = produtoCreateSchema

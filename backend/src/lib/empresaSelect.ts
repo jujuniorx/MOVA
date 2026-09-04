@@ -20,4 +20,7 @@ export const empresaSelectPropria = {
   cicloFaturamento: true,
   trialBonusAteEm: true,
   codigoIndicacao: true,
+  paginaPublicaAtiva: true,
+  slugPublico: true,
+  exibirPrecosPublico: true,
 } as const;

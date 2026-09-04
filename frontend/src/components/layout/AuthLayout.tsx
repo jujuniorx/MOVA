@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "../Logo";
 
-const BENEFICIOS = [
+interface Beneficio {
+  titulo: string;
+  descricao: string;
+}
+
+const BENEFICIOS_PADRAO: Beneficio[] = [
   {
     titulo: "Orçamentos profissionais em minutos",
     descricao: "Monte um orçamento completo com poucos cliques e envie na hora.",
@@ -26,7 +31,22 @@ function IconeCheck() {
   );
 }
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+interface AuthLayoutProps {
+  children: ReactNode;
+  /** Personaliza o painel esquerdo (usado hoje só pela tela de cadastro) — quando omitido, mantém o texto padrão do login. */
+  titulo?: string;
+  subtitulo?: string;
+  beneficios?: Beneficio[];
+  legendaMobile?: string;
+}
+
+export function AuthLayout({
+  children,
+  titulo = "Crie, envie e acompanhe seus orçamentos de forma simples.",
+  subtitulo = "Organize clientes, produtos e orçamentos em um só lugar — e feche negócio mais rápido.",
+  beneficios = BENEFICIOS_PADRAO,
+  legendaMobile = "Orçamentos rápidos e profissionais",
+}: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh bg-ink-50">
       <div className="relative hidden w-1/2 flex-col bg-ink-900 px-12 py-12 text-white lg:flex xl:px-16">
@@ -35,15 +55,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </Link>
 
         <div className="flex flex-1 flex-col justify-center py-12">
-          <h1 className="max-w-md text-3xl font-bold leading-tight">
-            Crie, envie e acompanhe seus orçamentos de forma simples.
-          </h1>
-          <p className="mt-4 max-w-md text-ink-200">
-            Organize clientes, produtos e orçamentos em um só lugar — e feche negócio mais rápido.
-          </p>
+          <h1 className="max-w-md text-3xl font-bold leading-tight">{titulo}</h1>
+          <p className="mt-4 max-w-md text-ink-200">{subtitulo}</p>
 
           <ul className="mt-10 flex max-w-md flex-col gap-6">
-            {BENEFICIOS.map((beneficio) => (
+            {beneficios.map((beneficio) => (
               <li key={beneficio.titulo} className="flex gap-3">
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-brand-300">
                   <IconeCheck />
@@ -64,7 +80,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <Link to="/" className="inline-flex">
               <Logo />
             </Link>
-            <p className="mt-2 text-sm text-ink-500">Orçamentos rápidos e profissionais</p>
+            <p className="mt-2 text-sm text-ink-500">{legendaMobile}</p>
           </div>
           {children}
         </div>
