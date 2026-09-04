@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
+import { ThemeToggle } from "../ui/ThemeToggle";
 import { Logo } from "../Logo";
 
 const links = [
@@ -15,7 +16,7 @@ export function PublicNav() {
   const [menuAberto, setMenuAberto] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-ink-200 bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
         <a href="#inicio" className="inline-flex">
           <Logo />
@@ -34,6 +35,7 @@ export function PublicNav() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <ThemeToggle />
           <Link to="/login" className="text-sm font-medium text-ink-600 hover:text-ink-900">
             Entrar
           </Link>
@@ -42,17 +44,20 @@ export function PublicNav() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          className="rounded-lg border border-ink-200 p-2 text-ink-700 lg:hidden"
-          aria-label="Abrir menu"
-          aria-expanded={menuAberto}
-          onClick={() => setMenuAberto((aberto) => !aberto)}
-        >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            className="rounded-lg border border-ink-200 p-2 text-ink-700"
+            aria-label="Abrir menu"
+            aria-expanded={menuAberto}
+            onClick={() => setMenuAberto((aberto) => !aberto)}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {menuAberto && (

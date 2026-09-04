@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
@@ -211,6 +212,25 @@ export function ConfiguracoesPage() {
           </Card>
 
           <Card>
+            <CardHeader
+              titulo="Plano e indicação"
+              descricao={`Você está no plano ${empresa?.planoTipo === "GRATUITO" ? "gratuito" : empresa?.planoTipo}. Veja os planos disponíveis ou indique o MOVA para outras empresas.`}
+            />
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link to="/planos">
+                <Button type="button" variante="secundario">
+                  Ver planos
+                </Button>
+              </Link>
+              <Link to="/indicacao">
+                <Button type="button" variante="secundario">
+                  Indicar o MOVA
+                </Button>
+              </Link>
+            </div>
+          </Card>
+
+          <Card>
             <CardHeader titulo="Ajuda" descricao="Reveja as dicas de como configurar sua empresa, cadastrar produtos e criar orçamentos." />
             <div className="mt-3">
               <Button type="button" variante="secundario" onClick={() => setMostrarOnboarding(true)}>
@@ -231,7 +251,7 @@ export function ConfiguracoesPage() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
               Como o cliente vê seu orçamento
             </p>
-            <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-[var(--shadow-card)]">
+            <div className="overflow-hidden rounded-xl border border-ink-200 bg-surface shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-3 border-b border-ink-100 p-5">
                 {valores.logoUrl ? (
                   <img

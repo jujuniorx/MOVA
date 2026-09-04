@@ -199,7 +199,7 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/50 px-4 py-6 motion-safe:animate-fade-in">
-      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl motion-safe:animate-fade-in-up sm:p-8">
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-surface p-6 shadow-xl motion-safe:animate-fade-in-up sm:p-8">
         <button
           type="button"
           onClick={aoClicarFechar}

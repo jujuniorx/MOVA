@@ -1,9 +1,13 @@
 @import "tailwindcss";
 
+/* Dark mode por classe explícita (.dark na <html>) — nunca por prefers-color-scheme,
+   porque o produto oferece só Claro/Escuro escolhidos pelo usuário, sem opção "Sistema". */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, "Segoe UI", Roboto, sans-serif;
 
-  /* MOVA — verde-petróleo (marca, ações primárias, links, foco) */
+  /* MOVA — verde-petróleo (marca, ações primárias, links, foco) — modo claro */
   --color-brand-50: #f0faf9;
   --color-brand-100: #d3f2ee;
   --color-brand-200: #a3e4dc;
@@ -16,7 +20,7 @@
   --color-brand-900: #12403d;
   --color-brand-950: #082625;
 
-  /* Ink — neutros de texto e superfície (substitui cinzas genéricos) */
+  /* Ink — neutros de texto e superfície (substitui cinzas genéricos) — modo claro */
   --color-ink-50: #f7f8f8;
   --color-ink-100: #eef0f0;
   --color-ink-200: #dde2e1;
@@ -29,7 +33,10 @@
   --color-ink-900: #1c2020;
   --color-ink-950: #0f1212;
 
-  /* Status de orçamento e feedback */
+  /* Superfície elevada (cards, modais, sidebar, inputs) — branco no claro */
+  --color-surface: #ffffff;
+
+  /* Status de orçamento e feedback — modo claro */
   --color-success-50: #f0fdf4;
   --color-success-100: #dcfce7;
   --color-success-600: #16a34a;
@@ -51,6 +58,61 @@
   --animate-fade-in: fade-in 0.18s ease-out;
   --animate-fade-in-up: fade-in-up 0.22s ease-out;
   --animate-toast-in: toast-in 0.2s ease-out;
+}
+
+/*
+ * Modo escuro: base preto/preto suave/cinza escuro, destaque laranja.
+ * Só redefine os valores das MESMAS variáveis — nenhum componente muda de
+ * classe, então estrutura/espaçamento/layout permanecem 100% idênticos.
+ */
+.dark {
+  color-scheme: dark;
+
+  /* Ink invertido: ink-50 (fundo de página) fica escuro, ink-900 (texto
+     principal) fica claro — todo texto/borda/hover que já usa ink-* se
+     adapta sozinho, sem tocar em nenhum componente. */
+  --color-ink-50: #131515;
+  --color-ink-100: #1b1e1e;
+  --color-ink-200: #292d2d;
+  --color-ink-300: #3a3f3f;
+  --color-ink-400: #6b7373;
+  --color-ink-500: #8b9291;
+  --color-ink-600: #a8afae;
+  --color-ink-700: #c3c9c8;
+  --color-ink-800: #dfe3e2;
+  --color-ink-900: #f5f6f6;
+  --color-ink-950: #ffffff;
+
+  --color-surface: #1c1f1f;
+
+  /* Destaque laranja no escuro (no claro continua verde-petróleo) */
+  --color-brand-50: #2a1d10;
+  --color-brand-100: #3c2814;
+  --color-brand-200: #5c3c1a;
+  --color-brand-300: #8a5820;
+  --color-brand-400: #c17e28;
+  --color-brand-500: #e8952e;
+  --color-brand-600: #f2a13d;
+  --color-brand-700: #e8791a;
+  --color-brand-800: #c2660f;
+  --color-brand-900: #8f4a10;
+  --color-brand-950: #5c2e0a;
+
+  --color-success-50: #102417;
+  --color-success-100: #15381f;
+  --color-success-600: #22c55e;
+  --color-success-700: #4ade80;
+  --color-danger-50: #2a1414;
+  --color-danger-100: #3d1a1a;
+  --color-danger-600: #ef4444;
+  --color-danger-700: #f87171;
+  --color-warning-50: #2a1f0f;
+  --color-warning-100: #3d2c14;
+  --color-warning-600: #f59e0b;
+  --color-warning-700: #fbbf24;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-popover: 0 4px 6px rgb(0 0 0 / 0.35), 0 10px 24px rgb(0 0 0 / 0.45);
 }
 
 @keyframes fade-in {
@@ -87,4 +149,52 @@
 body {
   @apply bg-ink-50 text-ink-900 antialiased;
   font-family: var(--font-sans);
+  transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+/* Smooth scroll para os links âncora da Landing Page, com offset para não
+   esconder o topo da seção atrás do header fixo — e respeitando quem pede
+   menos movimento. */
+html {
+  scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/*
+ * O orçamento público é um documento comercial compartilhado com o cliente
+ * final (que nunca logou no MOVA) — deve continuar sempre claro/imprimível,
+ * independente do tema escolhido no navegador de quem está vendo o link.
+ */
+.tema-claro-forcado {
+  color-scheme: light;
+  --color-ink-50: #f7f8f8;
+  --color-ink-100: #eef0f0;
+  --color-ink-200: #dde2e1;
+  --color-ink-300: #c2c9c8;
+  --color-ink-400: #98a3a2;
+  --color-ink-500: #758080;
+  --color-ink-600: #5b6565;
+  --color-ink-700: #454d4d;
+  --color-ink-800: #2e3434;
+  --color-ink-900: #1c2020;
+  --color-ink-950: #0f1212;
+  --color-surface: #ffffff;
+  --color-brand-50: #f0faf9;
+  --color-brand-100: #d3f2ee;
+  --color-brand-200: #a3e4dc;
+  --color-brand-600: #167b73;
+  --color-brand-700: #14615c;
+  --color-success-100: #dcfce7;
+  --color-success-700: #15803d;
+  --color-danger-100: #fee2e2;
+  --color-danger-700: #b91c1c;
 }

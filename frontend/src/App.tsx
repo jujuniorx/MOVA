@@ -11,6 +11,8 @@ import { NovoOrcamentoPage } from "./pages/NovoOrcamentoPage";
 import { OrcamentoDetailPage } from "./pages/OrcamentoDetailPage";
 import { PublicOrcamentoPage } from "./pages/PublicOrcamentoPage";
 import { ConfiguracoesPage } from "./pages/ConfiguracoesPage";
+import { PlanosPage } from "./pages/PlanosPage";
+import { IndicacaoPage } from "./pages/IndicacaoPage";
 
 function App() {
   return (
@@ -72,6 +74,22 @@ function App() {
         element={
           <ProtectedRoute>
             <ConfiguracoesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/planos"
+        element={
+          <ProtectedRoute>
+            <PlanosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/indicacao"
+        element={
+          <ProtectedRoute>
+            <IndicacaoPage />
           </ProtectedRoute>
         }
       />

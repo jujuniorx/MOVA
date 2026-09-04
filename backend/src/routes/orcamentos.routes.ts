@@ -8,6 +8,8 @@ import {
   statusUpdateSchema,
   ItemInput,
 } from "../schemas/orcamento.schema";
+import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
+import { validarIndicacaoSeElegivel } from "../lib/indicacao";
 
 const router = Router();
 
@@ -163,6 +165,15 @@ router.post("/", async (req, res) => {
   const { clienteId, validade, observacoes, desconto, itens } = resultado.data;
 
   try {
+    const empresa = await prisma.empresa.findUniqueOrThrow({
+      where: { id: empresaId },
+      select: { id: true, planoTipo: true, trialBonusAteEm: true },
+    });
+    const limiteExcedido = await verificarLimite(empresa, "orcamentos");
+    if (limiteExcedido) {
+      return res.status(403).json({ erro: mensagemLimiteExcedido(limiteExcedido), codigo: "LIMITE_PLANO", ...limiteExcedido });
+    }
+
     const cliente = await prisma.cliente.findFirst({ where: { id: clienteId, empresaId } });
     if (!cliente) {
       return res.status(404).json({ erro: "Cliente não encontrado." });
@@ -200,6 +211,16 @@ router.post("/", async (req, res) => {
       },
       include: { itens: true, cliente: { select: { id: true, nome: true } } },
     });
+
+    // Espera a validação terminar (é rápida: 1-2 queries indexadas na
+    // maioria das vezes, pois só faz algo quando há indicação PENDENTE) para
+    // que o estado fique consistente assim que a resposta chega ao cliente.
+    // Erro aqui nunca derruba a criação do orçamento, que já foi concluída.
+    try {
+      await validarIndicacaoSeElegivel(empresaId);
+    } catch (erroIndicacao) {
+      console.error("Erro ao validar indicação após criar orçamento:", erroIndicacao);
+    }
 
     return res.status(201).json(orcamento);
   } catch (erro) {

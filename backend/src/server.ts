@@ -8,6 +8,10 @@ import produtosRoutes from "./routes/produtos.routes";
 import orcamentosRoutes from "./routes/orcamentos.routes";
 import orcamentoPublicoRoutes from "./routes/orcamentoPublico.routes";
 import empresaRoutes from "./routes/empresa.routes";
+import planosRoutes from "./routes/planos.routes";
+import indicacaoRoutes from "./routes/indicacao.routes";
+import assinaturasRoutes from "./routes/assinaturas.routes";
+import webhooksRoutes from "./routes/webhooks.routes";
 
 const app = express();
 
@@ -48,7 +52,7 @@ const limiteGeral = rateLimit({
 app.use(limiteGeral);
 
 app.get("/", (_req, res) => {
-  res.send("OrçaFácil API funcionando!");
+  res.send("MOVA API funcionando!");
 });
 
 app.use("/auth", authRoutes);
@@ -57,6 +61,10 @@ app.use("/produtos", produtosRoutes);
 app.use("/orcamentos", orcamentosRoutes);
 app.use("/orcamentos-publico", orcamentoPublicoRoutes);
 app.use("/empresa", empresaRoutes);
+app.use("/planos", planosRoutes);
+app.use("/indicacao", indicacaoRoutes);
+app.use("/assinaturas", assinaturasRoutes);
+app.use("/webhooks", webhooksRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ erro: "Rota não encontrada." });

@@ -4,6 +4,7 @@ import { autenticar } from "../middleware/auth.middleware";
 import { isForeignKeyViolation } from "../lib/prismaErrors";
 import { clienteCreateSchema, clienteUpdateSchema } from "../schemas/cliente.schema";
 import { idParamSchema } from "../schemas/common.schema";
+import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
 
 const router = Router();
 
@@ -16,6 +17,15 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    const empresa = await prisma.empresa.findUniqueOrThrow({
+      where: { id: req.usuario!.empresaId },
+      select: { id: true, planoTipo: true, trialBonusAteEm: true },
+    });
+    const limiteExcedido = await verificarLimite(empresa, "clientes");
+    if (limiteExcedido) {
+      return res.status(403).json({ erro: mensagemLimiteExcedido(limiteExcedido), codigo: "LIMITE_PLANO", ...limiteExcedido });
+    }
+
     const cliente = await prisma.cliente.create({
       data: { ...resultado.data, empresaId: req.usuario!.empresaId },
     });

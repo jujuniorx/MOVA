@@ -139,7 +139,7 @@ export function ClientesPage() {
             placeholder="Buscar cliente pelo nome..."
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
-            className="w-full min-h-11 rounded-lg border border-ink-200 py-2.5 pl-9 pr-3 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            className="w-full min-h-11 rounded-lg border border-ink-200 bg-surface py-2.5 pl-9 pr-3 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
       )}

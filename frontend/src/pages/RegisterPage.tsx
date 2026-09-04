@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
@@ -15,6 +15,8 @@ type CamposFormulario = "nomeEmpresa" | "nomeUsuario" | "email" | "senha";
 export function RegisterPage() {
   const { registrar } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const codigoIndicacao = searchParams.get("ref")?.trim() || undefined;
 
   const [valores, setValores] = useState({ nomeEmpresa: "", nomeUsuario: "", email: "", senha: "" });
   const [erros, setErros] = useState<Partial<Record<CamposFormulario, string>>>({});
@@ -47,7 +49,8 @@ export function RegisterPage() {
         resultado.data.nomeEmpresa,
         resultado.data.nomeUsuario,
         resultado.data.email,
-        resultado.data.senha
+        resultado.data.senha,
+        codigoIndicacao
       );
       navigate("/painel", { replace: true });
     } catch (erro) {
@@ -66,6 +69,9 @@ export function RegisterPage() {
 
         <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
+          {codigoIndicacao && !erroGeral && (
+            <Alert tipo="sucesso">Você foi convidado para o MOVA — ao começar a usar, ganha dias de bônus.</Alert>
+          )}
 
           <Input
             rotulo="Nome da empresa"

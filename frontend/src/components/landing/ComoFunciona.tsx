@@ -1,33 +1,28 @@
 const passos = [
   {
     numero: "1",
-    titulo: "Crie sua conta",
-    descricao: "Cadastre sua empresa gratuitamente em menos de um minuto.",
+    titulo: "Configure seu negócio",
+    descricao: "Cadastre sua empresa, defina nome, contato, logo e cores em poucos minutos.",
   },
   {
     numero: "2",
-    titulo: "Configure sua identidade",
-    descricao: "Defina nome, contato, logo e cores que aparecem nos seus orçamentos.",
+    titulo: "Cadastre clientes e produtos",
+    descricao: "Organize quem você atende e o que você vende, do seu próprio jeito.",
   },
   {
     numero: "3",
-    titulo: "Cadastre clientes e serviços",
-    descricao: "Organize quem você atende e o que você vende, com preços prontos para usar.",
+    titulo: "Organize sua operação",
+    descricao: "Monte orçamentos com cálculo automático e acompanhe cada etapa.",
   },
   {
     numero: "4",
-    titulo: "Monte o orçamento",
-    descricao: "Escolha o cliente, adicione itens e o total é calculado automaticamente.",
+    titulo: "Venda pelos seus canais",
+    descricao: "Compartilhe pelo WhatsApp hoje — e, conforme o MOVA evolui, por outros canais também.",
   },
   {
     numero: "5",
-    titulo: "Compartilhe pelo WhatsApp",
-    descricao: "Envie um link do orçamento pronto, com a cara da sua empresa.",
-  },
-  {
-    numero: "6",
-    titulo: "Acompanhe até fechar",
-    descricao: "Veja o status de cada orçamento — rascunho, enviado, aprovado ou recusado.",
+    titulo: "Acompanhe tudo pelo MOVA",
+    descricao: "Histórico, status e resultados sempre à mão, num só lugar.",
   },
 ];
 

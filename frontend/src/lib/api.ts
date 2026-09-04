@@ -1,7 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const CHAVE_TOKEN = "orcafacil_token";
 
-export class ApiError extends Error {}
+export class ApiError extends Error {
+  codigo?: string;
+}
 
 export function obterToken(): string | null {
   return localStorage.getItem(CHAVE_TOKEN);
@@ -41,7 +43,11 @@ async function apiFetch<T>(caminho: string, opcoes: RequestInit = {}): Promise<T
       corpo && typeof corpo === "object" && "erro" in corpo
         ? String((corpo as { erro: unknown }).erro)
         : "Não foi possível concluir a operação. Tente novamente.";
-    throw new ApiError(mensagem);
+    const erro = new ApiError(mensagem);
+    if (corpo && typeof corpo === "object" && "codigo" in corpo) {
+      erro.codigo = String((corpo as { codigo: unknown }).codigo);
+    }
+    throw erro;
   }
 
   return corpo as T;
@@ -52,6 +58,8 @@ export interface Usuario {
   nome: string;
   email: string;
 }
+
+export type PlanoTipo = "GRATUITO" | "START" | "BUSINESS" | "PRO";
 
 export interface Empresa {
   id: string;
@@ -66,6 +74,10 @@ export interface Empresa {
   corSecundaria: string | null;
   onboardingConcluido: boolean;
   onboardingPasso: number;
+  planoTipo: PlanoTipo;
+  cicloFaturamento: "MENSAL" | "ANUAL";
+  trialBonusAteEm: string | null;
+  codigoIndicacao: string;
 }
 
 export interface EmpresaInput {
@@ -102,10 +114,16 @@ export const authApi = {
       body: JSON.stringify({ email, senha }),
     }),
 
-  registrar: (nomeEmpresa: string, nomeUsuario: string, email: string, senha: string) =>
+  registrar: (
+    nomeEmpresa: string,
+    nomeUsuario: string,
+    email: string,
+    senha: string,
+    codigoIndicacao?: string
+  ) =>
     apiFetch<RespostaAutenticacao>("/auth/registrar", {
       method: "POST",
-      body: JSON.stringify({ nomeEmpresa, nomeUsuario, email, senha }),
+      body: JSON.stringify({ nomeEmpresa, nomeUsuario, email, senha, codigoIndicacao }),
     }),
 
   me: () => apiFetch<{ usuario: Usuario; empresa: Empresa }>("/auth/me"),
@@ -333,5 +351,66 @@ export const produtosApi = {
     apiFetch<Produto>(`/produtos/${id}/campos`, { method: "PUT", body: JSON.stringify({ campos }) }),
 
   excluir: (id: string) => apiFetch<null>(`/produtos/${id}`, { method: "DELETE" }),
+};
+
+export interface PlanoConfig {
+  planoTipo: PlanoTipo;
+  precoMensal: string;
+  precoAnual: string;
+  limiteClientes: number | null;
+  limiteProdutos: number | null;
+  limiteOrcamentos: number | null;
+  limiteOrcamentosMensal: boolean;
+  limiteUsuarios: number | null;
+  recursos: {
+    estoqueCompleto: boolean;
+    iaLimitada: boolean;
+    iaCompleta: boolean;
+    mercadoLivre: boolean;
+    automacoes: boolean;
+    relatoriosAvancados: boolean;
+  };
+}
+
+export const planosApi = {
+  listar: () => apiFetch<PlanoConfig[]>("/planos"),
+};
+
+export interface DadosIndicacao {
+  codigoIndicacao: string;
+  trialBonusAteEm: string | null;
+  indicacoesValidas: number;
+  indicacoesPendentes: number;
+  diasGarantidosPeloPrograma: number;
+  tetoDiasPrograma: number;
+  tetoAtingido: boolean;
+  foiIndicadaPor: "PENDENTE" | "VALIDA" | "BLOQUEADA" | null;
+}
+
+export const indicacaoApi = {
+  minha: () => apiFetch<DadosIndicacao>("/indicacao/minha"),
+};
+
+export type StatusAssinatura = "PENDENTE" | "ATIVA" | "PAUSADA" | "CANCELADA" | "EXPIRADA" | "RECUSADA";
+
+export interface Assinatura {
+  planoTipo: PlanoTipo;
+  cicloFaturamento: "MENSAL" | "ANUAL";
+  status: StatusAssinatura;
+  iniciadaEm: string | null;
+  proximaCobranca: string | null;
+  canceladaEm: string | null;
+}
+
+export const assinaturasApi = {
+  minha: () => apiFetch<Assinatura | null>("/assinaturas/minha"),
+
+  criarCheckout: (planoTipo: Exclude<PlanoTipo, "GRATUITO">, cicloFaturamento: "MENSAL" | "ANUAL") =>
+    apiFetch<{ initPoint: string }>("/assinaturas/checkout", {
+      method: "POST",
+      body: JSON.stringify({ planoTipo, cicloFaturamento }),
+    }),
+
+  cancelar: () => apiFetch<null>("/assinaturas/cancelar", { method: "POST" }),
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
@@ -74,6 +75,7 @@ export function ProdutoFormModal({
   const [formaCobranca, setFormaCobranca] = useState("");
   const [erros, setErros] = useState<Partial<Record<CamposTexto, string>>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [erroLimitePlano, setErroLimitePlano] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const { mostrarSucesso } = useToast();
 
@@ -134,6 +136,7 @@ export function ProdutoFormModal({
   async function aoEnviar(evento: FormEvent) {
     evento.preventDefault();
     setErroGeral(null);
+    setErroLimitePlano(false);
 
     const resultado = produtoFormSchema.safeParse({
       ...valores,
@@ -178,6 +181,7 @@ export function ProdutoFormModal({
       setErroGeral(
         erro instanceof ApiError ? erro.message : "Não foi possível salvar o produto. Tente novamente."
       );
+      setErroLimitePlano(erro instanceof ApiError && erro.codigo === "LIMITE_PLANO");
     } finally {
       setEnviando(false);
     }
@@ -191,7 +195,19 @@ export function ProdutoFormModal({
       tamanho={mostrarCampos ? "grande" : "padrao"}
     >
       <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
-        {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
+        {erroGeral && (
+          <Alert tipo="erro">
+            {erroGeral}
+            {erroLimitePlano && (
+              <>
+                {" "}
+                <Link to="/planos" className="font-semibold underline">
+                  Ver planos
+                </Link>
+              </>
+            )}
+          </Alert>
+        )}
 
         <Input
           rotulo="Nome"

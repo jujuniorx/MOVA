@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+function paraUndefinedSeVazio(val: unknown) {
+  return typeof val === "string" && val.trim() === "" ? undefined : val;
+}
+
 export const registrarSchema = z.object({
   nomeEmpresa: z
     .string()
@@ -19,6 +23,9 @@ export const registrarSchema = z.object({
     .string()
     .min(8, "A senha deve ter ao menos 8 caracteres.")
     .max(72, "A senha deve ter no máximo 72 caracteres."),
+  // Código de indicação opcional (link de convite). Um código inexistente
+  // ou inválido NUNCA bloqueia o cadastro — só é aproveitado se existir.
+  codigoIndicacao: z.preprocess(paraUndefinedSeVazio, z.string().trim().max(20).optional()),
 });
 
 export const loginSchema = z.object({

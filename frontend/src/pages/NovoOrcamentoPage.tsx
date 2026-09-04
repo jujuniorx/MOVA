@@ -157,6 +157,7 @@ export function NovoOrcamentoPage() {
 
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [erroLimitePlano, setErroLimitePlano] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -280,6 +281,7 @@ export function NovoOrcamentoPage() {
   async function aoEnviar(evento: FormEvent) {
     evento.preventDefault();
     setErroGeral(null);
+    setErroLimitePlano(false);
 
     const erroObrigatorio = validarCamposObrigatorios();
     if (erroObrigatorio) {
@@ -328,6 +330,7 @@ export function NovoOrcamentoPage() {
       setErroGeral(
         erro instanceof ApiError ? erro.message : "Não foi possível salvar o orçamento. Tente novamente."
       );
+      setErroLimitePlano(erro instanceof ApiError && erro.codigo === "LIMITE_PLANO");
     } finally {
       setEnviando(false);
     }
@@ -361,7 +364,19 @@ export function NovoOrcamentoPage() {
       </p>
 
       <form className="mt-6 flex flex-col gap-6" onSubmit={aoEnviar} noValidate>
-        {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
+        {erroGeral && (
+          <Alert tipo="erro">
+            {erroGeral}
+            {erroLimitePlano && (
+              <>
+                {" "}
+                <Link to="/planos" className="font-semibold underline">
+                  Ver planos
+                </Link>
+              </>
+            )}
+          </Alert>
+        )}
 
         <Card>
           <TituloSecao

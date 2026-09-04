@@ -27,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, CampoTextoProps>(function Inpu
         aria-invalid={Boolean(erro)}
         aria-describedby={erro ? `${inputId}-erro` : undefined}
         className={cn(
-          "min-h-11 rounded-lg border px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
+          "min-h-11 rounded-lg border bg-surface px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
           erro ? "border-danger-600" : "border-ink-200",
           className
         )}

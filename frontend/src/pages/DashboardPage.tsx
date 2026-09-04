@@ -168,7 +168,8 @@ export function DashboardPage() {
               corIcone="bg-ink-900/10 text-ink-900"
               icone={
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 7h4v4" />
                 </svg>
               }
             />

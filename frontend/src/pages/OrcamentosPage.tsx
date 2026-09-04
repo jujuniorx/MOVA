@@ -95,7 +95,7 @@ export function OrcamentosPage() {
                 "rounded-full px-3 py-1 text-sm font-medium transition-colors",
                 filtro === item.valor
                   ? "bg-brand-600 text-white"
-                  : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+                  : "border border-ink-200 bg-surface text-ink-600 hover:bg-ink-50"
               )}
             >
               {item.rotulo}
@@ -109,7 +109,7 @@ export function OrcamentosPage() {
             placeholder="Buscar por cliente ou número..."
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
-            className="w-full min-h-10 rounded-lg border border-ink-200 px-3 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:w-64"
+            className="w-full min-h-10 rounded-lg border border-ink-200 bg-surface px-3 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:w-64"
           />
         )}
       </div>

@@ -164,7 +164,7 @@ export function ProdutosPage() {
               "rounded-full px-3 py-1 text-sm font-medium transition-colors",
               filtro === item.valor
                 ? "bg-brand-600 text-white"
-                : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+                : "border border-ink-200 bg-surface text-ink-600 hover:bg-ink-50"
             )}
           >
             {item.rotulo}

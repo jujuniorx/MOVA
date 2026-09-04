@@ -7,6 +7,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PlanoTipo {
+  GRATUITO
+  START
+  BUSINESS
+  PRO
+}
+
+enum CicloFaturamento {
+  MENSAL
+  ANUAL
+}
+
+enum StatusIndicacao {
+  PENDENTE
+  VALIDA
+  BLOQUEADA
+}
+
+/// Preço e limites de cada plano — fonte de verdade única, editável sem
+/// deploy. Nunca hardcode número de plano em código; leia sempre daqui.
+model PlanoConfig {
+  planoTipo PlanoTipo @id
+
+  precoMensal Decimal @db.Decimal(10, 2)
+  precoAnual  Decimal @db.Decimal(10, 2)
+
+  /// null = ilimitado.
+  limiteClientes      Int?
+  limiteProdutos      Int?
+  limiteOrcamentos    Int?
+  /// Verdadeiro = limiteOrcamentos conta só o mês corrente (planos pagos).
+  /// Falso = limiteOrcamentos é um teto total, para sempre (plano gratuito).
+  limiteOrcamentosMensal Boolean @default(true)
+  limiteUsuarios      Int?
+
+  /// Flags de recursos — preparação para o futuro (estoque, IA, Mercado
+  /// Livre, automações). Nenhum desses recursos existe no produto ainda;
+  /// as flags só evitam que a gente precise alterar schema quando forem
+  /// construídos. Formato: { "estoqueCompleto": bool, "iaLimitada": bool,
+  /// "iaCompleta": bool, "mercadoLivre": bool, "automacoes": bool,
+  /// "relatoriosAvancados": bool }
+  recursos Json
+
+  atualizadoEm DateTime @updatedAt
+}
+
 model Empresa {
   id            String   @id @default(uuid())
   nome          String
@@ -25,13 +71,51 @@ model Empresa {
   /// Quantos dos 5 passos do tour já foram concluídos (0-5) — permite
   /// retomar exatamente de onde a empresa parou, mesmo saindo no meio.
   onboardingPasso     Int     @default(0)
-  criadoEm      DateTime @default(now())
-  atualizadoEm  DateTime @updatedAt
+
+  /// Plano efetivamente contratado. Sem cobrança real implementada ainda,
+  /// toda empresa nasce e permanece GRATUITO nesta etapa — o campo existe
+  /// para não exigir migration quando a cobrança for construída.
+  planoTipo        PlanoTipo        @default(GRATUITO)
+  cicloFaturamento CicloFaturamento @default(MENSAL)
+
+  /// Código curto e único que esta empresa usa para indicar outras.
+  codigoIndicacao String @unique
+
+  /// Data até quando esta empresa tem acesso "no nível Start" por bônus de
+  /// indicação (seja como indicadora, seja como indicada) — nunca por plano
+  /// pago real. Null ou no passado = sem bônus ativo.
+  trialBonusAteEm DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   usuarios   Usuario[]
   clientes   Cliente[]
   produtos   Produto[]
   orcamentos Orcamento[]
+
+  indicacoesFeitas  Indicacao[] @relation("IndicacoesFeitas")
+  indicacaoRecebida Indicacao?  @relation("IndicacaoRecebida")
+
+  assinatura Assinatura?
+}
+
+/// Um registro por empresa indicada (relação 1:1 com quem foi indicado —
+/// cada empresa só pode ter sido indicada uma única vez, para sempre).
+model Indicacao {
+  id String @id @default(uuid())
+
+  indicadorId String
+  indicador   Empresa @relation("IndicacoesFeitas", fields: [indicadorId], references: [id])
+
+  indicadoId String    @unique
+  indicado   Empresa   @relation("IndicacaoRecebida", fields: [indicadoId], references: [id])
+
+  status     StatusIndicacao @default(PENDENTE)
+  criadoEm   DateTime        @default(now())
+  validadaEm DateTime?
+
+  @@index([indicadorId])
 }
 
 model Usuario {
@@ -176,4 +260,65 @@ model ItemOrcamento {
 
   @@index([orcamentoId])
   @@index([produtoId])
+}
+
+enum StatusAssinatura {
+  PENDENTE
+  ATIVA
+  PAUSADA
+  CANCELADA
+  EXPIRADA
+  RECUSADA
+}
+
+/// Uma assinatura por empresa (1:1) — histórico de trocas de plano vive em
+/// EventoAssinatura, não aqui. O status real vem sempre do Mercado Pago,
+/// nunca é setado diretamente por uma requisição do usuário.
+model Assinatura {
+  id        String @id @default(uuid())
+  empresaId String @unique
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  planoTipo        PlanoTipo
+  cicloFaturamento CicloFaturamento
+  status           StatusAssinatura @default(PENDENTE)
+
+  /// ID do "preapproval" (assinatura recorrente) no Mercado Pago — nossa
+  /// única chave para casar um webhook com a empresa correta. Nunca
+  /// derivado de nada enviado pelo frontend.
+  mercadoPagoPreapprovalId String? @unique
+  payerEmail               String?
+
+  iniciadaEm       DateTime?
+  proximaCobranca  DateTime?
+  canceladaEm      DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  eventos EventoAssinatura[]
+
+  @@index([mercadoPagoPreapprovalId])
+}
+
+/// Log append-only de cada notificação de webhook processada — garante
+/// idempotência (um evento do Mercado Pago nunca é aplicado duas vezes) e
+/// dá trilha de auditoria de todas as mudanças de status de cobrança.
+model EventoAssinatura {
+  id           String     @id @default(uuid())
+  assinaturaId String
+  assinatura   Assinatura @relation(fields: [assinaturaId], references: [id])
+
+  /// ID da notificação do Mercado Pago (campo "id" do payload do webhook).
+  /// Único: é essa constraint que bloqueia reprocessar o mesmo evento.
+  mercadoPagoNotificacaoId String @unique
+  tipo                     String
+  statusRecebido           String
+  /// Payload relevante recebido, só para auditoria — nunca contém
+  /// credenciais (o SDK nunca devolve o access token no payload).
+  payload                  Json
+
+  processadoEm DateTime @default(now())
+
+  @@index([assinaturaId])
 }

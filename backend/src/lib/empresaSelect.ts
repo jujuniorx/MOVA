@@ -16,4 +16,8 @@ export const empresaSelectPropria = {
   corSecundaria: true,
   onboardingConcluido: true,
   onboardingPasso: true,
+  planoTipo: true,
+  cicloFaturamento: true,
+  trialBonusAteEm: true,
+  codigoIndicacao: true,
 } as const;

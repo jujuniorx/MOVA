@@ -8,15 +8,15 @@ export function LandingFooter() {
       <section id="sobre" className="bg-ink-900">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6">
           <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Pronto para organizar seus orçamentos?
+            Comece a organizar sua empresa
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-ink-200">
-            O MOVA ajuda arquitetos, eletricistas, prestadores de serviço e pequenas empresas a
-            criar, enviar e acompanhar orçamentos com profissionalismo.
+            O MOVA centraliza clientes, produtos, orçamentos e o começo da sua operação comercial —
+            para lojas, oficinas, prestadores de serviço e empresas que vendem pelo WhatsApp.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link to="/registrar">
-              <Button className="w-full sm:w-auto">Começar grátis agora</Button>
+              <Button className="w-full sm:w-auto">Conhecer o MOVA</Button>
             </Link>
             <a href="#como-funciona">
               <Button
@@ -30,12 +30,12 @@ export function LandingFooter() {
         </div>
       </section>
 
-      <footer className="border-t border-ink-200 bg-white">
+      <footer className="border-t border-ink-200 bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <div className="flex flex-col items-center gap-1 text-center sm:items-start sm:text-left">
               <Logo />
-              <p className="mt-1 text-sm text-ink-500">Orçamentos profissionais para o seu negócio.</p>
+              <p className="mt-1 text-sm text-ink-500">A plataforma para organizar a operação comercial do seu negócio.</p>
             </div>
 
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-600">

@@ -12,7 +12,7 @@ const orcamentosExemplo = [
 export function ProductPreview() {
   return (
     <div className="relative">
-      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-xl">
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-surface shadow-xl">
         <div className="flex items-center gap-1.5 border-b border-ink-100 bg-ink-50 px-4 py-2.5">
           <span className="h-2.5 w-2.5 rounded-full bg-ink-300" />
           <span className="h-2.5 w-2.5 rounded-full bg-ink-300" />
@@ -53,7 +53,7 @@ export function ProductPreview() {
         </div>
       </div>
 
-      <div className="absolute -bottom-8 -right-6 w-40 rounded-2xl border-4 border-ink-900 bg-white shadow-xl sm:-right-10 sm:w-48">
+      <div className="absolute -bottom-8 -right-6 w-40 rounded-2xl border-4 border-ink-900 bg-surface shadow-xl sm:-right-10 sm:w-48">
         <div className="rounded-t-lg bg-ink-900 px-3 py-2 text-center text-[10px] font-medium text-white">
           Orçamento #014
         </div>

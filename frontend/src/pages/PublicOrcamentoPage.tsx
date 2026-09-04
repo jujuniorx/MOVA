@@ -31,7 +31,7 @@ export function PublicOrcamentoPage() {
   }, [id]);
 
   return (
-    <div className="min-h-svh bg-ink-50 px-4 py-8 sm:py-12">
+    <div className="tema-claro-forcado min-h-svh bg-ink-50 px-4 py-8 sm:py-12">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 flex justify-center">
           <Logo />

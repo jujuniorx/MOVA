@@ -34,7 +34,7 @@ export function Modal({ titulo, aberto, aoFechar, children, tamanho = "padrao" }
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className={`flex max-h-[90vh] w-full flex-col rounded-xl bg-white shadow-xl motion-safe:animate-fade-in-up ${larguraPorTamanho[tamanho]}`}
+        className={`flex max-h-[90vh] w-full flex-col rounded-xl bg-surface shadow-xl motion-safe:animate-fade-in-up ${larguraPorTamanho[tamanho]}`}
       >
         <div className="flex items-center justify-between border-b border-ink-100 p-6 pb-4">
           <h2 className="text-lg font-semibold text-ink-900">{titulo}</h2>

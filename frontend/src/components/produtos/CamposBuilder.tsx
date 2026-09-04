@@ -52,7 +52,7 @@ function PreviaCampo({ campo }: { campo: CampoRascunho }) {
           <input
             disabled
             placeholder="Resposta do cliente"
-            className="mt-1.5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-400"
+            className="mt-1.5 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-400"
           />
         )}
 
@@ -61,7 +61,7 @@ function PreviaCampo({ campo }: { campo: CampoRascunho }) {
             <input
               disabled
               placeholder="0"
-              className="w-24 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-400"
+              className="w-24 rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-400"
             />
             {campo.unidade && <span className="text-sm text-ink-500">{campo.unidade}</span>}
           </div>
@@ -70,7 +70,7 @@ function PreviaCampo({ campo }: { campo: CampoRascunho }) {
         {campo.tipo === "SELECAO_UNICA" && (
           <select
             disabled
-            className="mt-1.5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-400"
+            className="mt-1.5 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-400"
           >
             <option>
               {campo.opcoes.length > 0 ? "Selecione uma opção..." : "(cadastre as opções abaixo)"}
@@ -172,7 +172,7 @@ export function CamposBuilder({ campos, aoAlterar }: CamposBuilderProps) {
                 placeholder="Ex.: Largura, Tipo de ferro, Cor, Quantidade de pessoas..."
                 value={campo.nome}
                 onChange={(evento) => atualizarCampo(campo.chave, { nome: evento.target.value })}
-                className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                className="mt-1.5 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
 
@@ -228,7 +228,7 @@ export function CamposBuilder({ campos, aoAlterar }: CamposBuilderProps) {
                     placeholder="Ex.: caixas, sacos..."
                     value={campo.unidade}
                     onChange={(evento) => atualizarCampo(campo.chave, { unidade: evento.target.value })}
-                    className="mt-2 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                    className="mt-2 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 )}
               </div>
@@ -250,7 +250,7 @@ export function CamposBuilder({ campos, aoAlterar }: CamposBuilderProps) {
                         placeholder="Ex.: Ferro galvanizado"
                         value={opcao.rotulo}
                         onChange={(evento) => atualizarOpcao(campo.chave, opcao.chave, evento.target.value)}
-                        className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                        className="flex-1 rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       />
                       <button
                         type="button"

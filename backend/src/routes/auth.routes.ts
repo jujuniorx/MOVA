@@ -7,6 +7,7 @@ import { gerarToken } from "../lib/jwt";
 import { autenticar } from "../middleware/auth.middleware";
 import { empresaSelectPropria } from "../lib/empresaSelect";
 import { registrarSchema, loginSchema } from "../schemas/auth.schema";
+import { gerarCodigoIndicacaoUnico, vincularIndicacaoSeValida } from "../lib/indicacao";
 
 const router = Router();
 
@@ -24,19 +25,21 @@ router.post("/registrar", limiteAuth, async (req, res) => {
     return res.status(400).json({ erro: resultado.error.issues[0].message });
   }
 
-  const { nomeEmpresa, nomeUsuario, email, senha } = resultado.data;
+  const { nomeEmpresa, nomeUsuario, email, senha, codigoIndicacao } = resultado.data;
 
   try {
     const senhaHash = await bcrypt.hash(senha, 12);
 
     const { usuario, empresa } = await prisma.$transaction(async (tx) => {
+      const codigoProprio = await gerarCodigoIndicacaoUnico(tx);
       const empresa = await tx.empresa.create({
-        data: { nome: nomeEmpresa },
+        data: { nome: nomeEmpresa, codigoIndicacao: codigoProprio },
         select: empresaSelectPropria,
       });
       const usuario = await tx.usuario.create({
         data: { nome: nomeUsuario, email, senhaHash, empresaId: empresa.id },
       });
+      await vincularIndicacaoSeValida(tx, codigoIndicacao, empresa.id);
       return { usuario, empresa };
     });
 

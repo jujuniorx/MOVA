@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Logo, LogoSimbolo } from "../Logo";
+import { ThemeToggle } from "../ui/ThemeToggle";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import { cn } from "../../lib/cn";
 
@@ -89,6 +91,7 @@ function iniciais(nome?: string) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { usuario, empresa, sair } = useAuth();
   const [maisAberto, setMaisAberto] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const location = useLocation();
   const caminhoAtual = location.pathname;
 
@@ -107,7 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-svh bg-ink-50">
       {/* Barra lateral — desktop e notebook */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-ink-200 bg-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-ink-200 bg-surface lg:flex">
         <div className="px-5 py-5">
           <Link
             to="/painel"
@@ -155,18 +158,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <p className="truncate text-xs text-ink-500">{usuario?.nome}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={sair}
-            className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition-colors duration-150 hover:bg-ink-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-          >
-            Sair
-          </button>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmandoSaida(true)}
+              className="min-h-10 flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition-colors duration-150 hover:bg-ink-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              Sair
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 
       {/* Cabeçalho — celular e tablet */}
-      <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/95 backdrop-blur-[2px] lg:hidden">
+      <header className="sticky top-0 z-30 border-b border-ink-200 bg-surface/95 backdrop-blur-[2px] lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <Link
             to="/painel"
@@ -175,13 +181,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Logo />
           </Link>
 
-          <button
-            type="button"
-            onClick={sair}
-            className="rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700"
-          >
-            Sair
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={() => setConfirmandoSaida(true)}
+              className="rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700"
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
@@ -197,7 +206,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Navegação inferior — celular */}
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         <div className="mx-auto grid max-w-md grid-cols-5">
           {itensNavMobilePrincipais.map((item) => (
@@ -265,7 +274,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-label="Mais opções"
             onClick={(evento) => evento.stopPropagation()}
-            className="w-full rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-xl motion-safe:animate-fade-in-up"
+            className="w-full rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-xl motion-safe:animate-fade-in-up"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-200" />
             <div className="flex items-center gap-3 border-b border-ink-100 px-1 pb-4">
@@ -290,16 +299,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               ))}
             </nav>
-            <button
-              type="button"
-              onClick={sair}
-              className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm font-medium text-ink-700"
-            >
-              Sair
-            </button>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmandoSaida(true)}
+                className="min-h-10 flex-1 rounded-lg border border-ink-200 px-3 py-2.5 text-sm font-medium text-ink-700"
+              >
+                Sair
+              </button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        titulo="Sair do MOVA"
+        mensagem="Tem certeza que deseja sair do MOVA?"
+        aberto={confirmandoSaida}
+        rotuloConfirmar="Sair"
+        varianteConfirmar="perigo"
+        aoConfirmar={sair}
+        aoCancelar={() => setConfirmandoSaida(false)}
+      />
 
       <span className="hidden">
         <LogoSimbolo />

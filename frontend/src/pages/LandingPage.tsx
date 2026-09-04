@@ -2,28 +2,23 @@ import { Navigate, Link } from "react-router-dom";
 import { PublicNav } from "../components/landing/PublicNav";
 import { ProductPreview } from "../components/landing/ProductPreview";
 import { OrcamentoSimulador } from "../components/landing/OrcamentoSimulador";
+import { OQueEoMova } from "../components/landing/OQueEoMova";
+import { EcossistemaMova } from "../components/landing/EcossistemaMova";
+import { VisaoMulticanal } from "../components/landing/VisaoMulticanal";
+import { TiposDeNegocio } from "../components/landing/TiposDeNegocio";
+import { Filosofia } from "../components/landing/Filosofia";
 import { ComoFunciona } from "../components/landing/ComoFunciona";
 import { Beneficios } from "../components/landing/Beneficios";
+import { Vantagens } from "../components/landing/Vantagens";
 import { Planos } from "../components/landing/Planos";
 import { LandingFooter } from "../components/landing/LandingFooter";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 
-const beneficiosRapidos = [
-  "Crie orçamentos personalizados em minutos",
-  "Envie para seus clientes pelo WhatsApp",
-  "Acompanhe tudo em um só lugar",
-];
-
-const segmentos = [
-  "Arquitetos",
-  "Eletricistas",
-  "Encanadores",
-  "Marceneiros",
-  "Limpeza",
-  "Manutenção",
-  "Eventos",
-  "Autônomos",
+const capacidadesRapidas = [
+  "Clientes, produtos e orçamentos organizados num só lugar",
+  "Envie pelo WhatsApp e acompanhe o histórico",
+  "Configure sua operação do seu próprio jeito",
 ];
 
 export function LandingPage() {
@@ -34,29 +29,28 @@ export function LandingPage() {
   }
 
   return (
-    <div id="inicio" className="overflow-x-hidden bg-white">
+    <div id="inicio" className="overflow-x-hidden bg-surface">
       <PublicNav />
 
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
           <div>
             <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
-              Orçamentos profissionais para o seu negócio
+              Plataforma de operação comercial
             </span>
 
             <h1 className="mt-4 text-4xl font-bold tracking-tight text-ink-900 sm:text-5xl">
-              Orçamentos rápidos.
-              <br />
-              Negócios que <span className="text-brand-600">crescem.</span>
+              Seu negócio inteiro <span className="text-brand-600">em movimento.</span>
             </h1>
 
             <p className="mt-5 max-w-lg text-lg text-ink-600">
-              Crie orçamentos profissionais em minutos, envie para seus clientes pelo WhatsApp e
-              acompanhe tudo em um só lugar — sem planilhas, sem complicação.
+              Você vende em vários lugares. O MOVA organiza tudo em um só: clientes, produtos,
+              orçamentos e o começo da sua venda — com WhatsApp e novos canais entrando conforme o
+              produto evolui.
             </p>
 
             <ul className="mt-6 flex flex-col gap-2.5">
-              {beneficiosRapidos.map((item) => (
+              {capacidadesRapidas.map((item) => (
                 <li key={item} className="flex items-center gap-2 text-sm text-ink-700">
                   <svg
                     viewBox="0 0 24 24"
@@ -74,7 +68,7 @@ export function LandingPage() {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link to="/registrar">
-                <Button className="w-full sm:w-auto">Começar grátis agora</Button>
+                <Button className="w-full sm:w-auto">Conhecer o MOVA</Button>
               </Link>
               <a href="#como-funciona">
                 <Button variante="secundario" className="w-full sm:w-auto">
@@ -92,26 +86,19 @@ export function LandingPage() {
         <div className="mt-12 flex justify-center lg:hidden">
           <ProductPreview />
         </div>
-
-        <div className="mt-10 border-t border-ink-100 pt-8">
-          <p className="text-center text-xs font-medium uppercase tracking-wide text-ink-400">
-            Feito para diferentes tipos de negócio
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
-            {segmentos.map((segmento) => (
-              <span key={segmento} className="text-sm text-ink-500">
-                {segmento}
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
 
-      <section className="bg-ink-50 py-20">
+      <OQueEoMova />
+      <EcossistemaMova />
+      <Beneficios />
+      <TiposDeNegocio />
+      <Filosofia />
+
+      <section className="py-20">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 px-4 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-md text-center lg:text-left">
             <h2 className="text-2xl font-bold text-ink-900 sm:text-3xl">
-              Configure suas próprias regras de orçamento
+              Orçamento é só uma parte — e ele já é automático
             </h2>
             <p className="mt-3 text-ink-600">
               No MOVA, cada empresa cadastra seus serviços e preços — o cálculo do orçamento é
@@ -123,7 +110,8 @@ export function LandingPage() {
       </section>
 
       <ComoFunciona />
-      <Beneficios />
+      <VisaoMulticanal />
+      <Vantagens />
       <Planos />
       <LandingFooter />
     </div>

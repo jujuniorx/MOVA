@@ -12,7 +12,8 @@ interface AuthContextValor {
     nomeEmpresa: string,
     nomeUsuario: string,
     email: string,
-    senha: string
+    senha: string,
+    codigoIndicacao?: string
   ) => Promise<void>;
   sair: () => void;
   atualizarEmpresa: (empresa: Empresa) => void;
@@ -55,9 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nomeEmpresa: string,
     nomeUsuario: string,
     email: string,
-    senha: string
+    senha: string,
+    codigoIndicacao?: string
   ) {
-    const resposta = await authApi.registrar(nomeEmpresa, nomeUsuario, email, senha);
+    const resposta = await authApi.registrar(nomeEmpresa, nomeUsuario, email, senha, codigoIndicacao);
     salvarToken(resposta.token);
     setUsuario(resposta.usuario);
     setEmpresa(resposta.empresa);
