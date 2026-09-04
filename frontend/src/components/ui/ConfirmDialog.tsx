@@ -24,7 +24,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal titulo={titulo} aberto={aberto} aoFechar={aoCancelar}>
-      <p className="text-sm text-slate-600">{mensagem}</p>
+      <p className="text-sm text-ink-600">{mensagem}</p>
       <div className="mt-6 flex justify-end gap-3">
         <Button variante="secundario" onClick={aoCancelar} disabled={confirmando}>
           Cancelar

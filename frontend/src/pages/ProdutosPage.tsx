@@ -5,9 +5,13 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Skeleton } from "../components/ui/Skeleton";
+import { PageHeader } from "../components/ui/PageHeader";
 import { ProdutoFormModal } from "../components/produtos/ProdutoFormModal";
 import { ApiError, produtosApi } from "../lib/api";
 import type { Produto } from "../lib/api";
+import { cn } from "../lib/cn";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -27,7 +31,7 @@ function filtroParaAtivo(filtro: Filtro): boolean | undefined {
 
 function IconeProduto() {
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orca-900/10 text-orca-900">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-900/10 text-ink-900">
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
         <path
           strokeLinecap="round"
@@ -128,29 +132,26 @@ export function ProdutosPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+      <PageHeader
+        titulo={
+          <>
             Produtos e serviços
-            {!carregando && (
-              <span className="ml-2 text-sm font-normal text-slate-400">({produtos.length})</span>
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Esses itens aparecem na hora de montar um orçamento.
-          </p>
-        </div>
-        <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Novo produto
-        </Button>
-      </div>
+            {!carregando && <span className="ml-2 text-sm font-normal text-ink-400">({produtos.length})</span>}
+          </>
+        }
+        subtitulo="O que você vende — aparece na hora de montar um orçamento."
+        acao={
+          <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Novo produto
+          </Button>
+        }
+      />
 
-      <div className="mt-4 rounded-lg bg-facil-50 px-4 py-2.5 text-sm text-facil-700">
-        💡 Dica: você não precisa cadastrar todos os seus produtos agora. Comece pelo que mais
-        vende.
+      <div className="mt-4 rounded-lg bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
+        💡 Dica: você não precisa cadastrar todos os seus produtos agora. Comece pelo que mais vende.
       </div>
 
       <div className="mt-5 flex gap-2">
@@ -159,11 +160,12 @@ export function ProdutosPage() {
             key={item.valor}
             type="button"
             onClick={() => setFiltro(item.valor)}
-            className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+            className={cn(
+              "rounded-full px-3 py-1 text-sm font-medium transition-colors",
               filtro === item.valor
-                ? "bg-facil-600 text-white"
-                : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"
-            }`}
+                ? "bg-brand-600 text-white"
+                : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+            )}
           >
             {item.rotulo}
           </button>
@@ -179,41 +181,34 @@ export function ProdutosPage() {
       {carregando && (
         <div className="mt-6 flex flex-col gap-3">
           {[1, 2, 3].map((chave) => (
-            <Card key={chave} className="h-20 animate-pulse bg-slate-100" />
+            <Skeleton key={chave} className="h-20" />
           ))}
         </div>
       )}
 
       {!carregando && !erro && produtos.length === 0 && filtro === "todos" && (
-        <Card className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-          </span>
-          <p className="text-sm text-slate-600">Você ainda não tem produtos ou serviços cadastrados.</p>
-          <p className="max-w-sm text-sm text-slate-500">
-            Cadastre o que sua empresa vende para começar.
-          </p>
-          <Button variante="secundario" onClick={abrirNovoProduto}>
-            Cadastrar meu primeiro produto
-          </Button>
-        </Card>
+        <EmptyState
+          className="mt-6"
+          icone={<IconeProduto />}
+          titulo="Você ainda não tem produtos ou serviços cadastrados."
+          descricao="Cadastre o que sua empresa vende para começar."
+          acao={
+            <Button variante="secundario" onClick={abrirNovoProduto}>
+              Cadastrar meu primeiro produto
+            </Button>
+          }
+        />
       )}
 
       {!carregando && !erro && produtos.length === 0 && filtro !== "todos" && (
         <Card className="mt-6 flex flex-col items-center gap-2 py-8 text-center">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             Nenhum produto {filtro === "ativos" ? "ativo" : "inativo"} no momento.
           </p>
           <button
             type="button"
             onClick={() => setFiltro("todos")}
-            className="text-sm font-medium text-facil-600 hover:underline"
+            className="text-sm font-medium text-brand-600 hover:underline"
           >
             Ver todos os produtos
           </button>
@@ -229,16 +224,17 @@ export function ProdutosPage() {
                   <IconeProduto />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-slate-900">{produto.nome}</p>
+                      <p className="truncate text-sm font-medium text-ink-900">{produto.nome}</p>
                       <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          produto.ativo ? "bg-success-100 text-success-600" : "bg-slate-100 text-slate-500"
-                        }`}
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                          produto.ativo ? "bg-success-100 text-success-700" : "bg-ink-100 text-ink-500"
+                        )}
                       >
                         {produto.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-sm text-slate-500">
+                    <p className="mt-0.5 truncate text-sm text-ink-500">
                       {formatoMoeda.format(Number(produto.preco))}
                       {produto.unidade ? ` / ${produto.unidade}` : ""}
                       {produto.campos.length > 0 &&
@@ -247,13 +243,13 @@ export function ProdutosPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  <Button variante="secundario" onClick={() => alternarAtivo(produto)}>
+                  <Button tamanho="sm" variante="secundario" onClick={() => alternarAtivo(produto)}>
                     {produto.ativo ? "Desativar" : "Ativar"}
                   </Button>
-                  <Button variante="secundario" onClick={() => abrirEdicao(produto)}>
+                  <Button tamanho="sm" variante="secundario" onClick={() => abrirEdicao(produto)}>
                     Editar
                   </Button>
-                  <Button variante="perigo" onClick={() => setProdutoParaExcluir(produto)}>
+                  <Button tamanho="sm" variante="perigo" onClick={() => setProdutoParaExcluir(produto)}>
                     Excluir
                   </Button>
                 </div>
@@ -264,8 +260,11 @@ export function ProdutosPage() {
       )}
 
       {!carregando && produtos.length > 0 && (
-        <p className="mt-4 text-center text-xs text-slate-400">
-          Pronto para usar? <Link to="/orcamentos/novo" className="font-medium text-facil-600 hover:underline">Criar um orçamento</Link>
+        <p className="mt-4 text-center text-xs text-ink-400">
+          Pronto para usar?{" "}
+          <Link to="/orcamentos/novo" className="font-medium text-brand-600 hover:underline">
+            Criar um orçamento
+          </Link>
         </p>
       )}
 

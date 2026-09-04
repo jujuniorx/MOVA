@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
+import { Logo } from "../Logo";
 
 const links = [
   { rotulo: "Início", href: "#inicio" },
@@ -14,11 +15,10 @@ export function PublicNav() {
   const [menuAberto, setMenuAberto] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-        <a href="#inicio" className="text-lg font-semibold tracking-tight">
-          <span className="text-orca-800">Orça</span>
-          <span className="text-facil-600">Fácil</span>
+        <a href="#inicio" className="inline-flex">
+          <Logo />
         </a>
 
         <nav className="hidden items-center gap-7 lg:flex">
@@ -26,7 +26,7 @@ export function PublicNav() {
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              className="text-sm font-medium text-ink-600 hover:text-ink-900"
             >
               {link.rotulo}
             </a>
@@ -34,10 +34,7 @@ export function PublicNav() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link
-            to="/login"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
+          <Link to="/login" className="text-sm font-medium text-ink-600 hover:text-ink-900">
             Entrar
           </Link>
           <Link to="/registrar">
@@ -47,7 +44,7 @@ export function PublicNav() {
 
         <button
           type="button"
-          className="rounded-lg border border-slate-300 p-2 text-slate-700 lg:hidden"
+          className="rounded-lg border border-ink-200 p-2 text-ink-700 lg:hidden"
           aria-label="Abrir menu"
           aria-expanded={menuAberto}
           onClick={() => setMenuAberto((aberto) => !aberto)}
@@ -59,20 +56,20 @@ export function PublicNav() {
       </div>
 
       {menuAberto && (
-        <div className="border-t border-slate-200 px-4 py-4 lg:hidden">
+        <div className="border-t border-ink-200 px-4 py-4 lg:hidden">
           <nav className="flex flex-col gap-4">
             {links.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium text-ink-700"
                 onClick={() => setMenuAberto(false)}
               >
                 {link.rotulo}
               </a>
             ))}
           </nav>
-          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4">
+          <div className="mt-4 flex flex-col gap-2 border-t border-ink-100 pt-4">
             <Link to="/login" onClick={() => setMenuAberto(false)}>
               <Button variante="secundario" className="w-full">
                 Entrar

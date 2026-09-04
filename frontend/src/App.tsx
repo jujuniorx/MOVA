@@ -4,6 +4,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { OrcamentosPage } from "./pages/OrcamentosPage";
 import { ClientesPage } from "./pages/ClientesPage";
 import { ProdutosPage } from "./pages/ProdutosPage";
 import { NovoOrcamentoPage } from "./pages/NovoOrcamentoPage";
@@ -22,6 +23,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/orcamentos"
+        element={
+          <ProtectedRoute>
+            <OrcamentosPage />
           </ProtectedRoute>
         }
       />

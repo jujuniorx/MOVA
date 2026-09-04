@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
 import { Button } from "../ui/Button";
 import { Alert } from "../ui/Alert";
 import { CamposBuilder, campoRascunhoVazio } from "./CamposBuilder";
@@ -220,25 +221,20 @@ export function ProdutoFormModal({
             required
           />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700" htmlFor="forma-cobranca">
-              Forma de cobrança
-            </label>
-            <select
-              id="forma-cobranca"
-              value={formaCobranca}
-              onChange={(evento) => selecionarFormaCobranca(evento.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-facil-500 focus:border-facil-500"
-            >
-              <option value="">Selecione...</option>
-              {PRESETS_COBRANCA.map((preset) => (
-                <option key={preset.valor} value={preset.valor}>
-                  {preset.rotulo}
-                </option>
-              ))}
-              <option value="OUTRO">Outro...</option>
-            </select>
-          </div>
+          <Select
+            rotulo="Forma de cobrança"
+            id="forma-cobranca"
+            value={formaCobranca}
+            onChange={(evento) => selecionarFormaCobranca(evento.target.value)}
+          >
+            <option value="">Selecione...</option>
+            {PRESETS_COBRANCA.map((preset) => (
+              <option key={preset.valor} value={preset.valor}>
+                {preset.rotulo}
+              </option>
+            ))}
+            <option value="OUTRO">Outro...</option>
+          </Select>
         </div>
 
         {formaCobranca === "OUTRO" && (
@@ -251,19 +247,19 @@ export function ProdutoFormModal({
           />
         )}
 
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
           <input
             type="checkbox"
             checked={valores.ativo}
             onChange={(evento) => setValores((atual) => ({ ...atual, ativo: evento.target.checked }))}
-            className="h-4 w-4 rounded border-slate-300 text-facil-600 focus:ring-facil-500"
+            className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
           />
           Ativo (disponível para novos orçamentos)
         </label>
 
-        <div className="border-t border-slate-100 pt-4">
-          <p className="text-sm font-semibold text-slate-900">Informações para fazer o orçamento</p>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="border-t border-ink-100 pt-4">
+          <p className="text-sm font-semibold text-ink-900">Informações para fazer o orçamento</p>
+          <p className="mt-1 text-sm text-ink-500">
             Adicione as informações que você precisa saber sobre este produto ou serviço para
             preparar o orçamento — como tamanho, material, modelo ou qualquer outra característica.
           </p>

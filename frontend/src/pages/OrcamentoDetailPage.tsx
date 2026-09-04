@@ -6,6 +6,7 @@ import { Alert } from "../components/ui/Alert";
 import { Button } from "../components/ui/Button";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { Skeleton } from "../components/ui/Skeleton";
 import { DocumentoOrcamento } from "../components/orcamentos/DocumentoOrcamento";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -21,10 +22,8 @@ const MENSAGEM_SUCESSO_STATUS: Record<StatusOrcamento, string> = {
 };
 
 const MENSAGEM_CONFIRMACAO: Partial<Record<StatusOrcamento, string>> = {
-  APROVADO:
-    "Depois de aprovado, este orçamento não poderá mais ser editado. Deseja continuar?",
-  RECUSADO:
-    "Depois de recusado, este orçamento não poderá mais ser editado. Deseja continuar?",
+  APROVADO: "Depois de aprovado, este orçamento não poderá mais ser editado. Deseja continuar?",
+  RECUSADO: "Depois de recusado, este orçamento não poderá mais ser editado. Deseja continuar?",
 };
 
 const TITULO_CONFIRMACAO: Partial<Record<StatusOrcamento, string>> = {
@@ -106,7 +105,7 @@ export function OrcamentoDetailPage() {
       <AppLayout>
         <div className="flex flex-col gap-3">
           {[1, 2].map((chave) => (
-            <Card key={chave} className="h-24 animate-pulse bg-slate-100" />
+            <Skeleton key={chave} className="h-24" />
           ))}
         </div>
       </AppLayout>
@@ -117,7 +116,7 @@ export function OrcamentoDetailPage() {
     return (
       <AppLayout>
         <Alert tipo="erro">{erro ?? "Orçamento não encontrado."}</Alert>
-        <Link to="/painel" className="mt-4 inline-block text-sm font-medium text-facil-600 hover:underline">
+        <Link to="/painel" className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline">
           Voltar ao Início
         </Link>
       </AppLayout>
@@ -141,8 +140,8 @@ export function OrcamentoDetailPage() {
   return (
     <AppLayout>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link to="/painel" className="text-sm font-medium text-facil-600 hover:underline">
-          ← Voltar
+        <Link to="/orcamentos" className="text-sm font-medium text-brand-600 hover:underline">
+          ← Voltar para orçamentos
         </Link>
         <Button variante="whatsapp" onClick={aoCompartilhar}>
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -152,16 +151,14 @@ export function OrcamentoDetailPage() {
         </Button>
       </div>
 
-      <h1 className="mt-4 text-2xl font-bold text-slate-900">
+      <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink-900">
         Orçamento #{orcamento.numero} — {orcamento.cliente.nome}
       </h1>
 
       <Card className="mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Status do orçamento
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Status do orçamento</p>
             <div className="mt-1.5">
               <StatusBadge key={orcamento.status} status={orcamento.status} />
             </div>
@@ -197,7 +194,7 @@ export function OrcamentoDetailPage() {
               <button
                 type="button"
                 onClick={() => pedirMudancaStatus("RASCUNHO")}
-                className="text-sm font-medium text-slate-500 hover:text-slate-700 hover:underline"
+                className="text-sm font-medium text-ink-500 hover:text-ink-700 hover:underline"
               >
                 Corrigir: voltar para rascunho
               </button>

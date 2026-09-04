@@ -1,30 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, "Segoe UI", Roboto, sans-serif;
 
-  /* Orça — azul escuro (marca, cabeçalhos, textos de ênfase) */
-  --color-orca-900: #0a2b4c;
-  --color-orca-800: #0f3a63;
-  --color-orca-700: #154a7d;
-  --color-orca-600: #1d5a97;
-  --color-orca-500: #2870b8;
+  /* MOVA — verde-petróleo (marca, ações primárias, links, foco) */
+  --color-brand-50: #f0faf9;
+  --color-brand-100: #d3f2ee;
+  --color-brand-200: #a3e4dc;
+  --color-brand-300: #6dcfc3;
+  --color-brand-400: #3fb3a5;
+  --color-brand-500: #22948a;
+  --color-brand-600: #167b73;
+  --color-brand-700: #14615c;
+  --color-brand-800: #154e4a;
+  --color-brand-900: #12403d;
+  --color-brand-950: #082625;
 
-  /* Fácil — azul vivo (ações primárias, links, foco) */
-  --color-facil-700: #1d4ed8;
-  --color-facil-600: #2563eb;
-  --color-facil-500: #3b82f6;
-  --color-facil-400: #60a5fa;
-  --color-facil-100: #dbeafe;
-  --color-facil-50: #eff6ff;
+  /* Ink — neutros de texto e superfície (substitui cinzas genéricos) */
+  --color-ink-50: #f7f8f8;
+  --color-ink-100: #eef0f0;
+  --color-ink-200: #dde2e1;
+  --color-ink-300: #c2c9c8;
+  --color-ink-400: #98a3a2;
+  --color-ink-500: #758080;
+  --color-ink-600: #5b6565;
+  --color-ink-700: #454d4d;
+  --color-ink-800: #2e3434;
+  --color-ink-900: #1c2020;
+  --color-ink-950: #0f1212;
 
-  /* Status de orçamento */
-  --color-success-600: #16a34a;
+  /* Status de orçamento e feedback */
+  --color-success-50: #f0fdf4;
   --color-success-100: #dcfce7;
-  --color-danger-600: #dc2626;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-danger-50: #fef2f2;
   --color-danger-100: #fee2e2;
-  --color-warning-600: #d97706;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-warning-50: #fffbeb;
   --color-warning-100: #fef3c7;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  /* Sombra funcional única — discreta, usada em cartões e menus flutuantes */
+  --shadow-card: 0 1px 2px rgb(15 18 18 / 0.04), 0 1px 3px rgb(15 18 18 / 0.06);
+  --shadow-popover: 0 4px 6px rgb(15 18 18 / 0.05), 0 10px 20px rgb(15 18 18 / 0.08);
 
   /* Microinterações — sutis, curtas, sempre atrás de motion-safe: */
   --animate-fade-in: fade-in 0.18s ease-out;
@@ -64,6 +85,6 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-ink-50 text-ink-900 antialiased;
   font-family: var(--font-sans);
 }

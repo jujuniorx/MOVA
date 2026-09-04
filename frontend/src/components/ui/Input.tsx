@@ -5,10 +5,11 @@ import { cn } from "../../lib/cn";
 interface CampoTextoProps extends InputHTMLAttributes<HTMLInputElement> {
   rotulo: string;
   erro?: string;
+  dica?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, CampoTextoProps>(function Input(
-  { rotulo, erro, id, className = "", ...props },
+  { rotulo, erro, dica, id, className = "", ...props },
   ref
 ) {
   const idGerado = useId();
@@ -16,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, CampoTextoProps>(function Inpu
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="text-sm font-medium text-ink-700">
         {rotulo}
         {props.required && <span className="text-danger-600"> *</span>}
       </label>
@@ -26,12 +27,13 @@ export const Input = forwardRef<HTMLInputElement, CampoTextoProps>(function Inpu
         aria-invalid={Boolean(erro)}
         aria-describedby={erro ? `${inputId}-erro` : undefined}
         className={cn(
-          "rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-facil-500 focus:border-facil-500",
-          erro ? "border-danger-600" : "border-slate-300",
+          "min-h-11 rounded-lg border px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
+          erro ? "border-danger-600" : "border-ink-200",
           className
         )}
         {...props}
       />
+      {dica && !erro && <p className="text-xs text-ink-500">{dica}</p>}
       {erro && (
         <p id={`${inputId}-erro`} className="text-sm text-danger-600">
           {erro}

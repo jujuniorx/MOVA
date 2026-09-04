@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Alert } from "../components/ui/Alert";
+import { Skeleton } from "../components/ui/Skeleton";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { DocumentoOrcamento } from "../components/orcamentos/DocumentoOrcamento";
+import { Logo } from "../components/Logo";
 import { ApiError, orcamentosApi } from "../lib/api";
 import type { OrcamentoPublico } from "../lib/api";
 
@@ -29,22 +31,15 @@ export function PublicOrcamentoPage() {
   }, [id]);
 
   return (
-    <div className="min-h-svh bg-slate-50 px-4 py-8 sm:py-12">
+    <div className="min-h-svh bg-ink-50 px-4 py-8 sm:py-12">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-6 text-center">
-          <span className="text-lg font-semibold tracking-tight">
-            <span className="text-orca-800">Orça</span>
-            <span className="text-facil-600">Fácil</span>
-          </span>
+        <div className="mb-6 flex justify-center">
+          <Logo />
         </div>
 
-        {carregando && (
-          <div className="h-64 animate-pulse rounded-xl bg-slate-100" />
-        )}
+        {carregando && <Skeleton className="h-64" />}
 
-        {!carregando && (erro || !orcamento) && (
-          <Alert tipo="erro">{erro ?? "Orçamento não encontrado."}</Alert>
-        )}
+        {!carregando && (erro || !orcamento) && <Alert tipo="erro">{erro ?? "Orçamento não encontrado."}</Alert>}
 
         {!carregando && orcamento && (
           <DocumentoOrcamento
@@ -64,7 +59,7 @@ export function PublicOrcamentoPage() {
           />
         )}
 
-        <p className="mt-6 text-center text-xs text-slate-400">Gerado com OrçaFácil</p>
+        <p className="mt-6 text-center text-xs text-ink-400">Gerado com MOVA</p>
       </div>
     </div>
   );

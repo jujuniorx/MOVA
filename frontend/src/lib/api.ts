@@ -18,14 +18,21 @@ export function limparToken() {
 async function apiFetch<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   const token = obterToken();
 
-  const resposta = await fetch(`${API_URL}${caminho}`, {
-    ...opcoes,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...opcoes.headers,
-    },
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      ...opcoes,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...opcoes.headers,
+      },
+    });
+  } catch {
+    // fetch só rejeita por falha de rede/CORS, nunca por status HTTP — status
+    // de erro (4xx/5xx) sempre resolve a Promise e cai no fluxo normal abaixo.
+    throw new ApiError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+  }
 
   const corpo = resposta.status === 204 ? null : await resposta.json().catch(() => null);
 
@@ -197,8 +204,27 @@ export interface OrcamentoPublico {
   itens: ItemOrcamentoPublico[];
 }
 
+export interface OrcamentoResumoItem {
+  id: string;
+  numero: number;
+  data: string;
+  validade: string | null;
+  desconto: string;
+  subtotal: string;
+  total: string;
+  status: StatusOrcamento;
+  criadoEm: string;
+  atualizadoEm: string;
+  clienteId: string;
+  cliente: { id: string; nome: string };
+  _count: { itens: number };
+}
+
 export const orcamentosApi = {
   resumo: () => apiFetch<ResumoOrcamentos>("/orcamentos/resumo"),
+
+  listar: (status?: StatusOrcamento) =>
+    apiFetch<OrcamentoResumoItem[]>(`/orcamentos${status ? `?status=${status}` : ""}`),
 
   criar: (dados: OrcamentoInput) =>
     apiFetch<OrcamentoDetalhe>("/orcamentos", { method: "POST", body: JSON.stringify(dados) }),

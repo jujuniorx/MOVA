@@ -50,7 +50,7 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <Card>
-        <h1 className="mb-6 text-lg font-semibold text-slate-900">Entrar na sua conta</h1>
+        <h1 className="mb-6 text-lg font-semibold text-ink-900">Entrar na sua conta</h1>
 
         <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
@@ -81,9 +81,9 @@ export function LoginPage() {
         </form>
       </Card>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-ink-600">
         Ainda não tem conta?{" "}
-        <Link to="/registrar" className="font-medium text-facil-600 hover:underline">
+        <Link to="/registrar" className="font-medium text-brand-600 hover:underline">
           Criar minha conta
         </Link>
       </p>

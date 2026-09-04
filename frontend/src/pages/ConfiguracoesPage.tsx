@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { AppLayout } from "../components/layout/AppLayout";
-import { Card } from "../components/ui/Card";
+import { Card, CardHeader } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
+import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, empresaApi } from "../lib/api";
@@ -96,11 +97,10 @@ export function ConfiguracoesPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-2xl font-bold text-slate-900">Configurações do negócio</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Essas informações aparecem nos orçamentos enviados aos seus clientes — é a identidade da
-        sua empresa, não do OrçaFácil.
-      </p>
+      <PageHeader
+        titulo="Personalize sua empresa"
+        subtitulo="Essas informações aparecem nos orçamentos enviados aos seus clientes — é a identidade da sua empresa, não do MOVA."
+      />
 
       <form className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3" onSubmit={aoEnviar} noValidate>
         <div className="flex flex-col gap-6 lg:col-span-2">
@@ -108,7 +108,7 @@ export function ConfiguracoesPage() {
           {sucesso && <Alert tipo="sucesso">Configurações salvas com sucesso.</Alert>}
 
           <Card>
-            <h2 className="text-base font-semibold text-slate-900">Dados da empresa</h2>
+            <CardHeader titulo="Minha empresa" descricao="Nome e contato usados para falar com seus clientes." />
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 rotulo="Nome da empresa"
@@ -133,18 +133,16 @@ export function ConfiguracoesPage() {
                 onChange={(evento) => atualizarCampo("telefone", formatarTelefone(evento.target.value))}
                 erro={erros.telefone}
               />
-              <div>
-                <Input
-                  rotulo="WhatsApp"
-                  type="tel"
-                  inputMode="tel"
-                  placeholder="(11) 91234-5678"
-                  value={valores.whatsapp}
-                  onChange={(evento) => atualizarCampo("whatsapp", formatarTelefone(evento.target.value))}
-                  erro={erros.whatsapp}
-                />
-                <p className="mt-1 text-xs text-slate-500">Usado no botão de compartilhar orçamentos.</p>
-              </div>
+              <Input
+                rotulo="WhatsApp"
+                type="tel"
+                inputMode="tel"
+                placeholder="(11) 91234-5678"
+                dica="Usado no botão de compartilhar orçamentos."
+                value={valores.whatsapp}
+                onChange={(evento) => atualizarCampo("whatsapp", formatarTelefone(evento.target.value))}
+                erro={erros.whatsapp}
+              />
               <div className="sm:col-span-2">
                 <Input
                   rotulo="Endereço"
@@ -165,10 +163,10 @@ export function ConfiguracoesPage() {
           </Card>
 
           <Card>
-            <h2 className="text-base font-semibold text-slate-900">Identidade visual do orçamento</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Aparecem no cabeçalho do documento que seu cliente recebe.
-            </p>
+            <CardHeader
+              titulo="Aparência"
+              descricao="Logo e cores que aparecem no cabeçalho dos orçamentos enviados aos clientes."
+            />
 
             <div className="mt-4 flex flex-col gap-4">
               <Input
@@ -181,7 +179,7 @@ export function ConfiguracoesPage() {
 
               <div className="flex gap-6">
                 <div>
-                  <label className="text-sm font-medium text-slate-700" htmlFor="cor-primaria">
+                  <label className="text-sm font-medium text-ink-700" htmlFor="cor-primaria">
                     Cor principal
                   </label>
                   <input
@@ -191,11 +189,11 @@ export function ConfiguracoesPage() {
                     onChange={(evento) =>
                       setValores((atual) => ({ ...atual, corPrimaria: evento.target.value }))
                     }
-                    className="mt-1.5 block h-10 w-16 rounded-lg border border-slate-300"
+                    className="mt-1.5 block h-10 w-16 rounded-lg border border-ink-200"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700" htmlFor="cor-secundaria">
+                  <label className="text-sm font-medium text-ink-700" htmlFor="cor-secundaria">
                     Cor secundária
                   </label>
                   <input
@@ -205,7 +203,7 @@ export function ConfiguracoesPage() {
                     onChange={(evento) =>
                       setValores((atual) => ({ ...atual, corSecundaria: evento.target.value }))
                     }
-                    className="mt-1.5 block h-10 w-16 rounded-lg border border-slate-300"
+                    className="mt-1.5 block h-10 w-16 rounded-lg border border-ink-200"
                   />
                 </div>
               </div>
@@ -213,11 +211,7 @@ export function ConfiguracoesPage() {
           </Card>
 
           <Card>
-            <h2 className="text-base font-semibold text-slate-900">Ajuda</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Quer rever as dicas de como configurar sua empresa, cadastrar produtos e criar
-              orçamentos?
-            </p>
+            <CardHeader titulo="Ajuda" descricao="Reveja as dicas de como configurar sua empresa, cadastrar produtos e criar orçamentos." />
             <div className="mt-3">
               <Button type="button" variante="secundario" onClick={() => setMostrarOnboarding(true)}>
                 Rever tour de boas-vindas
@@ -234,16 +228,16 @@ export function ConfiguracoesPage() {
 
         <div className="lg:col-span-1">
           <div className="lg:sticky lg:top-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Prévia do orçamento
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
+              Como o cliente vê seu orçamento
             </p>
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+            <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-3 border-b border-ink-100 p-5">
                 {valores.logoUrl ? (
                   <img
                     src={valores.logoUrl}
                     alt="Pré-visualização do logotipo"
-                    className="h-10 w-10 rounded-lg border border-slate-200 object-contain"
+                    className="h-10 w-10 rounded-lg border border-ink-200 object-contain"
                   />
                 ) : (
                   <span
@@ -254,21 +248,18 @@ export function ConfiguracoesPage() {
                   </span>
                 )}
                 <div className="min-w-0">
-                  <p
-                    className="truncate text-sm font-semibold"
-                    style={{ color: valores.corPrimaria }}
-                  >
+                  <p className="truncate text-sm font-semibold" style={{ color: valores.corPrimaria }}>
                     {valores.nome || "Nome da sua empresa"}
                   </p>
-                  <p className="text-xs text-slate-500">Orçamento #001</p>
+                  <p className="text-xs text-ink-500">Orçamento #001</p>
                 </div>
               </div>
               <div className="space-y-2 p-5">
-                <div className="flex justify-between text-xs text-slate-500">
+                <div className="flex justify-between text-xs text-ink-500">
                   <span>Serviço de exemplo</span>
                   <span>R$ 250,00</span>
                 </div>
-                <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-semibold text-slate-900">
+                <div className="flex justify-between border-t border-ink-100 pt-2 text-sm font-semibold text-ink-900">
                   <span>Total</span>
                   <span>R$ 250,00</span>
                 </div>
@@ -280,7 +271,7 @@ export function ConfiguracoesPage() {
                 </span>
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-ink-400">
               Prévia ilustrativa — os dados reais do orçamento vêm do que você cadastrar.
             </p>
           </div>

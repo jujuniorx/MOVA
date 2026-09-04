@@ -6,6 +6,8 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Skeleton } from "../components/ui/Skeleton";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, orcamentosApi } from "../lib/api";
@@ -36,11 +38,19 @@ function CartaoEstatistica({
           {icone}
         </span>
         <div className="min-w-0">
-          <p className="text-sm text-slate-500">{rotulo}</p>
-          <p className="mt-0.5 truncate text-2xl font-semibold text-slate-900">{valor}</p>
+          <p className="text-sm text-ink-500">{rotulo}</p>
+          <p className="mt-0.5 truncate text-2xl font-semibold text-ink-900">{valor}</p>
         </div>
       </div>
     </Card>
+  );
+}
+
+function IconeOrcamentos() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+    </svg>
   );
 }
 
@@ -72,18 +82,20 @@ export function DashboardPage() {
         setErro(
           erroCapturado instanceof ApiError
             ? erroCapturado.message
-            : "Não foi possível carregar o dashboard."
+            : "Não foi possível carregar o painel."
         )
       )
       .finally(() => setCarregando(false));
   }, []);
 
+  const primeiroNome = usuario?.nome?.split(" ")[0];
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Olá, {usuario?.nome}</h1>
-          <p className="mt-1 text-sm text-slate-500">Veja como estão seus orçamentos.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink-900">Olá, {primeiroNome}</h1>
+          <p className="mt-1 text-sm text-ink-500">Aqui está o retrato atual dos seus orçamentos.</p>
         </div>
         <Link to="/orcamentos/novo">
           <Button className="w-full sm:w-auto">
@@ -96,12 +108,10 @@ export function DashboardPage() {
       </div>
 
       {empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) > 0 && (
-        <Card className="mt-4 flex flex-col gap-3 border-facil-200 bg-facil-50 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="mt-4 flex flex-col gap-3 border-brand-200 bg-brand-50 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-orca-800">Você está configurando sua empresa</p>
-            <p className="text-sm text-slate-600">
-              {empresa.onboardingPasso} de 5 etapas concluídas
-            </p>
+            <p className="text-sm font-semibold text-brand-800">Você está configurando sua empresa</p>
+            <p className="text-sm text-ink-600">{empresa.onboardingPasso} de 5 etapas concluídas</p>
           </div>
           <Button variante="secundario" className="w-full sm:w-auto" onClick={continuarConfiguracao}>
             Continuar configuração →
@@ -118,7 +128,7 @@ export function DashboardPage() {
       {carregando && (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((chave) => (
-            <Card key={chave} className="h-24 animate-pulse bg-slate-100" />
+            <Skeleton key={chave} className="h-24" />
           ))}
         </div>
       )}
@@ -129,17 +139,13 @@ export function DashboardPage() {
             <CartaoEstatistica
               rotulo="Total de orçamentos"
               valor={resumo.totalOrcamentos}
-              corIcone="bg-facil-100 text-facil-700"
-              icone={
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
-                </svg>
-              }
+              corIcone="bg-brand-100 text-brand-700"
+              icone={<IconeOrcamentos />}
             />
             <CartaoEstatistica
               rotulo="Pendentes"
               valor={resumo.pendentes}
-              corIcone="bg-warning-100 text-warning-600"
+              corIcone="bg-warning-100 text-warning-700"
               icone={
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -149,7 +155,7 @@ export function DashboardPage() {
             <CartaoEstatistica
               rotulo="Aprovados"
               valor={resumo.aprovados}
-              corIcone="bg-success-100 text-success-600"
+              corIcone="bg-success-100 text-success-700"
               icone={
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -159,7 +165,7 @@ export function DashboardPage() {
             <CartaoEstatistica
               rotulo="Valor total"
               valor={formatoMoeda.format(Number(resumo.valorTotal))}
-              corIcone="bg-orca-900/10 text-orca-900"
+              corIcone="bg-ink-900/10 text-ink-900"
               icone={
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -169,39 +175,45 @@ export function DashboardPage() {
           </div>
 
           <Card className="mt-6">
-            <h2 className="text-base font-semibold text-slate-900">Atividades recentes</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink-900">Orçamentos recentes</h2>
+              {resumo.atividadesRecentes.length > 0 && (
+                <Link to="/orcamentos" className="text-sm font-medium text-brand-600 hover:underline">
+                  Ver todos
+                </Link>
+              )}
+            </div>
 
             {resumo.atividadesRecentes.length === 0 ? (
-              <div className="mt-4 flex flex-col items-center gap-3 py-8 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
-                  </svg>
-                </span>
-                <p className="text-sm text-slate-600">Você ainda não criou nenhum orçamento.</p>
-                <p className="text-sm text-slate-500">Vamos criar o primeiro?</p>
-                <Link to="/orcamentos/novo">
-                  <Button variante="secundario">Criar meu primeiro orçamento</Button>
-                </Link>
-              </div>
+              <EmptyState
+                className="mt-4 border-none p-0 shadow-none"
+                icone={<IconeOrcamentos />}
+                titulo="Você ainda não criou nenhum orçamento."
+                descricao="Vamos criar o primeiro?"
+                acao={
+                  <Link to="/orcamentos/novo">
+                    <Button variante="secundario">Criar meu primeiro orçamento</Button>
+                  </Link>
+                }
+              />
             ) : (
-              <ul className="mt-4 divide-y divide-slate-100">
+              <ul className="mt-4 divide-y divide-ink-100">
                 {resumo.atividadesRecentes.map((atividade) => (
                   <li key={atividade.id}>
                     <Link
                       to={`/orcamentos/${atividade.id}`}
-                      className="flex items-center justify-between gap-4 rounded-lg px-2 py-3 -mx-2 transition-colors hover:bg-slate-50"
+                      className="flex items-center justify-between gap-4 rounded-lg px-2 py-3 -mx-2 transition-colors hover:bg-ink-50"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-900">
+                        <p className="truncate text-sm font-medium text-ink-900">
                           Orçamento #{atividade.numero} — {atividade.cliente.nome}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-ink-500">
                           {formatoData.format(new Date(atividade.atualizadoEm))}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-ink-900">
                           {formatoMoeda.format(Number(atividade.total))}
                         </span>
                         <StatusBadge status={atividade.status} />

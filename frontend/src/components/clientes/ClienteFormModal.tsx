@@ -113,18 +113,16 @@ export function ClienteFormModal({
           erro={erros.telefone}
         />
 
-        <div>
-          <Input
-            rotulo="WhatsApp"
-            type="tel"
-            inputMode="tel"
-            placeholder="(11) 91234-5678"
-            value={valores.whatsapp}
-            onChange={(evento) => atualizarCampo("whatsapp", formatarTelefone(evento.target.value))}
-            erro={erros.whatsapp}
-          />
-          <p className="mt-1 text-xs text-slate-500">Usado para compartilhar orçamentos com o cliente.</p>
-        </div>
+        <Input
+          rotulo="WhatsApp"
+          type="tel"
+          inputMode="tel"
+          placeholder="(11) 91234-5678"
+          dica="Usado para compartilhar orçamentos com o cliente."
+          value={valores.whatsapp}
+          onChange={(evento) => atualizarCampo("whatsapp", formatarTelefone(evento.target.value))}
+          erro={erros.whatsapp}
+        />
 
         <Input
           rotulo="E-mail"

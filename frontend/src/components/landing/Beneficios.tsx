@@ -72,24 +72,24 @@ export function Beneficios() {
     <section id="recursos" className="bg-white py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-            Por que escolher o <span className="text-facil-600">OrçaFácil</span>?
+          <h2 className="text-2xl font-bold text-ink-900 sm:text-3xl">
+            Por que escolher o <span className="text-brand-600">MOVA</span>?
           </h2>
-          <p className="mt-3 text-slate-600">
+          <p className="mt-3 text-ink-600">
             Feito para quem vive de orçamento e não tem tempo a perder.
           </p>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {beneficios.map((item) => (
-            <div key={item.titulo} className="rounded-xl border border-slate-200 p-6">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-facil-100 text-facil-700">
+            <div key={item.titulo} className="rounded-xl border border-ink-200 p-6">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                   {item.icone}
                 </svg>
               </span>
-              <h3 className="mt-4 font-semibold text-slate-900">{item.titulo}</h3>
-              <p className="mt-1.5 text-sm text-slate-600">{item.descricao}</p>
+              <h3 className="mt-4 font-semibold text-ink-900">{item.titulo}</h3>
+              <p className="mt-1.5 text-sm text-ink-600">{item.descricao}</p>
             </div>
           ))}
         </div>

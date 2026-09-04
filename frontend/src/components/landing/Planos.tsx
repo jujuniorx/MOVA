@@ -50,8 +50,8 @@ export function Planos() {
   return (
     <section id="planos" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Planos para todo tipo de negócio</h2>
-        <p className="mt-3 text-slate-600">Comece grátis e evolua conforme sua empresa cresce.</p>
+        <h2 className="text-2xl font-bold text-ink-900 sm:text-3xl">Planos para todo tipo de negócio</h2>
+        <p className="mt-3 text-ink-600">Comece grátis e evolua conforme sua empresa cresce.</p>
       </div>
 
       <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -59,26 +59,26 @@ export function Planos() {
           <div
             key={plano.nome}
             className={`relative rounded-2xl border p-6 ${
-              plano.destaque ? "border-facil-600 shadow-lg" : "border-slate-200"
+              plano.destaque ? "border-brand-600 shadow-lg" : "border-ink-200"
             }`}
           >
             {plano.destaque && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-facil-600 px-3 py-1 text-xs font-semibold text-white">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">
                 Mais popular
               </span>
             )}
 
-            <h3 className="font-semibold text-slate-900">{plano.nome}</h3>
-            <p className="mt-1 text-sm text-slate-500">{plano.descricao}</p>
+            <h3 className="font-semibold text-ink-900">{plano.nome}</h3>
+            <p className="mt-1 text-sm text-ink-500">{plano.descricao}</p>
 
             <p className="mt-4">
-              <span className="text-3xl font-bold text-slate-900">R$ {plano.preco}</span>
-              <span className="text-sm text-slate-500">/mês</span>
+              <span className="text-3xl font-bold text-ink-900">R$ {plano.preco}</span>
+              <span className="text-sm text-ink-500">/mês</span>
             </p>
 
             <ul className="mt-5 flex flex-col gap-2.5">
               {plano.beneficios.map((beneficio) => (
-                <li key={beneficio} className="flex items-start gap-2 text-sm text-slate-600">
+                <li key={beneficio} className="flex items-start gap-2 text-sm text-ink-600">
                   <svg
                     viewBox="0 0 24 24"
                     className="mt-0.5 h-4 w-4 shrink-0 text-success-600"
@@ -102,7 +102,7 @@ export function Planos() {
         ))}
       </div>
 
-      <p className="mt-8 text-center text-xs text-slate-400">
+      <p className="mt-8 text-center text-xs text-ink-400">
         Crie sua conta agora, sem custo, e comece a montar seus orçamentos.
       </p>
     </section>

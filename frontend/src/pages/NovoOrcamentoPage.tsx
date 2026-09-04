@@ -4,8 +4,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
+import { Skeleton } from "../components/ui/Skeleton";
 import { ClienteFormModal } from "../components/clientes/ClienteFormModal";
 import { ApiError, clientesApi, produtosApi, orcamentosApi } from "../lib/api";
 import type { Cliente, Produto, CampoProduto, ValorCampoInput } from "../lib/api";
@@ -47,7 +49,7 @@ function TituloSecao({
       <div className="flex items-center gap-2.5">
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-            concluido ? "bg-success-600 text-white" : "bg-orca-900 text-white"
+            concluido ? "bg-success-600 text-white" : "bg-ink-900 text-white"
           }`}
         >
           {concluido ? (
@@ -58,9 +60,9 @@ function TituloSecao({
             numero
           )}
         </span>
-        <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
+        <h2 className="text-base font-semibold text-ink-900">{titulo}</h2>
       </div>
-      {subtitulo && <p className="mt-1 pl-9 text-sm text-slate-500">{subtitulo}</p>}
+      {subtitulo && <p className="mt-1 pl-9 text-sm text-ink-500">{subtitulo}</p>}
     </div>
   );
 }
@@ -102,36 +104,29 @@ function CampoItemInput({
 
   if (campo.tipo === "SELECAO_UNICA") {
     return (
-      <div>
-        <label className="text-sm font-medium text-slate-700">{rotulo}</label>
-        <select
-          value={typeof valor === "string" ? valor : ""}
-          onChange={(evento) => aoAlterarValor(evento.target.value)}
-          className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-facil-500 focus:border-facil-500"
-        >
-          <option value="">Selecione...</option>
-          {campo.opcoes.map((opcao) => (
-            <option key={opcao.id} value={opcao.id}>
-              {opcao.rotulo}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select rotulo={rotulo} value={typeof valor === "string" ? valor : ""} onChange={(evento) => aoAlterarValor(evento.target.value)}>
+        <option value="">Selecione...</option>
+        {campo.opcoes.map((opcao) => (
+          <option key={opcao.id} value={opcao.id}>
+            {opcao.rotulo}
+          </option>
+        ))}
+      </Select>
     );
   }
 
   const selecionados = Array.isArray(valor) ? valor : [];
   return (
     <div>
-      <p className="text-sm font-medium text-slate-700">{rotulo}</p>
+      <p className="text-sm font-medium text-ink-700">{rotulo}</p>
       <div className="mt-1.5 flex flex-col gap-1.5">
         {campo.opcoes.map((opcao) => (
-          <label key={opcao.id} className="flex items-center gap-2 text-sm text-slate-700">
+          <label key={opcao.id} className="flex items-center gap-2 text-sm text-ink-700">
             <input
               type="checkbox"
               checked={selecionados.includes(opcao.id)}
               onChange={(evento) => aoAlternarOpcao(opcao.id, evento.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-facil-600 focus:ring-facil-500"
+              className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
             />
             {opcao.rotulo}
           </label>
@@ -343,7 +338,7 @@ export function NovoOrcamentoPage() {
       <AppLayout>
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((chave) => (
-            <Card key={chave} className="h-20 animate-pulse bg-slate-100" />
+            <Skeleton key={chave} className="h-20" />
           ))}
         </div>
       </AppLayout>
@@ -360,9 +355,9 @@ export function NovoOrcamentoPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-2xl font-bold text-slate-900">Novo orçamento</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Selecione o cliente, adicione os itens e revise os valores antes de salvar.
+      <h1 className="text-2xl font-bold tracking-tight text-ink-900">Novo orçamento</h1>
+      <p className="mt-1 text-sm text-ink-500">
+        Escolha para quem é, o que será vendido, e o total é calculado automaticamente.
       </p>
 
       <form className="mt-6 flex flex-col gap-6" onSubmit={aoEnviar} noValidate>
@@ -371,22 +366,18 @@ export function NovoOrcamentoPage() {
         <Card>
           <TituloSecao
             numero={1}
-            titulo="Cliente"
-            subtitulo="Escolha para quem é este orçamento."
+            titulo="Para quem é este orçamento?"
+            subtitulo="Escolha o cliente."
             concluido={Boolean(clienteId)}
           />
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="text-sm font-medium text-slate-700" htmlFor="cliente-select">
-                Cliente <span className="text-danger-600">*</span>
-              </label>
-              <select
-                id="cliente-select"
+              <Select
+                rotulo="Cliente"
+                required
                 value={clienteId}
                 onChange={(evento) => setClienteId(evento.target.value)}
-                className={`mt-1.5 w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-facil-500 focus:border-facil-500 ${
-                  erros.clienteId ? "border-danger-600" : "border-slate-300"
-                }`}
+                erro={erros.clienteId}
               >
                 <option value="">Selecione um cliente...</option>
                 {clientes.map((cliente) => (
@@ -394,15 +385,14 @@ export function NovoOrcamentoPage() {
                     {cliente.nome}
                   </option>
                 ))}
-              </select>
-              {erros.clienteId && <p className="mt-1 text-sm text-danger-600">{erros.clienteId}</p>}
+              </Select>
             </div>
             <Button type="button" variante="secundario" onClick={() => setClienteModalAberto(true)}>
               + Novo cliente
             </Button>
           </div>
           {clientes.length === 0 && (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-ink-500">
               Você ainda não tem clientes cadastrados. Use o botão "+ Novo cliente" acima para
               cadastrar quem vai receber este orçamento.
             </p>
@@ -412,21 +402,17 @@ export function NovoOrcamentoPage() {
         <Card>
           <TituloSecao
             numero={2}
-            titulo="Itens do orçamento"
-            subtitulo="Adicione o que você vai vender e preencha as informações que pedimos para calcular certinho."
+            titulo="O que será vendido?"
+            subtitulo="Adicione os itens e preencha as informações que pedimos para calcular certinho."
             concluido={itens.length > 0}
           />
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="text-sm font-medium text-slate-700" htmlFor="produto-select">
-                Produto/serviço
-              </label>
-              <select
-                id="produto-select"
+              <Select
+                rotulo="Produto/serviço"
                 value={produtoSelecionadoId}
                 onChange={(evento) => setProdutoSelecionadoId(evento.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-facil-500 focus:border-facil-500"
               >
                 <option value="">Selecione um produto ou serviço...</option>
                 {produtos.map((produto) => (
@@ -434,7 +420,7 @@ export function NovoOrcamentoPage() {
                     {produto.nome} — {formatoMoeda.format(Number(produto.preco))}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <Button type="button" variante="secundario" onClick={adicionarItem} disabled={!produtoSelecionadoId}>
               Adicionar item
@@ -442,16 +428,16 @@ export function NovoOrcamentoPage() {
           </div>
 
           {produtos.length === 0 && (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-ink-500">
               Você ainda não cadastrou nenhum produto ou serviço.{" "}
-              <Link to="/produtos?novo=1" className="font-medium text-facil-600 hover:underline">
+              <Link to="/produtos?novo=1" className="font-medium text-brand-600 hover:underline">
                 Cadastrar agora
               </Link>
             </p>
           )}
 
           {itens.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-500">Nenhum item adicionado ainda.</p>
+            <p className="mt-4 text-sm text-ink-500">Nenhum item adicionado ainda.</p>
           ) : (
             <ul className="mt-4 flex flex-col gap-3">
               {itens.map((item) => {
@@ -461,15 +447,15 @@ export function NovoOrcamentoPage() {
                 return (
                   <li
                     key={item.chave}
-                    className="rounded-lg border border-slate-200 p-3 transition-colors hover:border-slate-300"
+                    className="rounded-lg border border-ink-200 p-3 transition-colors hover:border-ink-300"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-medium text-slate-900">{item.nome}</p>
+                      <p className="text-sm font-medium text-ink-900">{item.nome}</p>
                       <button
                         type="button"
                         onClick={() => removerItem(item.chave)}
                         aria-label={`Remover ${item.nome}`}
-                        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-danger-600"
+                        className="shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
                       >
                         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -495,30 +481,30 @@ export function NovoOrcamentoPage() {
                         onChange={(evento) => atualizarItem(item.chave, "precoUnitario", evento.target.value)}
                       />
                       <div className="col-span-2 sm:col-span-1">
-                        <p className="text-sm font-medium text-slate-700">Subtotal</p>
-                        <p className="mt-1.5 py-2.5 text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-medium text-ink-700">Subtotal</p>
+                        <p className="mt-1.5 py-2.5 text-sm font-semibold text-ink-900">
                           {formatoMoeda.format(calcularSubtotalItem(item))}
                         </p>
                       </div>
                     </div>
 
                     {campos.length > 0 && (
-                      <div className="mt-3 border-t border-slate-100 pt-3">
-                        <p className="text-sm text-slate-600">
+                      <div className="mt-3 border-t border-ink-100 pt-3">
+                        <p className="text-sm text-ink-600">
                           Agora precisamos de algumas informações sobre este item.
                         </p>
                         <div className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
-                        {campos.map((campo) => (
-                          <CampoItemInput
-                            key={campo.id}
-                            campo={campo}
-                            valor={item.valoresCampos[campo.id]}
-                            aoAlterarValor={(valor) => atualizarValorCampo(item.chave, campo.id, valor)}
-                            aoAlternarOpcao={(opcaoId, marcado) =>
-                              alternarOpcaoMultipla(item.chave, campo.id, opcaoId, marcado)
-                            }
-                          />
-                        ))}
+                          {campos.map((campo) => (
+                            <CampoItemInput
+                              key={campo.id}
+                              campo={campo}
+                              valor={item.valoresCampos[campo.id]}
+                              aoAlterarValor={(valor) => atualizarValorCampo(item.chave, campo.id, valor)}
+                              aoAlternarOpcao={(opcaoId, marcado) =>
+                                alternarOpcaoMultipla(item.chave, campo.id, opcaoId, marcado)
+                              }
+                            />
+                          ))}
                         </div>
                       </div>
                     )}
@@ -530,11 +516,7 @@ export function NovoOrcamentoPage() {
         </Card>
 
         <Card>
-          <TituloSecao
-            numero={3}
-            titulo="Resumo e condições"
-            subtitulo="Confira o valor final antes de criar o orçamento."
-          />
+          <TituloSecao numero={3} titulo="Condições e total" subtitulo="Confira o valor final antes de criar o orçamento." />
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
@@ -564,19 +546,19 @@ export function NovoOrcamentoPage() {
             />
           </div>
 
-          <div className="mt-6 rounded-lg bg-slate-50 p-4">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4">
             <div className="flex flex-col gap-1 text-sm">
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-ink-600">
                 <span>Subtotal</span>
                 <span>{formatoMoeda.format(subtotalPreview)}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-ink-600">
                 <span>Desconto</span>
                 <span>{formatoMoeda.format(descontoPreview)}</span>
               </div>
-              <div className="mt-1.5 flex justify-between border-t border-slate-200 pt-2 text-lg font-bold text-slate-900">
-                <span>Total</span>
-                <span>{formatoMoeda.format(totalPreview)}</span>
+              <div className="mt-1.5 flex items-center justify-between border-t border-brand-200 pt-2">
+                <span className="text-base font-semibold text-ink-900">Total</span>
+                <span className="text-2xl font-bold text-brand-800">{formatoMoeda.format(totalPreview)}</span>
               </div>
             </div>
           </div>

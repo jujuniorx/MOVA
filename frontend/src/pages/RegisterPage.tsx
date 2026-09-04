@@ -62,7 +62,7 @@ export function RegisterPage() {
   return (
     <AuthLayout>
       <Card>
-        <h1 className="mb-6 text-lg font-semibold text-slate-900">Criar sua conta</h1>
+        <h1 className="mb-6 text-lg font-semibold text-ink-900">Criar sua conta</h1>
 
         <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
@@ -109,9 +109,9 @@ export function RegisterPage() {
         </form>
       </Card>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-ink-600">
         Já tem conta?{" "}
-        <Link to="/login" className="font-medium text-facil-600 hover:underline">
+        <Link to="/login" className="font-medium text-brand-600 hover:underline">
           Entrar
         </Link>
       </p>
