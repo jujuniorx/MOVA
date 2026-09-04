@@ -25,6 +25,17 @@ app.use(helmet());
 app.use(cors({ origin: FRONTEND_URL ?? "http://localhost:5173" }));
 app.use(express.json());
 
+// express.json() lança um SyntaxError (não uma rejeição HTTP) quando o corpo
+// não é JSON válido — sem este handler, ele cairia no error handler genérico
+// no fim do arquivo e voltaria como 500, mascarando um erro de entrada do
+// cliente (400) como se fosse falha do servidor.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({ erro: "Corpo da requisição não é um JSON válido." });
+  }
+  next(err);
+});
+
 // Camada extra de rate limit aplicada a toda a API, além dos limites mais
 // rígidos já existentes em /auth e /orcamentos-publico.
 const limiteGeral = rateLimit({
