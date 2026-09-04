@@ -54,7 +54,7 @@ export function ProductPreview() {
       </div>
 
       <div className="absolute -bottom-8 -right-6 w-40 rounded-2xl border-4 border-ink-900 bg-surface shadow-xl sm:-right-10 sm:w-48">
-        <div className="rounded-t-lg bg-ink-900 px-3 py-2 text-center text-[10px] font-medium text-white">
+        <div className="rounded-t-lg bg-[#141818] px-3 py-2 text-center text-[10px] font-medium text-white">
           Orçamento #014
         </div>
         <div className="p-3">

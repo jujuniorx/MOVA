@@ -86,51 +86,55 @@ export function RegisterPage() {
         <h1 className="text-lg font-semibold text-ink-900">Criar sua conta</h1>
         <p className="mt-1 text-sm text-ink-500">Gratuito para começar. Leva menos de 2 minutos.</p>
 
-        <form className="mt-6 flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
+        <form className="mt-6 flex flex-col gap-5" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
           {codigoIndicacao && !erroGeral && (
             <Alert tipo="sucesso">Você foi convidado para o MOVA — ao começar a usar, ganha dias de bônus.</Alert>
           )}
 
-          <Input
-            rotulo="Nome da empresa"
-            autoFocus
-            value={valores.nomeEmpresa}
-            onChange={(evento) => atualizarCampo("nomeEmpresa", evento.target.value)}
-            erro={erros.nomeEmpresa}
-            required
-          />
+          <div className="flex flex-col gap-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Sua empresa</p>
+            <Input
+              rotulo="Nome da empresa"
+              autoFocus
+              value={valores.nomeEmpresa}
+              onChange={(evento) => atualizarCampo("nomeEmpresa", evento.target.value)}
+              erro={erros.nomeEmpresa}
+              required
+            />
+            <Input
+              rotulo="Seu nome"
+              value={valores.nomeUsuario}
+              onChange={(evento) => atualizarCampo("nomeUsuario", evento.target.value)}
+              erro={erros.nomeUsuario}
+              required
+            />
+          </div>
 
-          <Input
-            rotulo="Seu nome"
-            value={valores.nomeUsuario}
-            onChange={(evento) => atualizarCampo("nomeUsuario", evento.target.value)}
-            erro={erros.nomeUsuario}
-            required
-          />
+          <div className="flex flex-col gap-4 border-t border-ink-100 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Acesso</p>
+            <Input
+              rotulo="E-mail"
+              type="email"
+              autoComplete="email"
+              value={valores.email}
+              onChange={(evento) => atualizarCampo("email", evento.target.value)}
+              erro={erros.email}
+              required
+            />
+            <Input
+              rotulo="Senha"
+              type="password"
+              autoComplete="new-password"
+              dica="Mínimo de 8 caracteres."
+              value={valores.senha}
+              onChange={(evento) => atualizarCampo("senha", evento.target.value)}
+              erro={erros.senha}
+              required
+            />
+          </div>
 
-          <Input
-            rotulo="E-mail"
-            type="email"
-            autoComplete="email"
-            value={valores.email}
-            onChange={(evento) => atualizarCampo("email", evento.target.value)}
-            erro={erros.email}
-            required
-          />
-
-          <Input
-            rotulo="Senha"
-            type="password"
-            autoComplete="new-password"
-            dica="Mínimo de 8 caracteres."
-            value={valores.senha}
-            onChange={(evento) => atualizarCampo("senha", evento.target.value)}
-            erro={erros.senha}
-            required
-          />
-
-          <Button type="submit" carregando={enviando} className="mt-2 w-full">
+          <Button type="submit" carregando={enviando} className="mt-1 w-full">
             Criar conta gratuita
           </Button>
         </form>

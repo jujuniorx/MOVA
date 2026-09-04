@@ -198,7 +198,7 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/50 px-4 py-6 motion-safe:animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 motion-safe:animate-fade-in">
       <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-surface p-6 shadow-xl motion-safe:animate-fade-in-up sm:p-8">
         <button
           type="button"
@@ -248,7 +248,7 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
             </p>
 
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 p-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ink-900 text-sm font-semibold text-white">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#141818] text-sm font-semibold text-white">
                 E
               </span>
               <div>

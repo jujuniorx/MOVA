@@ -160,7 +160,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="border-t border-ink-200 p-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xs font-bold text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#141818] text-xs font-bold text-white">
               {iniciais(empresa?.nome)}
             </span>
             <div className="min-w-0">
@@ -276,7 +276,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Painel "Mais" — funcionalidades secundárias no mobile */}
       {maisAberto && (
         <div
-          className="fixed inset-0 z-40 flex items-end bg-ink-950/40 lg:hidden motion-safe:animate-fade-in"
+          className="fixed inset-0 z-40 flex items-end bg-black/40 lg:hidden motion-safe:animate-fade-in"
           onClick={() => setMaisAberto(false)}
         >
           <div
@@ -288,7 +288,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-200" />
             <div className="flex items-center gap-3 border-b border-ink-100 px-1 pb-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xs font-bold text-white">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#141818] text-xs font-bold text-white">
                 {iniciais(empresa?.nome)}
               </span>
               <div className="min-w-0">

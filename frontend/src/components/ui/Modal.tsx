@@ -29,7 +29,7 @@ export function Modal({ titulo, aberto, aoFechar, children, tamanho = "padrao" }
   if (!aberto) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/50 px-4 py-6 motion-safe:animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 motion-safe:animate-fade-in">
       <div
         role="dialog"
         aria-modal="true"

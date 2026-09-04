@@ -5,12 +5,13 @@ import { Logo } from "../Logo";
 export function LandingFooter() {
   return (
     <>
-      <section id="sobre" className="bg-ink-900">
+      {/* Faixa sempre escura, de propósito — não reage ao tema (mesmo motivo do painel esquerdo de Login/Cadastro). */}
+      <section id="sobre" className="bg-[#141818]">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6">
           <h2 className="text-2xl font-bold text-white sm:text-3xl">
             Comece a organizar sua empresa
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-ink-200">
+          <p className="mx-auto mt-3 max-w-xl text-white/70">
             O MOVA centraliza clientes, produtos, orçamentos e o começo da sua operação comercial —
             para lojas, oficinas, prestadores de serviço e empresas que vendem pelo WhatsApp.
           </p>

@@ -36,7 +36,7 @@ export function AdminLoginPage() {
     <div className="flex min-h-svh flex-col items-center justify-center bg-ink-50 px-4">
       <div className="mb-8 flex flex-col items-center gap-2">
         <Logo />
-        <span className="rounded-full bg-ink-900 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
+        <span className="rounded-full bg-[#141818] px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
           Administração
         </span>
       </div>

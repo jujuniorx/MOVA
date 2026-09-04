@@ -26,7 +26,7 @@ export function VisaoMulticanal() {
             <svg viewBox="0 0 24 24" className="h-6 w-6 rotate-90 lg:rotate-0" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
-            <span className="rounded-lg bg-ink-900 px-3 py-1.5 text-sm font-bold tracking-widest text-white">MOVA</span>
+            <span className="rounded-lg bg-[#141818] px-3 py-1.5 text-sm font-bold tracking-widest text-white">MOVA</span>
             <svg viewBox="0 0 24 24" className="h-6 w-6 rotate-90 lg:rotate-0" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>

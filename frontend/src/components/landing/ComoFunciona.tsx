@@ -39,7 +39,7 @@ export function ComoFunciona() {
       <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {passos.map((passo) => (
           <div key={passo.numero} className="flex gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-900 text-sm font-semibold text-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#141818] text-sm font-semibold text-white">
               {passo.numero}
             </span>
             <div>

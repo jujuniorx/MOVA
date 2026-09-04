@@ -11,33 +11,23 @@ interface LogoProps {
 }
 
 /**
- * Símbolo MOVA: duas hastes ascendentes formando um "M" em movimento.
- * Sem gradiente, sem brilho — apenas forma.
+ * Símbolo MOVA: um M geométrico e simétrico, em dois tons — a metade
+ * esquerda e a metade direita "se encontram" no vértice central, como duas
+ * correntes que se conectam (clientes + operação, ou entrada + saída de um
+ * fluxo). O selo (fundo + traço principal) é fixo e não inverte com o
+ * tema — só o traço de destaque troca de cor (teal no claro, laranja no
+ * escuro), a mesma variável usada em todo o resto da marca.
  */
 export function LogoSimbolo({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ink-900",
-        className
-      )}
+      className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", className)}
+      style={{ backgroundColor: "#141818" }}
     >
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-        <path
-          d="M4 17.5V9.5L9.5 15L14.5 7"
-          stroke="white"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M14.5 7L20 13V17.5"
-          stroke="var(--color-brand-400)"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M5 17V7L12 15" stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 15L19 7V17" stroke="var(--color-brand-400)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
   );

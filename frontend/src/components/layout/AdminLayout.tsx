@@ -33,7 +33,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Link to="/admin" className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
                 <Logo />
               </Link>
-              <span className="rounded-full bg-ink-900 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
+              <span className="rounded-full bg-[#141818] px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
                 Administração
               </span>
             </div>

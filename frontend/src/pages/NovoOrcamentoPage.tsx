@@ -50,7 +50,7 @@ function TituloSecao({
       <div className="flex items-center gap-2.5">
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-            concluido ? "bg-success-600 text-white" : "bg-ink-900 text-white"
+            concluido ? "bg-success-600 text-white" : "bg-[#141818] text-white"
           }`}
         >
           {concluido ? (

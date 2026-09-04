@@ -49,14 +49,20 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh bg-ink-50">
-      <div className="relative hidden w-1/2 flex-col bg-ink-900 px-12 py-12 text-white lg:flex xl:px-16">
+      {/*
+        Painel sempre escuro, de propósito — não reage ao tema do MOVA (por
+        isso as cores aqui são fixas, não os tokens de texto que invertem no
+        dark mode, como ink e brand). Só o acento (brand-300) muda com o
+        tema, para o resto da marca continuar coerente.
+      */}
+      <div className="relative hidden w-1/2 flex-col bg-[#141818] px-12 py-12 text-white lg:flex xl:px-16">
         <Link to="/" className="inline-flex">
           <Logo tom="claro" />
         </Link>
 
         <div className="flex flex-1 flex-col justify-center py-12">
           <h1 className="max-w-md text-3xl font-bold leading-tight">{titulo}</h1>
-          <p className="mt-4 max-w-md text-ink-200">{subtitulo}</p>
+          <p className="mt-4 max-w-md text-white/70">{subtitulo}</p>
 
           <ul className="mt-10 flex max-w-md flex-col gap-6">
             {beneficios.map((beneficio) => (
@@ -66,7 +72,7 @@ export function AuthLayout({
                 </span>
                 <div>
                   <p className="font-medium">{beneficio.titulo}</p>
-                  <p className="mt-0.5 text-sm text-ink-200">{beneficio.descricao}</p>
+                  <p className="mt-0.5 text-sm text-white/70">{beneficio.descricao}</p>
                 </div>
               </li>
             ))}

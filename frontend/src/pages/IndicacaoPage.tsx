@@ -124,7 +124,7 @@ export function IndicacaoPage() {
             <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-3">
               {PASSOS.map((passo) => (
                 <div key={passo.numero} className="flex gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-900 text-sm font-semibold text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#141818] text-sm font-semibold text-white">
                     {passo.numero}
                   </span>
                   <div>
