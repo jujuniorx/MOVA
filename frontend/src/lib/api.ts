@@ -456,6 +456,31 @@ export interface ClienteInput {
   camposPersonalizados?: ValoresCamposCliente;
 }
 
+// --- Importação inteligente (CSV) -----------------------------------------
+// Mesmo formato de resposta para clientes e produtos — só os campos
+// importáveis mudam por entidade.
+export interface CampoImportavel {
+  campo: string;
+  rotulo: string;
+  obrigatorio: boolean;
+  sinonimos: string[];
+}
+
+export interface PreviewImportacao {
+  colunas: string[];
+  linhasExemplo: string[][];
+  totalLinhas: number;
+  campos: CampoImportavel[];
+  mapeamentoSugerido: Record<string, number>;
+}
+
+export interface ResultadoImportacao {
+  criados: number;
+  duplicados: number;
+  invalidos: { linha: number; motivo: string }[];
+  detalheDuplicados: { linha: number; motivo: string }[];
+}
+
 export const clientesApi = {
   listar: () => apiFetch<Cliente[]>("/clientes"),
 
@@ -478,6 +503,15 @@ export const clientesApi = {
 
   atualizarCampos: (campos: CampoInput[]) =>
     apiFetch<CampoProduto[]>("/clientes/campos", { method: "PUT", body: JSON.stringify({ campos }) }),
+
+  importarPreview: (arquivoBase64: string) =>
+    apiFetch<PreviewImportacao>("/clientes/importar/preview", { method: "POST", body: JSON.stringify({ arquivoBase64 }) }),
+
+  importarConfirmar: (arquivoBase64: string, mapeamento: Record<string, number>, importarDuplicados?: boolean) =>
+    apiFetch<ResultadoImportacao>("/clientes/importar/confirmar", {
+      method: "POST",
+      body: JSON.stringify({ arquivoBase64, mapeamento, importarDuplicados }),
+    }),
 };
 
 export type TipoCampo = "TEXTO" | "NUMERO" | "SELECAO_UNICA" | "SELECAO_MULTIPLA" | "DATA" | "BOOLEANO";
@@ -588,6 +622,15 @@ export const produtosApi = {
     apiFetch<Produto>(`/produtos/${id}/variacoes`, { method: "PUT", body: JSON.stringify({ variacoes }) }),
 
   excluir: (id: string) => apiFetch<null>(`/produtos/${id}`, { method: "DELETE" }),
+
+  importarPreview: (arquivoBase64: string) =>
+    apiFetch<PreviewImportacao>("/produtos/importar/preview", { method: "POST", body: JSON.stringify({ arquivoBase64 }) }),
+
+  importarConfirmar: (arquivoBase64: string, mapeamento: Record<string, number>, importarDuplicados?: boolean) =>
+    apiFetch<ResultadoImportacao>("/produtos/importar/confirmar", {
+      method: "POST",
+      body: JSON.stringify({ arquivoBase64, mapeamento, importarDuplicados }),
+    }),
 };
 
 // --- Estoque -----------------------------------------------------------
@@ -1006,6 +1049,18 @@ export interface PlanoConfig {
 
 export const planosApi = {
   listar: () => apiFetch<PlanoConfig[]>("/planos"),
+};
+
+export interface ResultadoBusca {
+  tipo: "cliente" | "produto" | "orcamento" | "venda" | "pedido";
+  id: string;
+  titulo: string;
+  subtitulo: string;
+  rota: string;
+}
+
+export const buscaApi = {
+  buscar: (q: string) => apiFetch<{ resultados: ResultadoBusca[] }>(`/busca?q=${encodeURIComponent(q)}`),
 };
 
 export interface DadosIndicacao {

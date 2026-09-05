@@ -7,8 +7,12 @@ import { camposProdutoUpdateSchema } from "../schemas/campoProduto.schema";
 import { kitUpdateSchema } from "../schemas/kit.schema";
 import { variacoesUpdateSchema } from "../schemas/variacao.schema";
 import { idParamSchema } from "../schemas/common.schema";
-import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
+import { importarPreviewSchema, importarConfirmarSchema } from "../schemas/importacao.schema";
+import { mensagemLimiteExcedido, verificarLimite, planoEfetivo, obterConfigPlano } from "../lib/planos";
 import { registrarEvento } from "../lib/historico";
+import { decodificarArquivo, sugerirMapeamento, aplicarMapeamento, ArquivoImportacaoError } from "../lib/importacao";
+import { parseNumeroBr } from "../lib/csv";
+import type { CampoImportavel } from "../lib/importacao";
 
 const router = Router();
 
@@ -26,6 +30,153 @@ const includeCampos = {
   },
   variacoes: { orderBy: { nome: "asc" as const } },
 };
+
+const CAMPOS_IMPORTAVEIS_PRODUTO: CampoImportavel[] = [
+  { campo: "nome", rotulo: "Nome", obrigatorio: true, sinonimos: ["name", "produto", "item"] },
+  { campo: "preco", rotulo: "Preço", obrigatorio: true, sinonimos: ["price", "valor"] },
+  { campo: "descricao", rotulo: "Descrição", obrigatorio: false, sinonimos: ["description", "desc"] },
+  { campo: "unidade", rotulo: "Unidade", obrigatorio: false, sinonimos: ["unit", "medida"] },
+  { campo: "sku", rotulo: "SKU", obrigatorio: false, sinonimos: ["codigo", "code", "referencia"] },
+];
+
+router.post("/importar/preview", async (req, res) => {
+  const resultado = importarPreviewSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+  try {
+    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+    return res.json({
+      colunas: arquivo.cabecalho,
+      linhasExemplo: arquivo.linhas.slice(0, 10),
+      totalLinhas: arquivo.totalLinhas,
+      campos: CAMPOS_IMPORTAVEIS_PRODUTO,
+      mapeamentoSugerido: sugerirMapeamento(arquivo.cabecalho, CAMPOS_IMPORTAVEIS_PRODUTO),
+    });
+  } catch (erro) {
+    if (erro instanceof ArquivoImportacaoError) {
+      return res.status(400).json({ erro: erro.message });
+    }
+    console.error("Erro ao pré-visualizar importação de produtos:", erro);
+    return res.status(500).json({ erro: "Não foi possível ler o arquivo." });
+  }
+});
+
+router.post("/importar/confirmar", async (req, res) => {
+  const resultado = importarConfirmarSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+  const empresaId = req.usuario!.empresaId;
+  const { mapeamento, importarDuplicados } = resultado.data;
+
+  try {
+    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+
+    const empresa = await prisma.empresa.findUniqueOrThrow({
+      where: { id: empresaId },
+      select: { id: true, planoTipo: true, trialBonusAteEm: true },
+    });
+
+    const existentes = await prisma.produto.findMany({
+      where: { empresaId },
+      select: { nome: true, sku: true },
+    });
+    const nomesExistentes = new Set(existentes.map((p) => p.nome.toLowerCase()));
+    const skusExistentes = new Set(existentes.map((p) => p.sku?.toLowerCase()).filter(Boolean));
+    const nomesNesteArquivo = new Set<string>();
+    const skusNesteArquivo = new Set<string>();
+
+    const invalidos: { linha: number; motivo: string }[] = [];
+    const duplicados: { linha: number; motivo: string }[] = [];
+    const paraCriar: { nome: string; preco: number; descricao?: string; unidade?: string; sku?: string }[] = [];
+
+    arquivo.linhas.forEach((linha, indice) => {
+      const numeroLinha = indice + 2;
+      const bruto = aplicarMapeamento(linha, mapeamento);
+
+      // Preço vem como texto do CSV ("10,50", "R$ 10,50"...) — nunca aceito
+      // como número "na sorte": se não parsear, a linha é invalida, nunca
+      // vira 0 ou um valor inventado.
+      const dadosParaValidar: Record<string, unknown> = { ...bruto };
+      if (bruto.preco !== undefined) {
+        const precoNumero = parseNumeroBr(bruto.preco);
+        if (precoNumero === null) {
+          invalidos.push({ linha: numeroLinha, motivo: `Preço "${bruto.preco}" não é um número válido.` });
+          return;
+        }
+        dadosParaValidar.preco = precoNumero;
+      }
+
+      if (bruto.nome === undefined) {
+        invalidos.push({ linha: numeroLinha, motivo: 'Coluna "Nome" vazia ou não mapeada.' });
+        return;
+      }
+      if (bruto.preco === undefined) {
+        invalidos.push({ linha: numeroLinha, motivo: 'Coluna "Preço" vazia ou não mapeada.' });
+        return;
+      }
+
+      const candidato = produtoCreateSchema.safeParse(dadosParaValidar);
+      if (!candidato.success) {
+        invalidos.push({ linha: numeroLinha, motivo: candidato.error.issues[0].message });
+        return;
+      }
+
+      const nome = candidato.data.nome.toLowerCase();
+      const sku = candidato.data.sku?.toLowerCase();
+      const jaExisteNoCadastro = nomesExistentes.has(nome) || (sku && skusExistentes.has(sku));
+      const jaExisteNesteArquivo = nomesNesteArquivo.has(nome) || (sku && skusNesteArquivo.has(sku));
+
+      if ((jaExisteNoCadastro || jaExisteNesteArquivo) && !importarDuplicados) {
+        duplicados.push({
+          linha: numeroLinha,
+          motivo: jaExisteNoCadastro ? "Já existe um produto com este nome ou SKU." : "Duplicado dentro do próprio arquivo.",
+        });
+        return;
+      }
+
+      nomesNesteArquivo.add(nome);
+      if (sku) skusNesteArquivo.add(sku);
+      paraCriar.push(candidato.data);
+    });
+
+    if (paraCriar.length > 0) {
+      const planoEfetivoAtual = await planoEfetivo(empresa);
+      const config = await obterConfigPlano(planoEfetivoAtual);
+      if (config.limiteProdutos !== null) {
+        const contagemAtual = await prisma.produto.count({ where: { empresaId } });
+        if (contagemAtual + paraCriar.length > config.limiteProdutos) {
+          return res.status(403).json({
+            erro: `Seu plano permite até ${config.limiteProdutos} produtos. Você tem ${contagemAtual} e esta importação adicionaria ${paraCriar.length} — reduza o arquivo ou libere espaço antes de importar.`,
+            codigo: "LIMITE_PLANO",
+          });
+        }
+      }
+    }
+
+    let criados = 0;
+    for (const dados of paraCriar) {
+      const produto = await prisma.produto.create({ data: { ...dados, empresaId } });
+      criados++;
+      registrarEvento({
+        empresaId,
+        tipo: "PRODUTO_CRIADO",
+        entidadeTipo: "Produto",
+        entidadeId: produto.id,
+        descricao: `Produto "${produto.nome}" importado via CSV.`,
+      }).catch((e) => console.error("Erro ao registrar histórico:", e));
+    }
+
+    return res.json({ criados, duplicados: duplicados.length, invalidos, detalheDuplicados: duplicados });
+  } catch (erro) {
+    if (erro instanceof ArquivoImportacaoError) {
+      return res.status(400).json({ erro: erro.message });
+    }
+    console.error("Erro ao confirmar importação de produtos:", erro);
+    return res.status(500).json({ erro: "Não foi possível concluir a importação." });
+  }
+});
 
 router.post("/", async (req, res) => {
   const resultado = produtoCreateSchema.safeParse(req.body);

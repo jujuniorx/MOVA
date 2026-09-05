@@ -9,6 +9,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ProdutoFormModal } from "../components/produtos/ProdutoFormModal";
+import { ImportacaoModal } from "../components/importacao/ImportacaoModal";
 import { AssistenteCatalogoModal } from "../components/produtos/AssistenteCatalogoModal";
 import { EstimarPrecoImagemModal } from "../components/produtos/EstimarPrecoImagemModal";
 import { ApiError, iaApi, produtosApi } from "../lib/api";
@@ -61,6 +62,7 @@ export function ProdutosPage() {
 
   const [capacidadesIA, setCapacidadesIA] = useState<CapacidadeIA[]>([]);
   const [assistenteAberto, setAssistenteAberto] = useState(false);
+  const [importacaoAberta, setImportacaoAberta] = useState(false);
   const [precoImagemAberto, setPrecoImagemAberto] = useState(false);
 
   useEffect(() => {
@@ -107,6 +109,24 @@ export function ProdutosPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Deep-link vindo da busca global: abre o produto encontrado para edição
+  // assim que a lista carregar.
+  useEffect(() => {
+    const idParaAbrir = searchParams.get("abrir");
+    if (!idParaAbrir || produtos.length === 0) return;
+    const produto = produtos.find((p) => p.id === idParaAbrir);
+    if (produto) {
+      setProdutoEmEdicao(produto);
+      setModalAberto(true);
+      setSearchParams((atual) => {
+        const novo = new URLSearchParams(atual);
+        novo.delete("abrir");
+        return novo;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [produtos]);
 
   function abrirEdicao(produto: Produto) {
     setProdutoEmEdicao(produto);
@@ -175,6 +195,12 @@ export function ProdutosPage() {
                 </Button>
               </>
             )}
+            <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setImportacaoAberta(true)}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
+              </svg>
+              Importar
+            </Button>
             <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -321,6 +347,15 @@ export function ProdutosPage() {
       />
 
       <EstimarPrecoImagemModal aberto={precoImagemAberto} aoFechar={() => setPrecoImagemAberto(false)} />
+
+      <ImportacaoModal
+        titulo="Importar produtos"
+        aberto={importacaoAberta}
+        aoFechar={() => setImportacaoAberta(false)}
+        aoConcluir={carregarProdutos}
+        apiPreview={produtosApi.importarPreview}
+        apiConfirmar={produtosApi.importarConfirmar}
+      />
 
       <ConfirmDialog
         titulo="Excluir produto"

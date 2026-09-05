@@ -5,8 +5,11 @@ import { isForeignKeyViolation } from "../lib/prismaErrors";
 import { clienteCreateSchema, clienteUpdateSchema } from "../schemas/cliente.schema";
 import { camposClienteUpdateSchema } from "../schemas/campoCliente.schema";
 import { idParamSchema } from "../schemas/common.schema";
-import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
+import { importarPreviewSchema, importarConfirmarSchema } from "../schemas/importacao.schema";
+import { mensagemLimiteExcedido, verificarLimite, planoEfetivo, obterConfigPlano } from "../lib/planos";
 import { registrarEvento } from "../lib/historico";
+import { decodificarArquivo, sugerirMapeamento, aplicarMapeamento, ArquivoImportacaoError } from "../lib/importacao";
+import type { CampoImportavel } from "../lib/importacao";
 
 const router = Router();
 
@@ -74,6 +77,135 @@ router.put("/campos", async (req, res) => {
   } catch (erro) {
     console.error("Erro ao atualizar campos de cliente:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar as informações personalizadas." });
+  }
+});
+
+const CAMPOS_IMPORTAVEIS_CLIENTE: CampoImportavel[] = [
+  { campo: "nome", rotulo: "Nome", obrigatorio: true, sinonimos: ["name", "nomecompleto", "cliente"] },
+  { campo: "telefone", rotulo: "Telefone", obrigatorio: false, sinonimos: ["celular", "phone", "fone", "contato"] },
+  { campo: "whatsapp", rotulo: "WhatsApp", obrigatorio: false, sinonimos: ["zap", "numerowhatsapp"] },
+  { campo: "email", rotulo: "E-mail", obrigatorio: false, sinonimos: ["e-mail"] },
+  { campo: "observacoes", rotulo: "Observações", obrigatorio: false, sinonimos: ["observacao", "obs", "notas", "nota"] },
+];
+
+// Só faz o parse e devolve uma prévia — nunca grava nada no banco.
+router.post("/importar/preview", async (req, res) => {
+  const resultado = importarPreviewSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+  try {
+    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+    return res.json({
+      colunas: arquivo.cabecalho,
+      linhasExemplo: arquivo.linhas.slice(0, 10),
+      totalLinhas: arquivo.totalLinhas,
+      campos: CAMPOS_IMPORTAVEIS_CLIENTE,
+      mapeamentoSugerido: sugerirMapeamento(arquivo.cabecalho, CAMPOS_IMPORTAVEIS_CLIENTE),
+    });
+  } catch (erro) {
+    if (erro instanceof ArquivoImportacaoError) {
+      return res.status(400).json({ erro: erro.message });
+    }
+    console.error("Erro ao pré-visualizar importação de clientes:", erro);
+    return res.status(500).json({ erro: "Não foi possível ler o arquivo." });
+  }
+});
+
+router.post("/importar/confirmar", async (req, res) => {
+  const resultado = importarConfirmarSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+  const empresaId = req.usuario!.empresaId;
+  const { mapeamento, importarDuplicados } = resultado.data;
+
+  try {
+    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+
+    const empresa = await prisma.empresa.findUniqueOrThrow({
+      where: { id: empresaId },
+      select: { id: true, planoTipo: true, trialBonusAteEm: true },
+    });
+
+    const existentes = await prisma.cliente.findMany({
+      where: { empresaId },
+      select: { telefone: true, email: true },
+    });
+    const telefonesExistentes = new Set(existentes.map((c) => c.telefone).filter(Boolean));
+    const emailsExistentes = new Set(existentes.map((c) => c.email?.toLowerCase()).filter(Boolean));
+    const telefonesNesteArquivo = new Set<string>();
+    const emailsNesteArquivo = new Set<string>();
+
+    const invalidos: { linha: number; motivo: string }[] = [];
+    const duplicados: { linha: number; motivo: string }[] = [];
+    const paraCriar: { nome: string; telefone?: string; whatsapp?: string; email?: string; observacoes?: string }[] = [];
+
+    arquivo.linhas.forEach((linha, indice) => {
+      const numeroLinha = indice + 2; // +1 pelo cabeçalho, +1 por ser 1-indexado
+      const bruto = aplicarMapeamento(linha, mapeamento);
+      if (bruto.nome === undefined) {
+        invalidos.push({ linha: numeroLinha, motivo: 'Coluna "Nome" vazia ou não mapeada.' });
+        return;
+      }
+      const candidato = clienteCreateSchema.safeParse(bruto);
+      if (!candidato.success) {
+        invalidos.push({ linha: numeroLinha, motivo: candidato.error.issues[0].message });
+        return;
+      }
+
+      const telefone = candidato.data.telefone;
+      const email = candidato.data.email?.toLowerCase();
+      const jaExisteNoCadastro = (telefone && telefonesExistentes.has(telefone)) || (email && emailsExistentes.has(email));
+      const jaExisteNesteArquivo = (telefone && telefonesNesteArquivo.has(telefone)) || (email && emailsNesteArquivo.has(email));
+
+      if ((jaExisteNoCadastro || jaExisteNesteArquivo) && !importarDuplicados) {
+        duplicados.push({
+          linha: numeroLinha,
+          motivo: jaExisteNoCadastro ? "Já existe um cliente com este telefone ou e-mail." : "Duplicado dentro do próprio arquivo.",
+        });
+        return;
+      }
+
+      if (telefone) telefonesNesteArquivo.add(telefone);
+      if (email) emailsNesteArquivo.add(email);
+      paraCriar.push(candidato.data);
+    });
+
+    if (paraCriar.length > 0) {
+      const planoEfetivoAtual = await planoEfetivo(empresa);
+      const config = await obterConfigPlano(planoEfetivoAtual);
+      if (config.limiteClientes !== null) {
+        const contagemAtual = await prisma.cliente.count({ where: { empresaId } });
+        if (contagemAtual + paraCriar.length > config.limiteClientes) {
+          return res.status(403).json({
+            erro: `Seu plano permite até ${config.limiteClientes} clientes. Você tem ${contagemAtual} e esta importação adicionaria ${paraCriar.length} — reduza o arquivo ou libere espaço antes de importar.`,
+            codigo: "LIMITE_PLANO",
+          });
+        }
+      }
+    }
+
+    let criados = 0;
+    for (const dados of paraCriar) {
+      const cliente = await prisma.cliente.create({ data: { ...dados, empresaId } });
+      criados++;
+      registrarEvento({
+        empresaId,
+        tipo: "CLIENTE_CRIADO",
+        entidadeTipo: "Cliente",
+        entidadeId: cliente.id,
+        descricao: `Cliente "${cliente.nome}" importado via CSV.`,
+      }).catch((e) => console.error("Erro ao registrar histórico:", e));
+    }
+
+    return res.json({ criados, duplicados: duplicados.length, invalidos, detalheDuplicados: duplicados });
+  } catch (erro) {
+    if (erro instanceof ArquivoImportacaoError) {
+      return res.status(400).json({ erro: erro.message });
+    }
+    console.error("Erro ao confirmar importação de clientes:", erro);
+    return res.status(500).json({ erro: "Não foi possível concluir a importação." });
   }
 });
 

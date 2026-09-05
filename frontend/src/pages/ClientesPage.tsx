@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -9,6 +10,7 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ClienteFormModal } from "../components/clientes/ClienteFormModal";
 import { ClienteHistoricoModal } from "../components/clientes/ClienteHistoricoModal";
+import { ImportacaoModal } from "../components/importacao/ImportacaoModal";
 import { ApiError, clientesApi } from "../lib/api";
 import type { Cliente } from "../lib/api";
 
@@ -36,6 +38,7 @@ function IconeClientes() {
 }
 
 export function ClientesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -49,6 +52,8 @@ export function ClientesPage() {
   const [clienteParaExcluir, setClienteParaExcluir] = useState<Cliente | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+
+  const [importacaoAberta, setImportacaoAberta] = useState(false);
 
   function carregarClientes() {
     setCarregando(true);
@@ -67,6 +72,36 @@ export function ClientesPage() {
   useEffect(() => {
     carregarClientes();
   }, []);
+
+  // Suporte a deep-link vindo da busca global: ?novo=1 abre o cadastro,
+  // ?abrir=<id> abre o histórico daquele cliente assim que a lista carregar.
+  useEffect(() => {
+    if (searchParams.get("novo") === "1") {
+      setClienteEmEdicao(null);
+      setModalAberto(true);
+      setSearchParams((atual) => {
+        const novo = new URLSearchParams(atual);
+        novo.delete("novo");
+        return novo;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const idParaAbrir = searchParams.get("abrir");
+    if (!idParaAbrir || clientes.length === 0) return;
+    const cliente = clientes.find((c) => c.id === idParaAbrir);
+    if (cliente) {
+      setClienteEmHistorico(cliente);
+      setSearchParams((atual) => {
+        const novo = new URLSearchParams(atual);
+        novo.delete("abrir");
+        return novo;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes]);
 
   const clientesFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -117,12 +152,20 @@ export function ClientesPage() {
         }
         subtitulo="Cadastre e gerencie quem você atende."
         acao={
-          <Button className="w-full sm:w-auto" onClick={abrirNovoCliente}>
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Novo cliente
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setImportacaoAberta(true)}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
+              </svg>
+              Importar
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={abrirNovoCliente}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Novo cliente
+            </Button>
+          </div>
         }
       />
 
@@ -228,6 +271,15 @@ export function ClientesPage() {
       />
 
       <ClienteHistoricoModal cliente={clienteEmHistorico} aoFechar={() => setClienteEmHistorico(null)} />
+
+      <ImportacaoModal
+        titulo="Importar clientes"
+        aberto={importacaoAberta}
+        aoFechar={() => setImportacaoAberta(false)}
+        aoConcluir={carregarClientes}
+        apiPreview={clientesApi.importarPreview}
+        apiConfirmar={clientesApi.importarConfirmar}
+      />
 
       <ConfirmDialog
         titulo="Excluir cliente"
