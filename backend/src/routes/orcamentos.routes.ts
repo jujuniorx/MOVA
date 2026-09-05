@@ -6,10 +6,12 @@ import { idParamSchema } from "../schemas/common.schema";
 import {
   orcamentoCreateSchema,
   statusUpdateSchema,
+  etapaOrcamentoUpdateSchema,
   ItemInput,
 } from "../schemas/orcamento.schema";
 import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
 import { validarIndicacaoSeElegivel } from "../lib/indicacao";
+import { registrarEvento } from "../lib/historico";
 
 const router = Router();
 
@@ -89,6 +91,16 @@ function resolverDetalhesItem(
       if (rotulos.length > 0) {
         detalhes.push({ nome: campo.nome, valor: rotulos.join(", ") });
       }
+    } else if (campo.tipo === "DATA") {
+      if (typeof valorBruto !== "string" || Number.isNaN(Date.parse(valorBruto))) {
+        return { erro: `Informe uma data válida para o campo "${campo.nome}".` };
+      }
+      detalhes.push({ nome: campo.nome, valor: new Date(valorBruto).toLocaleDateString("pt-BR", { timeZone: "UTC" }) });
+    } else if (campo.tipo === "BOOLEANO") {
+      if (valorBruto !== "Sim" && valorBruto !== "Não") {
+        return { erro: `Valor inválido para o campo "${campo.nome}".` };
+      }
+      detalhes.push({ nome: campo.nome, valor: valorBruto });
     }
   }
 
@@ -209,8 +221,16 @@ router.post("/", async (req, res) => {
           })),
         },
       },
-      include: { itens: true, cliente: { select: { id: true, nome: true } } },
+      include: { itens: true, cliente: { select: { id: true, nome: true } }, etapaProcesso: true },
     });
+
+    registrarEvento({
+      empresaId,
+      tipo: "ORCAMENTO_CRIADO",
+      entidadeTipo: "Orcamento",
+      entidadeId: orcamento.id,
+      descricao: `Orçamento #${orcamento.numero} criado para ${orcamento.cliente.nome}, total ${orcamento.total.toString()}.`,
+    }).catch((e) => console.error("Erro ao registrar histórico:", e));
 
     // Espera a validação terminar (é rápida: 1-2 queries indexadas na
     // maioria das vezes, pois só faz algo quando há indicação PENDENTE) para
@@ -244,6 +264,7 @@ router.get("/", async (req, res) => {
       },
       include: {
         cliente: { select: { id: true, nome: true } },
+        etapaProcesso: true,
         _count: { select: { itens: true } },
       },
       orderBy: { numero: "desc" },
@@ -315,7 +336,7 @@ router.get("/:id", async (req, res) => {
   try {
     const orcamento = await prisma.orcamento.findFirst({
       where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
-      include: { itens: true, cliente: true },
+      include: { itens: true, cliente: true, etapaProcesso: true },
     });
 
     if (!orcamento) {
@@ -400,7 +421,7 @@ router.put("/:id", async (req, res) => {
 
     const orcamentoAtualizado = await prisma.orcamento.findFirst({
       where: { id: idResultado.data, empresaId },
-      include: { itens: true, cliente: { select: { id: true, nome: true } } },
+      include: { itens: true, cliente: { select: { id: true, nome: true } }, etapaProcesso: true },
     });
 
     return res.json(orcamentoAtualizado);
@@ -433,13 +454,83 @@ router.patch("/:id/status", async (req, res) => {
 
     const orcamento = await prisma.orcamento.findFirst({
       where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
-      include: { itens: true, cliente: { select: { id: true, nome: true } } },
+      include: { itens: true, cliente: { select: { id: true, nome: true } }, etapaProcesso: true },
     });
+
+    if (orcamento) {
+      const rotuloStatus: Record<string, string> = {
+        RASCUNHO: "voltou para rascunho",
+        ENVIADO: "enviado ao cliente",
+        APROVADO: "aprovado",
+        RECUSADO: "recusado",
+      };
+      registrarEvento({
+        empresaId: req.usuario!.empresaId,
+        tipo: `ORCAMENTO_${resultado.data.status}`,
+        entidadeTipo: "Orcamento",
+        entidadeId: orcamento.id,
+        descricao: `Orçamento #${orcamento.numero} ${rotuloStatus[resultado.data.status] ?? resultado.data.status.toLowerCase()}.`,
+      }).catch((e) => console.error("Erro ao registrar histórico:", e));
+    }
 
     return res.json(orcamento);
   } catch (erro) {
     console.error("Erro ao atualizar status do orçamento:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar o status do orçamento." });
+  }
+});
+
+// Etapa do processo configurável (Etapa 2) — camada de rótulo opcional, não
+// mexe no status técnico. Só existe para empresas que configuraram um
+// processo em Configurações; nada muda para quem não configurou nada.
+router.patch("/:id/etapa", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.id);
+  if (!idResultado.success) {
+    return res.status(400).json({ erro: "ID inválido." });
+  }
+
+  const resultado = etapaOrcamentoUpdateSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+
+  const empresaId = req.usuario!.empresaId;
+
+  try {
+    const orcamento = await prisma.orcamento.findFirst({ where: { id: idResultado.data, empresaId } });
+    if (!orcamento) {
+      return res.status(404).json({ erro: "Orçamento não encontrado." });
+    }
+
+    if (resultado.data.etapaProcessoId !== null) {
+      // A etapa precisa ser da própria empresa (via ProcessoConfig) e
+      // representar o MESMO status técnico do orçamento — a camada de
+      // configuração nunca pode contradizer o status real.
+      const etapa = await prisma.etapaProcesso.findFirst({
+        where: { id: resultado.data.etapaProcessoId, processoConfig: { empresaId } },
+      });
+
+      if (!etapa) {
+        return res.status(404).json({ erro: "Etapa não encontrada." });
+      }
+
+      if (etapa.statusBase !== orcamento.status) {
+        return res.status(409).json({
+          erro: `Essa etapa é para orçamentos "${etapa.statusBase}", mas este orçamento está "${orcamento.status}".`,
+        });
+      }
+    }
+
+    const orcamentoAtualizado = await prisma.orcamento.update({
+      where: { id: idResultado.data },
+      data: { etapaProcessoId: resultado.data.etapaProcessoId },
+      include: { itens: true, cliente: { select: { id: true, nome: true } }, etapaProcesso: true },
+    });
+
+    return res.json(orcamentoAtualizado);
+  } catch (erro) {
+    console.error("Erro ao atualizar etapa do orçamento:", erro);
+    return res.status(500).json({ erro: "Não foi possível atualizar a etapa do orçamento." });
   }
 });
 

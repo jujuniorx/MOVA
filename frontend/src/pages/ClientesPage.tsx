@@ -8,6 +8,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ClienteFormModal } from "../components/clientes/ClienteFormModal";
+import { ClienteHistoricoModal } from "../components/clientes/ClienteHistoricoModal";
 import { ApiError, clientesApi } from "../lib/api";
 import type { Cliente } from "../lib/api";
 
@@ -42,6 +43,8 @@ export function ClientesPage() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteEmEdicao, setClienteEmEdicao] = useState<Cliente | null>(null);
+
+  const [clienteEmHistorico, setClienteEmHistorico] = useState<Cliente | null>(null);
 
   const [clienteParaExcluir, setClienteParaExcluir] = useState<Cliente | null>(null);
   const [excluindo, setExcluindo] = useState(false);
@@ -201,6 +204,9 @@ export function ClientesPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button tamanho="sm" variante="secundario" onClick={() => setClienteEmHistorico(cliente)}>
+                    Histórico
+                  </Button>
                   <Button tamanho="sm" variante="secundario" onClick={() => abrirEdicao(cliente)}>
                     Editar
                   </Button>
@@ -220,6 +226,8 @@ export function ClientesPage() {
         aoFechar={() => setModalAberto(false)}
         aoSalvar={aoSalvarCliente}
       />
+
+      <ClienteHistoricoModal cliente={clienteEmHistorico} aoFechar={() => setClienteEmHistorico(null)} />
 
       <ConfirmDialog
         titulo="Excluir cliente"

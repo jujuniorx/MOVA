@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
+import { LogoSimbolo } from "../Logo";
 import { useAuth } from "../../context/AuthContext";
 import { empresaApi } from "../../lib/api";
 
@@ -45,7 +46,13 @@ function Progresso({ passoAtual }: { passoAtual: number }) {
                   : "bg-ink-100 text-ink-400"
             }`}
           >
-            {n < passoAtual ? "✓" : n}
+            {n < passoAtual ? (
+              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              n
+            )}
           </span>
           {n < 5 && (
             <span className={`h-0.5 w-4 sm:w-8 ${n < passoAtual ? "bg-brand-600" : "bg-ink-200"}`} />
@@ -222,7 +229,7 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
 
         {!aguardandoConfirmacao && indice === 0 && (
           <div className="text-center">
-            <p className="text-4xl">👋</p>
+            <LogoSimbolo className="mx-auto h-10 w-14 text-ink-900" />
             <h2 className="mt-3 text-xl font-bold text-ink-900">Vamos deixar seu MOVA pronto?</h2>
             <p className="mt-2 text-sm text-ink-600">
               São 5 passos rápidos. Você pode sair a qualquer momento — a gente guarda seu
@@ -370,7 +377,11 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
 
         {!aguardandoConfirmacao && indice === 6 && (
           <div className="text-center">
-            <p className="text-4xl">🎉</p>
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-100 text-success-700">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
             <h2 className="mt-3 text-xl font-bold text-ink-900">Tudo pronto!</h2>
             <p className="mt-2 text-sm text-ink-600">
               Seu MOVA já está preparado para criar e enviar seus orçamentos.

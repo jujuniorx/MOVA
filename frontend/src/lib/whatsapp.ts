@@ -36,3 +36,13 @@ export function montarLinkCompartilhamento(
     : "https://wa.me/";
   return `${base}?text=${encodeURIComponent(mensagem)}`;
 }
+
+/**
+ * Link wa.me com um texto livre já editado pelo usuário (ex.: follow-up
+ * sugerido pela IA e revisado antes de enviar) — mesmo princípio: o envio de
+ * verdade sempre acontece no app do WhatsApp, o MOVA nunca envia sozinho.
+ */
+export function montarLinkWhatsappTexto(numero: string | null | undefined, texto: string): string {
+  const base = numero ? `https://wa.me/${formatarNumeroWhatsapp(numero)}` : "https://wa.me/";
+  return `${base}?text=${encodeURIComponent(texto)}`;
+}

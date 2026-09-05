@@ -12,7 +12,8 @@ interface BotaoProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const classesPorVariante: Record<Variante, string> = {
-  primario: "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-800 shadow-[var(--shadow-card)]",
+  primario:
+    "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-800 shadow-[var(--shadow-card)] dark:bg-[#176d66] dark:hover:bg-[#12544f] dark:active:bg-[#12544f]",
   secundario: "bg-surface text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300",
   perigo: "bg-danger-600 text-white hover:bg-danger-700",
   sucesso: "bg-success-600 text-white hover:bg-success-700",

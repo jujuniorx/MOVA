@@ -107,7 +107,7 @@ export function PlanosPage() {
       await assinaturasApi.cancelar();
       setAssinatura((atual) => (atual ? { ...atual, status: "CANCELADA" } : atual));
       if (empresa) atualizarEmpresa({ ...empresa, planoTipo: "GRATUITO" });
-      mostrarSucesso("✓ Assinatura cancelada");
+      mostrarSucesso("Assinatura cancelada");
       setConfirmandoCancelamento(false);
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof ApiError ? erroCapturado.message : "Não foi possível cancelar a assinatura.");

@@ -1,9 +1,5 @@
 import { z } from "zod";
-
-export const tipoCampoEnum = z.enum(
-  ["TEXTO", "NUMERO", "SELECAO_UNICA", "SELECAO_MULTIPLA", "DATA", "BOOLEANO"],
-  { error: "Tipo de campo inválido." }
-);
+import { tipoCampoEnum } from "./campoProduto.schema";
 
 const opcaoInputSchema = z.object({
   rotulo: z.string().trim().min(1, "Informe o rótulo da opção.").max(120, "Rótulo muito longo."),
@@ -31,8 +27,8 @@ const campoInputSchema = z
     }
   });
 
-export const camposProdutoUpdateSchema = z.object({
-  campos: z.array(campoInputSchema).max(30, "Máximo de 30 campos por produto."),
+export const camposClienteUpdateSchema = z.object({
+  campos: z.array(campoInputSchema).max(30, "Máximo de 30 campos por cliente."),
 });
 
-export type CampoInput = z.infer<typeof campoInputSchema>;
+export type CampoClienteInput = z.infer<typeof campoInputSchema>;

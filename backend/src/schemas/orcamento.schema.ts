@@ -54,5 +54,10 @@ export const statusUpdateSchema = z.object({
   }),
 });
 
+// null limpa a etapa (volta a mostrar só o status técnico padrão).
+export const etapaOrcamentoUpdateSchema = z.object({
+  etapaProcessoId: z.string().uuid("ID de etapa inválido.").nullable(),
+});
+
 export type ItemInput = z.infer<typeof itemInputSchema>;
 export type OrcamentoInput = z.infer<typeof orcamentoCreateSchema>;

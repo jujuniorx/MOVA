@@ -29,6 +29,19 @@ const corOpcional = z.preprocess(
     .optional()
 );
 
+// Regras e preferências que a empresa ensina ao MOVA — usadas só como
+// contexto em prompts de IA (nunca como instrução executável, ver lib/ia.ts).
+// Estrutura fixa (não é um JSON livre arbitrário) para manter previsível o
+// que entra no prompt.
+export const memoriaIASchema = z
+  .object({
+    tomComunicacao: z.enum(["formal", "neutro", "descontraido"]).optional(),
+    descontoMaximoPercentual: z.number().min(0).max(100).optional(),
+    margemMinimaPercentual: z.number().min(0).max(100).optional(),
+    regrasLivres: stringOpcional(2000),
+  })
+  .optional();
+
 export const empresaUpdateSchema = z
   .object({
     nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres.").max(120).optional(),
@@ -55,6 +68,7 @@ export const empresaUpdateSchema = z
         .optional()
     ),
     exibirPrecosPublico: z.boolean().optional(),
+    memoriaIA: memoriaIASchema,
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualizar.",

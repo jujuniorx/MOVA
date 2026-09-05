@@ -194,11 +194,18 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
               <div className="flex items-center gap-3">
                 {!gravando ? (
                   <Button type="button" variante="secundario" onClick={iniciarGravacao} disabled={transcrevendo}>
-                    🎙️ Gravar áudio
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0M12 18v3" />
+                    </svg>
+                    Gravar áudio
                   </Button>
                 ) : (
                   <Button type="button" variante="perigo" onClick={pararGravacao}>
-                    ⏹ Parar gravação
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                    </svg>
+                    Parar gravação
                   </Button>
                 )}
                 {transcrevendo && <span className="text-sm text-ink-500">Transcrevendo áudio...</span>}

@@ -10,6 +10,7 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ProdutoFormModal } from "../components/produtos/ProdutoFormModal";
 import { AssistenteCatalogoModal } from "../components/produtos/AssistenteCatalogoModal";
+import { EstimarPrecoImagemModal } from "../components/produtos/EstimarPrecoImagemModal";
 import { ApiError, iaApi, produtosApi } from "../lib/api";
 import type { CapacidadeIA, Produto } from "../lib/api";
 import { cn } from "../lib/cn";
@@ -60,6 +61,7 @@ export function ProdutosPage() {
 
   const [capacidadesIA, setCapacidadesIA] = useState<CapacidadeIA[]>([]);
   const [assistenteAberto, setAssistenteAberto] = useState(false);
+  const [precoImagemAberto, setPrecoImagemAberto] = useState(false);
 
   useEffect(() => {
     iaApi
@@ -157,9 +159,21 @@ export function ProdutosPage() {
         acao={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {podeUsarAssistenteIA && (
-              <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setAssistenteAberto(true)}>
-                ✨ Cadastrar com IA
-              </Button>
+              <>
+                <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setAssistenteAberto(true)}>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v4m0 10v4m9-9h-4M7 12H3m13.66-6.66l-2.83 2.83M9.17 15.83l-2.83 2.83m11.32 0l-2.83-2.83M9.17 8.17L6.34 5.34" />
+                  </svg>
+                  Cadastrar com IA
+                </Button>
+                <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setPrecoImagemAberto(true)}>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8a2 2 0 012-2h1l1-2h8l1 2h1a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V8z" />
+                    <circle cx="12" cy="13" r="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Quanto devo cobrar?
+                </Button>
+              </>
             )}
             <Button className="w-full sm:w-auto" onClick={() => abrirNovoProduto()}>
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -172,7 +186,7 @@ export function ProdutosPage() {
       />
 
       <div className="mt-4 rounded-lg bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
-        💡 Dica: você não precisa cadastrar todos os seus produtos agora. Comece pelo que mais vende.
+        Dica: você não precisa cadastrar todos os seus produtos agora. Comece pelo que mais vende.
       </div>
 
       <div className="mt-5 flex gap-2">
@@ -305,6 +319,8 @@ export function ProdutosPage() {
         }}
         capacidadesIA={capacidadesIA}
       />
+
+      <EstimarPrecoImagemModal aberto={precoImagemAberto} aoFechar={() => setPrecoImagemAberto(false)} />
 
       <ConfirmDialog
         titulo="Excluir produto"

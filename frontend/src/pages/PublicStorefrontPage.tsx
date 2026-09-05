@@ -48,6 +48,7 @@ export function PublicStorefrontPage() {
   }
 
   const cor = pagina.empresa.corPrimaria ?? undefined;
+  const corDestaque = pagina.empresa.corSecundaria ?? undefined;
 
   return (
     <div className="min-h-svh bg-ink-50">
@@ -63,9 +64,24 @@ export function PublicStorefrontPage() {
           <h1 className="mt-4 text-2xl font-bold text-ink-900">{pagina.empresa.nome}</h1>
           {pagina.empresa.descricao && <p className="mt-2 max-w-xl text-sm text-ink-600">{pagina.empresa.descricao}</p>}
 
-          <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm text-ink-500">
-            {pagina.empresa.telefone && <span>📞 {pagina.empresa.telefone}</span>}
-            {pagina.empresa.endereco && <span>📍 {pagina.empresa.endereco}</span>}
+          <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-ink-500">
+            {pagina.empresa.telefone && (
+              <span className="inline-flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.97.76l1.2 4.8a1 1 0 01-.5 1.11l-1.7.85a12.05 12.05 0 006.5 6.5l.85-1.7a1 1 0 011.11-.5l4.8 1.2a1 1 0 01.76.97V19a2 2 0 01-2 2h-1C9.16 21 3 14.84 3 7V5z" />
+                </svg>
+                {pagina.empresa.telefone}
+              </span>
+            )}
+            {pagina.empresa.endereco && (
+              <span className="inline-flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-6.5 7-11.5A7 7 0 105 9.5C5 14.5 12 21 12 21z" />
+                  <circle cx="12" cy="9.5" r="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {pagina.empresa.endereco}
+              </span>
+            )}
           </div>
 
           {pagina.empresa.whatsapp && (
@@ -100,7 +116,13 @@ export function PublicStorefrontPage() {
                       {produto.unidade ? ` / ${produto.unidade}` : ""}
                     </p>
                   )}
-                  <Button tamanho="sm" variante="secundario" className="mt-auto" onClick={() => setProdutoSelecionadoId(produto.id)}>
+                  <Button
+                    tamanho="sm"
+                    variante={corDestaque ? undefined : "secundario"}
+                    className="mt-auto"
+                    style={corDestaque ? { backgroundColor: corDestaque, color: "#fff" } : undefined}
+                    onClick={() => setProdutoSelecionadoId(produto.id)}
+                  >
                     Solicitar orçamento
                   </Button>
                 </Card>

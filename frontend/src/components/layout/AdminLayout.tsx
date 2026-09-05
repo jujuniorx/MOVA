@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "../Logo";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { cn } from "../../lib/cn";
 
@@ -14,6 +15,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { admin, sair } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   function ativo(caminho: string) {
     return location.pathname === caminho;
@@ -42,7 +44,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <ThemeToggle />
               <button
                 type="button"
-                onClick={aoSair}
+                onClick={() => setConfirmandoSaida(true)}
                 className="rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50"
               >
                 Sair
@@ -70,7 +72,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <ThemeToggle />
             <button
               type="button"
-              onClick={aoSair}
+              onClick={() => setConfirmandoSaida(true)}
               className="rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50"
             >
               Sair
@@ -84,6 +86,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+
+      <ConfirmDialog
+        titulo="Sair do MOVA"
+        mensagem="Tem certeza que deseja sair do MOVA?"
+        aberto={confirmandoSaida}
+        rotuloConfirmar="Sair"
+        varianteConfirmar="perigo"
+        aoConfirmar={aoSair}
+        aoCancelar={() => setConfirmandoSaida(false)}
+      />
     </div>
   );
 }

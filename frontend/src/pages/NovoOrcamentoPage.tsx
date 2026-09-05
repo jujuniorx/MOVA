@@ -103,6 +103,31 @@ function CampoItemInput({
     );
   }
 
+  if (campo.tipo === "DATA") {
+    return (
+      <Input
+        rotulo={rotulo}
+        type="date"
+        value={typeof valor === "string" ? valor : ""}
+        onChange={(evento) => aoAlterarValor(evento.target.value)}
+      />
+    );
+  }
+
+  if (campo.tipo === "BOOLEANO") {
+    return (
+      <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
+        <input
+          type="checkbox"
+          checked={valor === "Sim"}
+          onChange={(evento) => aoAlterarValor(evento.target.checked ? "Sim" : "Não")}
+          className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+        />
+        {rotulo}
+      </label>
+    );
+  }
+
   if (campo.tipo === "SELECAO_UNICA") {
     return (
       <Select rotulo={rotulo} value={typeof valor === "string" ? valor : ""} onChange={(evento) => aoAlterarValor(evento.target.value)}>
@@ -325,7 +350,7 @@ export function NovoOrcamentoPage() {
         desconto: resultado.data.desconto,
         itens: resultado.data.itens,
       });
-      mostrarSucesso("✓ Orçamento criado");
+      mostrarSucesso("Orçamento criado");
       navigate(`/orcamentos/${orcamentoCriado.id}`);
     } catch (erro) {
       setErroGeral(

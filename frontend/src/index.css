@@ -61,9 +61,21 @@
 }
 
 /*
- * Modo escuro: base preto/preto suave/cinza escuro, destaque laranja.
+ * Modo escuro: extensão da mesma identidade MOVA, não uma marca nova.
+ * Base preto-grafite muito escuro, com o MESMO verde-petróleo da marca como
+ * destaque (só recalibrado para funcionar em fundo escuro) — nunca laranja.
  * Só redefine os valores das MESMAS variáveis — nenhum componente muda de
  * classe, então estrutura/espaçamento/layout permanecem 100% idênticos.
+ *
+ * --color-brand-* no escuro NÃO é um espelho direto do claro: os passos 50–
+ * 600 continuam escuros (fundo de "chip"/link/foco, com contraste calculado
+ * contra o fundo de página), enquanto 700–950 viram claros (o papel de
+ * "texto sobre chip colorido", ex. bg-brand-50 + text-brand-800). Botões
+ * sólidos com texto branco (Button "primario", CTA e avatar do AppLayout)
+ * por isso usam um hex fixo equivalente ao brand-700/800 do claro, em vez do
+ * token — do contrário o texto branco perderia contraste quando o token
+ * vira claro. Todos os valores foram calculados para manter contraste AA
+ * (mín. 4.5:1 texto, 3:1 elementos de UI) contra o fundo escuro real.
  */
 .dark {
   color-scheme: dark;
@@ -85,18 +97,18 @@
 
   --color-surface: #1c1f1f;
 
-  /* Destaque laranja no escuro (no claro continua verde-petróleo) */
-  --color-brand-50: #2a1d10;
-  --color-brand-100: #3c2814;
-  --color-brand-200: #5c3c1a;
-  --color-brand-300: #8a5820;
-  --color-brand-400: #c17e28;
-  --color-brand-500: #e8952e;
-  --color-brand-600: #f2a13d;
-  --color-brand-700: #e8791a;
-  --color-brand-800: #c2660f;
-  --color-brand-900: #8f4a10;
-  --color-brand-950: #5c2e0a;
+  /* Verde-petróleo da marca, recalibrado para o escuro (mesmo matiz do claro) */
+  --color-brand-50: #153230;
+  --color-brand-100: #19433f;
+  --color-brand-200: #2f746e;
+  --color-brand-300: #6dcfc3;
+  --color-brand-400: #3fb3a5;
+  --color-brand-500: #28bdb1;
+  --color-brand-600: #1e8f86;
+  --color-brand-700: #7bd1c9;
+  --color-brand-800: #a4dfda;
+  --color-brand-900: #c6ece9;
+  --color-brand-950: #e5f5f4;
 
   --color-success-50: #102417;
   --color-success-100: #15381f;

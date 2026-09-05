@@ -19,6 +19,8 @@ export interface CampoRascunho {
 const OPCOES_RESPOSTA: { valor: TipoCampo; rotulo: string; descricao: string }[] = [
   { valor: "TEXTO", rotulo: "Escrever uma resposta", descricao: "O cliente digita um texto livre." },
   { valor: "NUMERO", rotulo: "Informar um número", descricao: "Ex.: medidas, quantidade, peso." },
+  { valor: "DATA", rotulo: "Escolher uma data", descricao: "Ex.: data de nascimento, prazo, agendamento." },
+  { valor: "BOOLEANO", rotulo: "Sim ou não", descricao: "Uma pergunta simples de marcar." },
   { valor: "SELECAO_UNICA", rotulo: "Escolher uma opção", descricao: "O cliente escolhe uma entre várias." },
   {
     valor: "SELECAO_MULTIPLA",
@@ -65,6 +67,21 @@ function PreviaCampo({ campo }: { campo: CampoRascunho }) {
             />
             {campo.unidade && <span className="text-sm text-ink-500">{campo.unidade}</span>}
           </div>
+        )}
+
+        {campo.tipo === "DATA" && (
+          <input
+            disabled
+            type="date"
+            className="mt-1.5 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-400"
+          />
+        )}
+
+        {campo.tipo === "BOOLEANO" && (
+          <label className="mt-1.5 flex items-center gap-2 text-sm text-ink-500">
+            <input disabled type="checkbox" className="h-4 w-4 rounded border-ink-300" />
+            Sim
+          </label>
         )}
 
         {campo.tipo === "SELECAO_UNICA" && (

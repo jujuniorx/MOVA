@@ -4,22 +4,24 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { Card } from "../components/ui/Card";
 import { Alert } from "../components/ui/Alert";
 import { Button } from "../components/ui/Button";
+import { Select } from "../components/ui/Select";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { DocumentoOrcamento } from "../components/orcamentos/DocumentoOrcamento";
+import { SugerirFollowupModal } from "../components/orcamentos/SugerirFollowupModal";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { ApiError, orcamentosApi } from "../lib/api";
-import type { OrcamentoDetalhe, StatusOrcamento } from "../lib/api";
+import { ApiError, empresaApi, orcamentosApi } from "../lib/api";
+import type { OrcamentoDetalhe, ProcessoConfig, StatusOrcamento } from "../lib/api";
 import { montarLinkCompartilhamento } from "../lib/whatsapp";
 
 const MENSAGEM_SUCESSO_STATUS: Record<StatusOrcamento, string> = {
-  RASCUNHO: "✓ Orçamento voltou para rascunho",
-  ENVIADO: "✓ Orçamento enviado",
-  APROVADO: "✓ Orçamento aprovado",
-  RECUSADO: "✓ Orçamento recusado",
+  RASCUNHO: "Orçamento voltou para rascunho",
+  ENVIADO: "Orçamento enviado",
+  APROVADO: "Orçamento aprovado",
+  RECUSADO: "Orçamento recusado",
 };
 
 const MENSAGEM_CONFIRMACAO: Partial<Record<StatusOrcamento, string>> = {
@@ -44,6 +46,10 @@ export function OrcamentoDetailPage() {
   const [atualizandoStatus, setAtualizandoStatus] = useState(false);
   const [erroStatus, setErroStatus] = useState<string | null>(null);
 
+  const [processo, setProcesso] = useState<ProcessoConfig | null>(null);
+  const [atualizandoEtapa, setAtualizandoEtapa] = useState(false);
+  const [followupAberto, setFollowupAberto] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     setCarregando(true);
@@ -56,7 +62,27 @@ export function OrcamentoDetailPage() {
         )
       )
       .finally(() => setCarregando(false));
+
+    empresaApi
+      .obterProcesso("ORCAMENTO")
+      .then(setProcesso)
+      .catch(() => setProcesso(null));
   }, [id]);
+
+  async function aoAlterarEtapa(etapaProcessoId: string) {
+    if (!orcamento) return;
+    setAtualizandoEtapa(true);
+    try {
+      const atualizado = await orcamentosApi.atualizarEtapa(orcamento.id, etapaProcessoId || null);
+      setOrcamento(atualizado);
+    } catch (erroCapturado) {
+      setErroStatus(
+        erroCapturado instanceof ApiError ? erroCapturado.message : "Não foi possível atualizar a etapa."
+      );
+    } finally {
+      setAtualizandoEtapa(false);
+    }
+  }
 
   async function executarMudancaStatus(novoStatus: StatusOrcamento) {
     if (!orcamento) return;
@@ -176,6 +202,9 @@ export function OrcamentoDetailPage() {
 
             {orcamento.status === "ENVIADO" && (
               <>
+                <Button variante="secundario" onClick={() => setFollowupAberto(true)}>
+                  Sugerir follow-up
+                </Button>
                 <Button
                   variante="sucesso"
                   carregando={atualizandoStatus}
@@ -210,6 +239,28 @@ export function OrcamentoDetailPage() {
             <Alert tipo="erro">{erroStatus}</Alert>
           </div>
         )}
+
+        {(() => {
+          const etapasDoMomento = processo?.etapas.filter((etapa) => etapa.statusBase === orcamento.status) ?? [];
+          if (etapasDoMomento.length === 0) return null;
+          return (
+            <div className="mt-4 border-t border-ink-100 pt-4 sm:max-w-xs">
+              <Select
+                rotulo="Etapa do seu processo"
+                value={orcamento.etapaProcessoId ?? ""}
+                onChange={(evento) => aoAlterarEtapa(evento.target.value)}
+                disabled={atualizandoEtapa}
+              >
+                <option value="">Sem etapa definida</option>
+                {etapasDoMomento.map((etapa) => (
+                  <option key={etapa.id} value={etapa.id}>
+                    {etapa.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          );
+        })()}
       </Card>
 
       <div className="mt-4">
@@ -240,6 +291,15 @@ export function OrcamentoDetailPage() {
         varianteConfirmar={statusEmConfirmacao === "APROVADO" ? "sucesso" : "perigo"}
         aoConfirmar={() => statusEmConfirmacao && executarMudancaStatus(statusEmConfirmacao)}
         aoCancelar={() => setStatusEmConfirmacao(null)}
+      />
+
+      <SugerirFollowupModal
+        aberto={followupAberto}
+        aoFechar={() => setFollowupAberto(false)}
+        orcamentoId={orcamento.id}
+        numeroOrcamento={orcamento.numero}
+        whatsappCliente={orcamento.cliente.whatsapp}
+        telefoneCliente={orcamento.cliente.telefone}
       />
     </AppLayout>
   );

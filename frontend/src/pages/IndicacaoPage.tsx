@@ -38,7 +38,7 @@ export function IndicacaoPage() {
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(linkIndicacao);
-      mostrarSucesso("✓ Link copiado");
+      mostrarSucesso("Link copiado");
     } catch {
       // navigator.clipboard pode falhar em contexto não seguro/permissão negada — sem tratamento especial, o usuário ainda vê o link na tela para copiar manualmente.
     }

@@ -6,7 +6,7 @@ import { idParamSchema } from "../schemas/common.schema";
 const router = Router();
 
 // Único ponto de acesso não autenticado do backend: existe para que o
-// cliente final (sem conta no OrçaFácil) consiga abrir o link enviado pelo
+// cliente final (sem conta no MOVA) consiga abrir o link enviado pelo
 // WhatsApp. Só aceita leitura, só devolve o necessário para exibir o
 // documento (sem empresaId, clienteId, produtoId ou contato do cliente),
 // e o acesso depende de acertar o UUID do orçamento — não há listagem
