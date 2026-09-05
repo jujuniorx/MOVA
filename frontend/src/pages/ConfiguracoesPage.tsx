@@ -10,6 +10,10 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { PaginaPublicaCard } from "../components/configuracoes/PaginaPublicaCard";
 import { IntegracoesCard } from "../components/configuracoes/IntegracoesCard";
+import { CamposClienteCard } from "../components/configuracoes/CamposClienteCard";
+import { MemoriaEmpresaCard } from "../components/configuracoes/MemoriaEmpresaCard";
+import { ProcessoOrcamentoCard } from "../components/configuracoes/ProcessoOrcamentoCard";
+import { ModulosCard } from "../components/configuracoes/ModulosCard";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, empresaApi } from "../lib/api";
 import { empresaFormSchema } from "../schemas/empresa.schema";
@@ -232,7 +236,15 @@ export function ConfiguracoesPage() {
             </div>
           </Card>
 
+          <ModulosCard />
+
           <PaginaPublicaCard />
+
+          <ProcessoOrcamentoCard />
+
+          <CamposClienteCard />
+
+          <MemoriaEmpresaCard />
 
           <IntegracoesCard />
 

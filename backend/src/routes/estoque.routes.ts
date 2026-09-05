@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { autenticar } from "../middleware/auth.middleware";
+import { exigirModulo } from "../lib/modulos";
 import { idParamSchema } from "../schemas/common.schema";
 import { localCreateSchema, movimentacaoCreateSchema } from "../schemas/estoque.schema";
 import { calcularStatusEstoque, garantirLocalPadrao, registrarMovimentacao, EstoqueInsuficienteError } from "../lib/estoque";
@@ -9,6 +10,7 @@ import { registrarEvento } from "../lib/historico";
 const router = Router();
 
 router.use(autenticar);
+router.use(exigirModulo("estoque"));
 
 router.get("/locais", async (req, res) => {
   const empresaId = req.usuario!.empresaId;

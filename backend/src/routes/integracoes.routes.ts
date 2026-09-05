@@ -3,12 +3,20 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma";
 import { autenticar } from "../middleware/auth.middleware";
 import { montarUrlAutorizacao, trocarCodigoPorToken, mercadoLivreConfigurado } from "../lib/mercadoLivre";
+import { processarNotificacaoMercadoLivre } from "../lib/mercadoLivreSync";
 import { cifrar } from "../lib/crypto";
 import { registrarEvento } from "../lib/historico";
+import { idParamSchema } from "../schemas/common.schema";
+import { exigirModulo } from "../lib/modulos";
 
 const router = Router();
 
 router.use(autenticar);
+// O callback OAuth (`callbackMercadoLivre`) fica fora deste router (é
+// montado à parte em server.ts, sem autenticação — é um redirect do
+// navegador vindo do Mercado Livre) e por isso nunca é afetado por este
+// bloqueio.
+router.use(exigirModulo("mercadolivre"));
 
 // `state` carrega o empresaId assinado com o próprio JWT_SECRET (HMAC) para
 // que o callback (que não tem o usuário autenticado — é um redirect do ML)
@@ -100,6 +108,48 @@ export const callbackMercadoLivre = async (req: import("express").Request, res: 
     return res.redirect(`${frontendUrl}/configuracoes?integracao=mercado-livre&status=erro`);
   }
 };
+
+// Central de problemas operacionais (recorte Mercado Livre): a notificação
+// em si não tem empresaId (chega antes de sabermos de quem é) — resolvemos
+// pela ContaMercadoLivre da empresa autenticada e filtramos por mlUserId,
+// nunca confiando em nada vindo do cliente para decidir de quem é o quê.
+router.get("/mercado-livre/notificacoes", async (req, res) => {
+  const conta = await prisma.contaMercadoLivre.findUnique({ where: { empresaId: req.usuario!.empresaId } });
+  if (!conta) return res.json([]);
+
+  const somenteComErro = req.query.comErro === "true";
+  const notificacoes = await prisma.notificacaoMercadoLivre.findMany({
+    where: { mlUserId: conta.mlUserId, ...(somenteComErro ? { erro: { not: null } } : {}) },
+    orderBy: { recebidoEm: "desc" },
+    take: 100,
+  });
+  return res.json(notificacoes);
+});
+
+router.post("/mercado-livre/notificacoes/:id/reprocessar", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.id);
+  if (!idResultado.success) return res.status(400).json({ erro: "ID inválido." });
+
+  const conta = await prisma.contaMercadoLivre.findUnique({ where: { empresaId: req.usuario!.empresaId } });
+  if (!conta) return res.status(404).json({ erro: "Nenhuma conta do Mercado Livre conectada." });
+
+  const notificacao = await prisma.notificacaoMercadoLivre.findFirst({
+    where: { id: idResultado.data, mlUserId: conta.mlUserId },
+  });
+  if (!notificacao) return res.status(404).json({ erro: "Notificação não encontrada." });
+  if (!notificacao.mlUserId) {
+    return res.status(409).json({ erro: "Esta notificação é antiga demais para ser reprocessada automaticamente." });
+  }
+
+  await processarNotificacaoMercadoLivre({
+    topico: notificacao.topico,
+    recurso: notificacao.recursoId,
+    mlUserId: notificacao.mlUserId,
+  });
+
+  const atualizada = await prisma.notificacaoMercadoLivre.findUnique({ where: { id: notificacao.id } });
+  return res.json(atualizada);
+});
 
 router.post("/mercado-livre/desconectar", async (req, res) => {
   await prisma.contaMercadoLivre.deleteMany({ where: { empresaId: req.usuario!.empresaId } });

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
+import { useModulos } from "../context/ModulosContext";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -41,17 +42,46 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2
 
 type Aba = "estoque" | "vendas" | "pedidos" | "devolucoes";
 
-const ABAS: { valor: Aba; rotulo: string }[] = [
-  { valor: "estoque", rotulo: "Estoque" },
-  { valor: "vendas", rotulo: "Vendas" },
-  { valor: "pedidos", rotulo: "Pedidos" },
-  { valor: "devolucoes", rotulo: "Devoluções" },
+// "devolucoes" não tem módulo próprio — só faz sentido junto de "vendas"
+// (devolver algo que nunca foi vendido não existe), então segue o mesmo
+// módulo dela.
+const ABAS: { valor: Aba; rotulo: string; modulo: string }[] = [
+  { valor: "estoque", rotulo: "Estoque", modulo: "estoque" },
+  { valor: "vendas", rotulo: "Vendas", modulo: "vendas" },
+  { valor: "pedidos", rotulo: "Pedidos", modulo: "pedidos" },
+  { valor: "devolucoes", rotulo: "Devoluções", modulo: "vendas" },
 ];
 
 export function OperacoesPage() {
+  const { moduloAtivo, carregando: carregandoModulos } = useModulos();
   const [searchParams, setSearchParams] = useSearchParams();
-  const abaInicial = (searchParams.get("aba") as Aba) || "estoque";
-  const [aba, setAba] = useState<Aba>(ABAS.some((a) => a.valor === abaInicial) ? abaInicial : "estoque");
+
+  const abasDisponiveis = useMemo(() => ABAS.filter((a) => moduloAtivo(a.modulo)), [moduloAtivo]);
+
+  const abaParam = searchParams.get("aba") as Aba | null;
+  const abaValida = abaParam && abasDisponiveis.some((a) => a.valor === abaParam) ? abaParam : (abasDisponiveis[0]?.valor ?? null);
+  const [aba, setAba] = useState<Aba | null>(abaValida);
+
+  // Se a aba veio da URL apontando para um módulo desativado (acesso direto
+  // à URL, ou módulo desativado depois do link ser salvo), corrige tanto o
+  // estado quanto a URL para a primeira aba realmente disponível — nunca
+  // deixa a tela travada numa aba que a empresa não tem mais.
+  useEffect(() => {
+    if (carregandoModulos) return;
+    if (abaValida !== aba) setAba(abaValida);
+    if (abaParam && abaParam !== abaValida) {
+      setSearchParams(
+        (atual) => {
+          const novo = new URLSearchParams(atual);
+          if (abaValida) novo.set("aba", abaValida);
+          else novo.delete("aba");
+          return novo;
+        },
+        { replace: true }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregandoModulos, abaValida]);
 
   function trocarAba(novaAba: Aba) {
     setAba(novaAba);
@@ -62,32 +92,50 @@ export function OperacoesPage() {
     });
   }
 
+  // O subtítulo só cita as áreas realmente disponíveis para esta empresa —
+  // uma empresa de serviços que desativou Estoque não deveria ver "Estoque"
+  // descrito aqui logo acima de uma navegação onde ele nem aparece.
+  const subtituloOperacoes = abasDisponiveis.length > 0
+    ? `${abasDisponiveis.map((a) => a.rotulo).join(", ")} em um só lugar.`
+    : "Ative um recurso em Configurações para começar a usar esta área.";
+
   return (
     <AppLayout>
-      <PageHeader titulo="Operações" subtitulo="Estoque, vendas, pedidos e devoluções em um só lugar." />
+      <PageHeader titulo="Operações" subtitulo={subtituloOperacoes} />
 
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-        {ABAS.map((item) => (
-          <button
-            key={item.valor}
-            type="button"
-            onClick={() => trocarAba(item.valor)}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-              aba === item.valor ? "bg-brand-600 text-white" : "border border-ink-200 bg-surface text-ink-600 hover:bg-ink-50"
-            )}
-          >
-            {item.rotulo}
-          </button>
-        ))}
-      </div>
+      {!carregandoModulos && abasDisponiveis.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            titulo="Nenhum recurso de operações ativado"
+            descricao='Ative Estoque, Vendas ou Pedidos em Configurações → Recursos do MOVA para usar esta área.'
+          />
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+            {abasDisponiveis.map((item) => (
+              <button
+                key={item.valor}
+                type="button"
+                onClick={() => trocarAba(item.valor)}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  aba === item.valor ? "bg-brand-600 text-white" : "border border-ink-200 bg-surface text-ink-600 hover:bg-ink-50"
+                )}
+              >
+                {item.rotulo}
+              </button>
+            ))}
+          </div>
 
-      <div className="mt-6">
-        {aba === "estoque" && <AbaEstoque />}
-        {aba === "vendas" && <AbaVendas />}
-        {aba === "pedidos" && <AbaPedidos />}
-        {aba === "devolucoes" && <AbaDevolucoes />}
-      </div>
+          <div className="mt-6">
+            {aba === "estoque" && <AbaEstoque />}
+            {aba === "vendas" && <AbaVendas />}
+            {aba === "pedidos" && <AbaPedidos />}
+            {aba === "devolucoes" && <AbaDevolucoes />}
+          </div>
+        </>
+      )}
     </AppLayout>
   );
 }
@@ -163,6 +211,15 @@ function AbaEstoque() {
                       Você possui {item.totalDisponivel} unidades. O mínimo configurado é {item.estoqueMinimo}.
                     </p>
                   )}
+                  {item.variacoes.length > 0 && (
+                    <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                      {item.variacoes.map((v) => (
+                        <li key={v.id} className="text-xs text-ink-500">
+                          {v.nome}: <span className="font-medium text-ink-700">{v.totalDisponivel}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-6">
                   <div className="text-right">
@@ -208,6 +265,7 @@ function ModalMovimentacao({
   locais: LocalEstoque[];
 }) {
   const [produtoId, setProdutoId] = useState("");
+  const [variacaoId, setVariacaoId] = useState("");
   const [localId, setLocalId] = useState("");
   const [localOrigemId, setLocalOrigemId] = useState("");
   const [tipo, setTipo] = useState<TipoMovimentacaoEstoque>("ENTRADA");
@@ -219,6 +277,7 @@ function ModalMovimentacao({
   useEffect(() => {
     if (aberto) {
       setProdutoId(produtos[0]?.id ?? "");
+      setVariacaoId("");
       setLocalId(locais[0]?.id ?? "");
       setLocalOrigemId("");
       setTipo("ENTRADA");
@@ -227,6 +286,8 @@ function ModalMovimentacao({
       setErro(null);
     }
   }, [aberto, produtos, locais]);
+
+  const variacoesDoProduto = produtos.find((p) => p.id === produtoId)?.variacoes.filter((v) => v.ativa) ?? [];
 
   async function salvar() {
     setErro(null);
@@ -243,6 +304,7 @@ function ModalMovimentacao({
     try {
       await estoqueApi.movimentar({
         produtoId,
+        variacaoId: variacaoId || undefined,
         localId,
         localOrigemId: tipo === "TRANSFERENCIA" ? localOrigemId : undefined,
         tipo,
@@ -262,13 +324,32 @@ function ModalMovimentacao({
       <div className="flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
 
-        <Select rotulo="Produto" value={produtoId} onChange={(e) => setProdutoId(e.target.value)} required>
+        <Select
+          rotulo="Produto"
+          value={produtoId}
+          onChange={(e) => {
+            setProdutoId(e.target.value);
+            setVariacaoId("");
+          }}
+          required
+        >
           {produtos.map((p) => (
             <option key={p.id} value={p.id}>
               {p.nome}
             </option>
           ))}
         </Select>
+
+        {variacoesDoProduto.length > 0 && (
+          <Select rotulo="Variação" value={variacaoId} onChange={(e) => setVariacaoId(e.target.value)}>
+            <option value="">Sem variação (estoque geral do produto)</option>
+            {variacoesDoProduto.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nome}
+              </option>
+            ))}
+          </Select>
+        )}
 
         <Select rotulo="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimentacaoEstoque)} required>
           <option value="ENTRADA">Entrada</option>
@@ -542,6 +623,7 @@ function ModalNovaVenda({
 
 function AbaPedidos() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
@@ -549,9 +631,11 @@ function AbaPedidos() {
   function carregar() {
     setCarregando(true);
     setErro(null);
-    pedidosApi
-      .listar()
-      .then(setPedidos)
+    Promise.all([pedidosApi.listar(), produtosApi.listar(true)])
+      .then(([pedidosResp, produtosResp]) => {
+        setPedidos(pedidosResp);
+        setProdutos(produtosResp);
+      })
       .catch((e) => setErro(e instanceof ApiError ? e.message : "Não foi possível carregar os pedidos."))
       .finally(() => setCarregando(false));
   }
@@ -564,6 +648,21 @@ function AbaPedidos() {
       carregar();
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível atualizar o pedido.");
+    }
+  }
+
+  const [convertendoId, setConvertendoId] = useState<string | null>(null);
+
+  async function converterEmVenda(pedido: Pedido) {
+    setErro(null);
+    setConvertendoId(pedido.id);
+    try {
+      await vendasApi.criarAPartirDePedido(pedido.id);
+      carregar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Não foi possível converter o pedido em venda.");
+    } finally {
+      setConvertendoId(null);
     }
   }
 
@@ -604,7 +703,7 @@ function AbaPedidos() {
                     {pedido.cliente?.nome ?? "Sem cliente"} · {formatoData.format(new Date(pedido.criadoEm))}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <p className="text-sm font-semibold text-ink-900">{formatoMoeda.format(Number(pedido.total))}</p>
                   {pedido.status !== "CANCELADO" && pedido.status !== "CONFIRMADO" && (
                     <Select
@@ -618,6 +717,20 @@ function AbaPedidos() {
                       <option value="CANCELADO">Cancelado</option>
                     </Select>
                   )}
+                  {pedido.venda ? (
+                    <Badge className="bg-success-100 text-success-700">Venda #{pedido.venda.numero}</Badge>
+                  ) : (
+                    pedido.status !== "CANCELADO" && (
+                      <Button
+                        tamanho="sm"
+                        variante="secundario"
+                        carregando={convertendoId === pedido.id}
+                        onClick={() => converterEmVenda(pedido)}
+                      >
+                        Converter em venda
+                      </Button>
+                    )
+                  )}
                 </div>
               </Card>
             </li>
@@ -627,6 +740,7 @@ function AbaPedidos() {
 
       <ModalNovoPedido
         aberto={modalAberto}
+        produtos={produtos}
         aoFechar={() => setModalAberto(false)}
         aoSalvar={() => {
           setModalAberto(false);
@@ -637,27 +751,51 @@ function AbaPedidos() {
   );
 }
 
-function ModalNovoPedido({ aberto, aoFechar, aoSalvar }: { aberto: boolean; aoFechar: () => void; aoSalvar: () => void }) {
-  const [itens, setItens] = useState([{ nome: "", quantidade: "1", precoUnitario: "0" }]);
+function ModalNovoPedido({
+  aberto,
+  produtos,
+  aoFechar,
+  aoSalvar,
+}: {
+  aberto: boolean;
+  produtos: Produto[];
+  aoFechar: () => void;
+  aoSalvar: () => void;
+}) {
+  const [itens, setItens] = useState([{ produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     if (aberto) {
-      setItens([{ nome: "", quantidade: "1", precoUnitario: "0" }]);
+      setItens([{ produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
       setErro(null);
     }
   }, [aberto]);
 
-  function atualizarItem(indice: number, campo: "nome" | "quantidade" | "precoUnitario", valor: string) {
-    setItens((atual) => atual.map((it, i) => (i === indice ? { ...it, [campo]: valor } : it)));
+  function atualizarItem(indice: number, campo: "produtoId" | "nome" | "quantidade" | "precoUnitario", valor: string) {
+    setItens((atual) =>
+      atual.map((it, i) => {
+        if (i !== indice) return it;
+        if (campo === "produtoId" && valor) {
+          const produto = produtos.find((p) => p.id === valor);
+          return { ...it, produtoId: valor, nome: produto?.nome ?? it.nome, precoUnitario: produto ? produto.preco : it.precoUnitario };
+        }
+        return { ...it, [campo]: valor };
+      })
+    );
   }
 
   async function salvar() {
     setErro(null);
     const itensValidos = itens
       .filter((it) => it.nome.trim() && Number(it.quantidade) > 0)
-      .map((it) => ({ nome: it.nome.trim(), quantidade: Number(it.quantidade), precoUnitario: Number(it.precoUnitario) || 0 }));
+      .map((it) => ({
+        nome: it.nome.trim(),
+        quantidade: Number(it.quantidade),
+        precoUnitario: Number(it.precoUnitario) || 0,
+        produtoId: it.produtoId || undefined,
+      }));
     if (itensValidos.length === 0) {
       setErro("Adicione ao menos um item válido.");
       return;
@@ -677,12 +815,29 @@ function ModalNovoPedido({ aberto, aoFechar, aoSalvar }: { aberto: boolean; aoFe
     <Modal titulo="Novo pedido manual" aberto={aberto} aoFechar={aoFechar} tamanho="grande">
       <div className="flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
+        <p className="text-xs text-ink-500">
+          Ligar um item a um produto do catálogo é opcional, mas necessário para depois converter este pedido em venda com baixa de estoque.
+        </p>
         <div className="flex flex-col gap-2">
           <ul className="flex flex-col gap-3">
             {itens.map((item, indice) => (
               <li key={indice} className="rounded-lg border border-ink-200 p-3">
                 <div className="flex items-start justify-between gap-3">
-                  <Input rotulo="Item" className="flex-1" placeholder="Nome do item" value={item.nome} onChange={(e) => atualizarItem(indice, "nome", e.target.value)} />
+                  {produtos.length > 0 ? (
+                    <Select
+                      rotulo="Produto do catálogo (opcional)"
+                      className="flex-1"
+                      value={item.produtoId}
+                      onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}
+                    >
+                      <option value="">Item avulso (sem produto)</option>
+                      {produtos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
@@ -694,6 +849,14 @@ function ModalNovoPedido({ aberto, aoFechar, aoSalvar }: { aberto: boolean; aoFe
                     </svg>
                   </button>
                 </div>
+                <div className="mt-3">
+                  <Input
+                    rotulo="Nome do item"
+                    disabled={Boolean(item.produtoId)}
+                    value={item.nome}
+                    onChange={(e) => atualizarItem(indice, "nome", e.target.value)}
+                  />
+                </div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
                   <Input rotulo="Preço unit. (R$)" type="number" min={0} step="0.01" value={item.precoUnitario} onChange={(e) => atualizarItem(indice, "precoUnitario", e.target.value)} />
@@ -701,7 +864,13 @@ function ModalNovoPedido({ aberto, aoFechar, aoSalvar }: { aberto: boolean; aoFe
               </li>
             ))}
           </ul>
-          <Button tamanho="sm" variante="secundario" type="button" onClick={() => setItens((atual) => [...atual, { nome: "", quantidade: "1", precoUnitario: "0" }])} className="self-start">
+          <Button
+            tamanho="sm"
+            variante="secundario"
+            type="button"
+            onClick={() => setItens((atual) => [...atual, { produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }])}
+            className="self-start"
+          >
             + Adicionar item
           </Button>
         </div>

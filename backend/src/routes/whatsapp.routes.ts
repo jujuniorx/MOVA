@@ -3,12 +3,19 @@ import { prisma } from "../lib/prisma";
 import { autenticar } from "../middleware/auth.middleware";
 import { idParamSchema } from "../schemas/common.schema";
 import { enviarMensagemSchema, conectarWhatsAppSchema } from "../schemas/whatsapp.schema";
-import { enviarMensagemTexto, whatsappConfigurado } from "../lib/whatsapp";
+import { enviarMensagemTexto, whatsappConfigurado, validarAssinaturaWebhookWhatsApp } from "../lib/whatsapp";
 import { registrarEvento } from "../lib/historico";
+import { exigirModulo } from "../lib/modulos";
 
 const router = Router();
 
 router.use(autenticar);
+// Só a gestão autenticada (status/conectar/conversas/enviar) é bloqueada
+// pelo módulo — o webhook público (`receberWebhookWhatsApp`, montado à parte
+// em server.ts) NUNCA é bloqueado: uma mensagem recebida de um cliente real
+// não pode ser perdida só porque a empresa desativou a experiência de
+// WhatsApp no MOVA. Desativar o módulo esconde a tela, nunca descarta dado.
+router.use(exigirModulo("whatsapp"));
 
 router.get("/status", async (req, res) => {
   const conta = await prisma.contaWhatsApp.findUnique({ where: { empresaId: req.usuario!.empresaId } });
@@ -102,6 +109,38 @@ export function verificarWebhookWhatsApp(req: import("express").Request, res: im
   return res.status(403).send();
 }
 
+const DIGITOS_MINIMOS_PARA_COMPARAR = 8;
+
+function apenasDigitos(valor: string): string {
+  return valor.replace(/\D/g, "");
+}
+
+/** Compara os últimos N dígitos, ignorando DDI/formatação — ver comentário acima do uso. */
+async function encontrarClientePorTelefone(empresaId: string, telefoneWhatsapp: string) {
+  const alvoDigitos = apenasDigitos(telefoneWhatsapp);
+  if (alvoDigitos.length < DIGITOS_MINIMOS_PARA_COMPARAR) return null;
+  const alvoSufixo = alvoDigitos.slice(-DIGITOS_MINIMOS_PARA_COMPARAR);
+
+  const candidatos = await prisma.cliente.findMany({
+    where: {
+      empresaId,
+      OR: [{ whatsapp: { not: null } }, { telefone: { not: null } }],
+    },
+    select: { id: true, whatsapp: true, telefone: true },
+  });
+
+  const encontrado = candidatos.find((cliente) => {
+    for (const campo of [cliente.whatsapp, cliente.telefone]) {
+      if (!campo) continue;
+      const digitos = apenasDigitos(campo);
+      if (digitos.length >= DIGITOS_MINIMOS_PARA_COMPARAR && digitos.endsWith(alvoSufixo)) return true;
+    }
+    return false;
+  });
+
+  return encontrado ? { id: encontrado.id } : null;
+}
+
 interface MensagemRecebidaWhatsApp {
   from: string;
   id: string;
@@ -114,6 +153,12 @@ interface MensagemRecebidaWhatsApp {
 // (display_phone_number), nunca pelo remetente. Idempotente via `externoId`
 // (wamid) — reentrega do mesmo evento nunca duplica a mensagem.
 export async function receberWebhookWhatsApp(req: import("express").Request, res: import("express").Response) {
+  const assinaturaValida = validarAssinaturaWebhookWhatsApp(req.rawBody, req.header("x-hub-signature-256"));
+  if (!assinaturaValida) {
+    console.error("Webhook WhatsApp: assinatura ausente ou inválida — requisição rejeitada.");
+    return res.status(401).send();
+  }
+
   res.status(200).send();
 
   try {
@@ -134,10 +179,32 @@ export async function receberWebhookWhatsApp(req: import("express").Request, res
         for (const mensagem of mensagens) {
           if (mensagem.type !== "text") continue;
 
+          // Relaciona a conversa a um Cliente já cadastrado quando o número
+          // bate — nunca cria um Cliente novo a partir do webhook, e a
+          // comparação é por sufixo de dígitos (não igualdade exata), porque
+          // o WhatsApp manda o telefone com DDI ("5511987654321") enquanto o
+          // cadastro geralmente guarda só DDD+número formatado
+          // ("(11) 98765-4321"). Exige pelo menos 8 dígitos finais iguais
+          // (um número de celular brasileiro inteiro sem DDD) para evitar
+          // associação arriscada por coincidência parcial.
+          const conversaExistente = await prisma.conversaWhatsApp.findUnique({
+            where: { empresaId_contatoTelefone: { empresaId: conta.empresaId, contatoTelefone: mensagem.from } },
+          });
+          const clienteCorrespondente = conversaExistente?.clienteId
+            ? null
+            : await encontrarClientePorTelefone(conta.empresaId, mensagem.from);
+
           const conversa = await prisma.conversaWhatsApp.upsert({
             where: { empresaId_contatoTelefone: { empresaId: conta.empresaId, contatoTelefone: mensagem.from } },
-            create: { empresaId: conta.empresaId, contatoTelefone: mensagem.from },
-            update: { ultimaMensagemEm: new Date() },
+            create: {
+              empresaId: conta.empresaId,
+              contatoTelefone: mensagem.from,
+              clienteId: clienteCorrespondente?.id,
+            },
+            update: {
+              ultimaMensagemEm: new Date(),
+              ...(clienteCorrespondente ? { clienteId: clienteCorrespondente.id } : {}),
+            },
           });
 
           await prisma.mensagemWhatsApp.create({

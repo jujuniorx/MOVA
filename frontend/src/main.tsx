@@ -7,17 +7,20 @@ import { AuthProvider } from "./context/AuthContext";
 import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ModulosProvider } from "./context/ModulosContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AdminAuthProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </AdminAuthProvider>
+          <ModulosProvider>
+            <AdminAuthProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </AdminAuthProvider>
+          </ModulosProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

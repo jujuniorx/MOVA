@@ -11,7 +11,9 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { AssistenteIACard } from "../components/dashboard/AssistenteIACard";
+import { CentralPrioridadesCard } from "../components/dashboard/CentralPrioridadesCard";
 import { useAuth } from "../context/AuthContext";
+import { useModulos } from "../context/ModulosContext";
 import { ApiError, devolucoesApi, estoqueApi, orcamentosApi, vendasApi } from "../lib/api";
 import type { ResumoOrcamentos } from "../lib/api";
 
@@ -57,13 +59,14 @@ function IconeOrcamentos() {
 }
 
 interface ResumoOperacoes {
-  vendasNoMes: number;
-  produtosEstoqueBaixo: number;
-  devolucoesEmConferencia: number;
+  vendasNoMes: number | null;
+  produtosEstoqueBaixo: number | null;
+  devolucoesEmConferencia: number | null;
 }
 
 export function DashboardPage() {
   const { usuario, empresa } = useAuth();
+  const { moduloAtivo, carregando: carregandoModulos } = useModulos();
   const [resumo, setResumo] = useState<ResumoOrcamentos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -71,20 +74,36 @@ export function DashboardPage() {
   const [passoOnboarding, setPassoOnboarding] = useState(0);
   const [resumoOperacoes, setResumoOperacoes] = useState<ResumoOperacoes | null>(null);
 
+  // Cada indicador só é buscado (e só aparece) se o módulo correspondente
+  // estiver ativo — uma empresa sem Estoque nunca deve ver um card vazio de
+  // "produtos com estoque baixo". Busca independente por módulo: se um
+  // módulo falhar ou estiver desativado, os outros continuam aparecendo
+  // normalmente (nada de Promise.all "tudo ou nada").
   useEffect(() => {
-    Promise.all([vendasApi.listar(), estoqueApi.listar(), devolucoesApi.listar()])
-      .then(([vendas, estoque, devolucoes]) => {
-        const inicioDoMes = new Date();
-        inicioDoMes.setDate(1);
-        inicioDoMes.setHours(0, 0, 0, 0);
-        setResumoOperacoes({
-          vendasNoMes: vendas.filter((v) => v.status === "CONFIRMADA" && new Date(v.criadoEm) >= inicioDoMes).length,
-          produtosEstoqueBaixo: estoque.filter((i) => i.status === "BAIXO" || i.status === "SEM_ESTOQUE").length,
-          devolucoesEmConferencia: devolucoes.filter((d) => d.status === "EM_CONFERENCIA" || d.status === "RECEBIDA").length,
-        });
-      })
-      .catch(() => setResumoOperacoes(null));
-  }, []);
+    if (carregandoModulos) return;
+    const temVendas = moduloAtivo("vendas");
+    const temEstoque = moduloAtivo("estoque");
+    if (!temVendas && !temEstoque) {
+      setResumoOperacoes(null);
+      return;
+    }
+
+    const inicioDoMes = new Date();
+    inicioDoMes.setDate(1);
+    inicioDoMes.setHours(0, 0, 0, 0);
+
+    Promise.all([
+      temVendas ? vendasApi.listar().catch(() => null) : Promise.resolve(null),
+      temEstoque ? estoqueApi.listar().catch(() => null) : Promise.resolve(null),
+      temVendas ? devolucoesApi.listar().catch(() => null) : Promise.resolve(null),
+    ]).then(([vendas, estoque, devolucoes]) => {
+      setResumoOperacoes({
+        vendasNoMes: vendas ? vendas.filter((v) => v.status === "CONFIRMADA" && new Date(v.criadoEm) >= inicioDoMes).length : null,
+        produtosEstoqueBaixo: estoque ? estoque.filter((i) => i.status === "BAIXO" || i.status === "SEM_ESTOQUE").length : null,
+        devolucoesEmConferencia: devolucoes ? devolucoes.filter((d) => d.status === "EM_CONFERENCIA" || d.status === "RECEBIDA").length : null,
+      });
+    });
+  }, [carregandoModulos, moduloAtivo]);
 
   useEffect(() => {
     if (empresa && !empresa.onboardingConcluido && (empresa.onboardingPasso ?? 0) === 0) {
@@ -252,28 +271,38 @@ export function DashboardPage() {
         </div>
       )}
 
-      {resumoOperacoes && (
+      {resumoOperacoes && (resumoOperacoes.vendasNoMes !== null || resumoOperacoes.produtosEstoqueBaixo !== null) && (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Link to="/operacoes?aba=vendas">
-            <Card className="transition-shadow hover:shadow-md">
-              <p className="text-sm text-ink-500">Vendas este mês</p>
-              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.vendasNoMes}</p>
-            </Card>
-          </Link>
-          <Link to="/operacoes?aba=estoque">
-            <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.produtosEstoqueBaixo > 0 ? "border-warning-600" : ""}`}>
-              <p className="text-sm text-ink-500">Produtos com estoque baixo</p>
-              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.produtosEstoqueBaixo}</p>
-            </Card>
-          </Link>
-          <Link to="/operacoes?aba=devolucoes">
-            <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.devolucoesEmConferencia > 0 ? "border-warning-600" : ""}`}>
-              <p className="text-sm text-ink-500">Devoluções aguardando conferência</p>
-              <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.devolucoesEmConferencia}</p>
-            </Card>
-          </Link>
+          {resumoOperacoes.vendasNoMes !== null && (
+            <Link to="/operacoes?aba=vendas">
+              <Card className="transition-shadow hover:shadow-md">
+                <p className="text-sm text-ink-500">Vendas este mês</p>
+                <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.vendasNoMes}</p>
+              </Card>
+            </Link>
+          )}
+          {resumoOperacoes.produtosEstoqueBaixo !== null && (
+            <Link to="/operacoes?aba=estoque">
+              <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.produtosEstoqueBaixo > 0 ? "border-warning-600" : ""}`}>
+                <p className="text-sm text-ink-500">Produtos com estoque baixo</p>
+                <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.produtosEstoqueBaixo}</p>
+              </Card>
+            </Link>
+          )}
+          {resumoOperacoes.devolucoesEmConferencia !== null && (
+            <Link to="/operacoes?aba=devolucoes">
+              <Card className={`transition-shadow hover:shadow-md ${resumoOperacoes.devolucoesEmConferencia > 0 ? "border-warning-600" : ""}`}>
+                <p className="text-sm text-ink-500">Devoluções aguardando conferência</p>
+                <p className="mt-0.5 text-2xl font-semibold text-ink-900">{resumoOperacoes.devolucoesEmConferencia}</p>
+              </Card>
+            </Link>
+          )}
         </div>
       )}
+
+      <div className="mt-6">
+        <CentralPrioridadesCard />
+      </div>
 
       <div className="mt-6">
         <AssistenteIACard />

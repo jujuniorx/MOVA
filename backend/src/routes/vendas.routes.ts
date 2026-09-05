@@ -7,10 +7,12 @@ import { vendaCreateSchema } from "../schemas/venda.schema";
 import { darBaixaEstoqueVenda, reverterEstoqueVenda } from "../lib/vendas";
 import { EstoqueInsuficienteError } from "../lib/estoque";
 import { registrarEvento } from "../lib/historico";
+import { exigirModulo } from "../lib/modulos";
 
 const router = Router();
 
 router.use(autenticar);
+router.use(exigirModulo("vendas"));
 
 router.get("/", async (req, res) => {
   try {
@@ -244,6 +246,122 @@ router.post("/a-partir-de-orcamento/:orcamentoId", async (req, res) => {
     }
     console.error("Erro ao converter orçamento em venda:", erro);
     return res.status(500).json({ erro: "Não foi possível gerar a venda a partir do orçamento." });
+  }
+});
+
+const ORIGEM_POR_CANAL: Record<string, "WHATSAPP" | "MERCADO_LIVRE" | "SITE_PROPRIO" | "MOVA"> = {
+  WHATSAPP: "WHATSAPP",
+  MERCADO_LIVRE: "MERCADO_LIVRE",
+  SITE_PROPRIO: "SITE_PROPRIO",
+  MANUAL: "MOVA",
+};
+
+interface ItemPedidoSnapshot {
+  nome: string;
+  quantidade: number;
+  precoUnitario: number;
+  produtoId?: string;
+}
+
+// Pedido → Venda. CANAL → PEDIDO → PRODUTO → ESTOQUE → VENDA: um pedido é
+// só um snapshot dos itens recebidos (pode chegar sem nenhum produto do
+// catálogo mapeado ainda) — só vira Venda de verdade quando TODOS os itens
+// já apontam para um Produto real, porque é isso que permite dar baixa em
+// estoque com segurança. Preço/total nunca são recalculados aqui: o pedido
+// já registrou o preço no momento em que chegou.
+router.post("/a-partir-de-pedido/:pedidoId", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.pedidoId);
+  if (!idResultado.success) return res.status(400).json({ erro: "ID inválido." });
+  const empresaId = req.usuario!.empresaId;
+
+  try {
+    const pedido = await prisma.pedido.findFirst({
+      where: { id: idResultado.data, empresaId },
+      include: { venda: true },
+    });
+    if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+    if (pedido.venda) return res.status(409).json({ erro: "Este pedido já gerou uma venda." });
+    if (pedido.status === "CANCELADO") {
+      return res.status(409).json({ erro: "Um pedido cancelado não pode virar venda." });
+    }
+
+    const itensSnapshot = pedido.itens as unknown as ItemPedidoSnapshot[];
+    const semProduto = itensSnapshot.filter((item) => !item.produtoId);
+    if (semProduto.length > 0) {
+      const mensagem =
+        semProduto.length === itensSnapshot.length
+          ? "Nenhum item deste pedido está ligado a um produto do catálogo."
+          : `${semProduto.length} ${semProduto.length === 1 ? "item" : "itens"} deste pedido ainda não ${semProduto.length === 1 ? "está ligado" : "estão ligados"} a um produto do catálogo.`;
+      return res.status(400).json({
+        erro: `${mensagem} Edite o pedido e associe um produto a cada item antes de converter em venda.`,
+      });
+    }
+
+    const produtoIds = [...new Set(itensSnapshot.map((item) => item.produtoId!))];
+    const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds }, empresaId } });
+    const produtosPorId = new Map(produtos.map((p) => [p.id, p]));
+
+    const itensInvalidos = itensSnapshot.filter((item) => !produtosPorId.get(item.produtoId!)?.ativo);
+    if (itensInvalidos.length > 0) {
+      return res.status(400).json({ erro: "Um ou mais produtos deste pedido não existem mais ou foram desativados." });
+    }
+
+    const subtotal = itensSnapshot.reduce(
+      (soma, item) => soma.plus(new Prisma.Decimal(item.quantidade).times(item.precoUnitario)),
+      new Prisma.Decimal(0)
+    );
+
+    const venda = await prisma.$transaction(async (tx) => {
+      const novaVenda = await tx.venda.create({
+        data: {
+          empresaId,
+          clienteId: pedido.clienteId,
+          origem: ORIGEM_POR_CANAL[pedido.canal] ?? "OUTRO",
+          pedidoOrigemId: pedido.id,
+          subtotal,
+          desconto: 0,
+          total: subtotal,
+          itens: {
+            create: itensSnapshot.map((item) => ({
+              produtoId: item.produtoId!,
+              nome: item.nome,
+              quantidade: item.quantidade,
+              precoUnitario: item.precoUnitario,
+              subtotal: new Prisma.Decimal(item.quantidade).times(item.precoUnitario),
+            })),
+          },
+        },
+        include: { itens: true, cliente: { select: { id: true, nome: true } } },
+      });
+
+      await tx.pedido.update({ where: { id: pedido.id }, data: { status: "CONFIRMADO" } });
+
+      await darBaixaEstoqueVenda(
+        tx,
+        empresaId,
+        itensSnapshot.map((i) => ({ produtoId: i.produtoId!, quantidade: i.quantidade })),
+        novaVenda.id,
+        req.usuario!.id
+      );
+
+      return novaVenda;
+    });
+
+    registrarEvento({
+      empresaId,
+      tipo: "VENDA_CRIADA_DE_PEDIDO",
+      entidadeTipo: "Venda",
+      entidadeId: venda.id,
+      descricao: `Venda #${venda.numero} gerada a partir do pedido #${pedido.numero} (${pedido.canal}).`,
+    }).catch((e) => console.error("Erro ao registrar histórico:", e));
+
+    return res.status(201).json(venda);
+  } catch (erro) {
+    if (erro instanceof EstoqueInsuficienteError) {
+      return res.status(409).json({ erro: erro.message });
+    }
+    console.error("Erro ao converter pedido em venda:", erro);
+    return res.status(500).json({ erro: "Não foi possível gerar a venda a partir do pedido." });
   }
 });
 

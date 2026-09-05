@@ -78,6 +78,22 @@ model Empresa {
   planoTipo        PlanoTipo        @default(GRATUITO)
   cicloFaturamento CicloFaturamento @default(MENSAL)
 
+  /// Regras e preferências que a própria empresa ensina ao MOVA (tom de
+  /// comunicação, desconto máximo, margem mínima, política comercial etc.) —
+  /// usada só como CONTEXTO em prompts de IA, nunca como instrução executável
+  /// (ver lib/ia.ts). Pertence exclusivamente a esta empresa, nunca lida por
+  /// nenhuma outra.
+  memoriaIA Json?
+
+  /// Lista de ids de módulos opcionais ativos para esta empresa (ex.:
+  /// ["estoque","vendas"]) — ver backend/src/lib/modulos.ts para o catálogo
+  /// completo, dependências e módulos sempre ativos (que nem aparecem aqui).
+  /// `null` = empresa nasceu antes deste recurso existir ou nunca mexeu na
+  /// configuração; nesse caso o backend aplica MODULOS_PADRAO (hoje, todos
+  /// os opcionais ativos) para nunca tirar de repente algo que a empresa já
+  /// usava.
+  modulosAtivos Json?
+
   /// Código curto e único que esta empresa usa para indicar outras.
   codigoIndicacao String @unique
 
@@ -105,6 +121,14 @@ model Empresa {
   clientes   Cliente[]
   produtos   Produto[]
   orcamentos Orcamento[]
+
+  /// Informações extras que esta empresa decidiu perguntar de todo cliente
+  /// (ex.: "Data de nascimento" numa clínica) — mesmo mecanismo de
+  /// CampoProduto, só que por empresa em vez de por produto, porque o
+  /// cadastro de cliente é um único formulário para todos os clientes dela.
+  camposCliente CampoCliente[]
+  /// Processos configuráveis (Etapa 2) — hoje só o contexto ORCAMENTO.
+  processos     ProcessoConfig[]
 
   indicacoesFeitas  Indicacao[] @relation("IndicacoesFeitas")
   indicacaoRecebida Indicacao?  @relation("IndicacaoRecebida")
@@ -169,6 +193,13 @@ model Cliente {
   observacoes  String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  /// Respostas às informações extras que a empresa configurou em
+  /// CampoCliente, guardadas como { "<campoId>": valor } — mesmo padrão de
+  /// snapshot já usado em ItemOrcamento.detalhes. Sem tabela de valores
+  /// separada de propósito: o volume por cliente é pequeno e um único
+  /// registro por cliente já garante isolamento por empresa (via Cliente).
+  camposPersonalizados Json?
 
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
@@ -250,6 +281,7 @@ model ProdutoVariacao {
   ativa          Boolean @default(true)
 
   estoqueLocais EstoqueLocal[]
+  movimentacoes MovimentacaoEstoque[]
 
   @@index([produtoId])
 }
@@ -326,16 +358,21 @@ model EstoqueLocal {
   @@index([localId])
 }
 
+/// Tipos de campo personalizado — compartilhado por CampoProduto e
+/// CampoCliente (o nome ficou de "produto" por histórico, mas descreve o
+/// mecanismo genérico de campo configurável usado nos dois lugares).
 enum TipoCampoProduto {
   TEXTO
   NUMERO
   SELECAO_UNICA
   SELECAO_MULTIPLA
+  DATA
+  BOOLEANO
 }
 
 /// Campo configurável definido pela própria empresa para descrever um
 /// produto/serviço (ex.: "Largura", "Material"). Genérico por natureza — o
-/// OrçaFácil não sabe o que a empresa vende, só fornece o construtor.
+/// MOVA não sabe o que a empresa vende, só fornece o construtor.
 model CampoProduto {
   id          String           @id @default(uuid())
   nome        String
@@ -366,11 +403,93 @@ model OpcaoCampoProduto {
   @@index([campoId])
 }
 
+/// Igual a CampoProduto, mas por EMPRESA em vez de por produto: o cadastro
+/// de cliente é um único formulário, então as informações extras (ex.: uma
+/// clínica perguntando "Data de nascimento") valem para todos os clientes
+/// da empresa, não para um cliente específico.
+model CampoCliente {
+  id          String           @id @default(uuid())
+  nome        String
+  tipo        TipoCampoProduto
+  unidade     String?
+  obrigatorio Boolean          @default(false)
+  ordem       Int              @default(0)
+  criadoEm    DateTime         @default(now())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  opcoes OpcaoCampoCliente[]
+
+  @@index([empresaId])
+}
+
+model OpcaoCampoCliente {
+  id     String @id @default(uuid())
+  rotulo String
+  ordem  Int    @default(0)
+
+  campoId String
+  campo   CampoCliente @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  @@index([campoId])
+}
+
 enum StatusOrcamento {
   RASCUNHO
   ENVIADO
   APROVADO
   RECUSADO
+}
+
+/// Em qual fluxo do MOVA um ProcessoConfig se aplica. Só ORCAMENTO existe
+/// por enquanto — mais contextos entram nas próximas etapas, sem quebrar os
+/// já configurados (cada um é isolado por empresaId + contexto).
+enum ContextoProcesso {
+  ORCAMENTO
+}
+
+/// Processo configurável de uma empresa (Etapa 2 — "como funciona seu
+/// processo?"). Não substitui o status técnico do Orçamento (StatusOrcamento
+/// continua sendo a fonte de verdade que aprova/recusa/gera venda) — é uma
+/// camada de rótulos que a própria empresa define, mais granular, para
+/// representar como ELA enxerga o próprio fluxo (ex.: separar "Enviado" em
+/// "Aguardando resposta" e "Em negociação"). Uma empresa que não configura
+/// nada continua vendo só Rascunho/Enviado/Aprovado/Recusado, como hoje.
+model ProcessoConfig {
+  id        String  @id @default(uuid())
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  contexto ContextoProcesso
+  nome     String
+
+  etapas EtapaProcesso[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([empresaId, contexto])
+  @@index([empresaId])
+}
+
+/// Uma etapa nomeada pela empresa dentro de um ProcessoConfig. `statusBase`
+/// amarra a etapa a um dos 4 status técnicos do Orçamento — garante que a
+/// camada de configuração nunca contradiga a lógica real (ex.: não dá pra
+/// marcar um orçamento RASCUNHO com uma etapa cujo statusBase é APROVADO).
+model EtapaProcesso {
+  id               String         @id @default(uuid())
+  processoConfigId String
+  processoConfig   ProcessoConfig @relation(fields: [processoConfigId], references: [id], onDelete: Cascade)
+
+  nome       String
+  ordem      Int             @default(0)
+  cor        String?
+  statusBase StatusOrcamento
+
+  orcamentos Orcamento[]
+
+  @@index([processoConfigId])
 }
 
 model Orcamento {
@@ -386,6 +505,11 @@ model Orcamento {
   criadoEm     DateTime        @default(now())
   atualizadoEm DateTime        @updatedAt
 
+  /// Etapa configurável (opcional) que a empresa aplicou a este orçamento —
+  /// só rótulo/organização, nunca a fonte de verdade do status.
+  etapaProcessoId String?
+  etapaProcesso   EtapaProcesso? @relation(fields: [etapaProcessoId], references: [id], onDelete: SetNull)
+
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
@@ -396,6 +520,7 @@ model Orcamento {
   vendaGerada Venda?
 
   @@index([empresaId])
+  @@index([etapaProcessoId])
   @@index([clienteId])
 }
 
@@ -512,6 +637,7 @@ model MovimentacaoEstoque {
   produto   Produto @relation(fields: [produtoId], references: [id])
 
   variacaoId String?
+  variacao   ProdutoVariacao? @relation(fields: [variacaoId], references: [id])
 
   /// Local afetado (destino, na prática) — obrigatório em toda movimentação.
   localId String
@@ -540,6 +666,7 @@ model MovimentacaoEstoque {
 
   @@index([empresaId])
   @@index([produtoId])
+  @@index([variacaoId])
   @@index([localId])
 }
 
@@ -811,12 +938,19 @@ model NotificacaoMercadoLivre {
   notificacaoId String    @unique
   topico        String
   recursoId     String
+  /// ID do usuário Mercado Livre dono da notificação — guardado para dar
+  /// para reprocessar depois (o processamento original é assíncrono e
+  /// precisa dele para reidentificar a ContaMercadoLivre; sem persistir
+  /// aqui, um reprocessamento manual não teria como saber de qual conta é).
+  mlUserId      String?
   recebidoEm    DateTime  @default(now())
   /// Só é preenchido quando o processamento (buscar recurso + aplicar no
   /// MOVA) termina com sucesso de verdade — nunca marcar como concluído um
   /// evento cujo processamento falhou.
   processadoEm  DateTime?
   erro          String?
+
+  @@index([mlUserId])
 }
 
 /// Uma conexão WhatsApp por empresa. `conectada` só vira true quando um

@@ -4,17 +4,22 @@ import { autenticar } from "../middleware/auth.middleware";
 import { idParamSchema } from "../schemas/common.schema";
 import { pedidoCreateSchema } from "../schemas/pedido.schema";
 import { registrarEvento } from "../lib/historico";
+import { exigirModulo } from "../lib/modulos";
 
 const router = Router();
 
 router.use(autenticar);
+router.use(exigirModulo("pedidos"));
 
 router.get("/", async (req, res) => {
   try {
     const pedidos = await prisma.pedido.findMany({
       where: { empresaId: req.usuario!.empresaId },
       orderBy: { numero: "desc" },
-      include: { cliente: { select: { id: true, nome: true } } },
+      include: {
+        cliente: { select: { id: true, nome: true } },
+        venda: { select: { id: true, numero: true } },
+      },
       take: 200,
     });
     return res.json(pedidos);

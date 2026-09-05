@@ -9,7 +9,7 @@ import { Alert } from "../ui/Alert";
 import { CamposBuilder, campoRascunhoVazio } from "./CamposBuilder";
 import type { CampoRascunho } from "./CamposBuilder";
 import { ApiError, produtosApi } from "../../lib/api";
-import type { CampoInput, CampoProduto, Produto } from "../../lib/api";
+import type { CampoInput, CampoProduto, Produto, VariacaoInput } from "../../lib/api";
 import { produtoFormSchema } from "../../schemas/produto.schema";
 import { useToast } from "../../context/ToastContext";
 
@@ -193,7 +193,7 @@ export function ProdutoFormModal({
         await produtosApi.atualizarCampos(produtoSalvo.id, camposParaSalvar);
       }
 
-      mostrarSucesso(produtoEmEdicao ? "✓ Produto atualizado" : "✓ Produto cadastrado");
+      mostrarSucesso(produtoEmEdicao ? "Produto atualizado" : "Produto cadastrado");
       aoSalvar();
     } catch (erro) {
       setErroGeral(
@@ -353,6 +353,15 @@ export function ProdutoFormModal({
           {valores.tipoProduto === "KIT" && produtoEmEdicao && (
             <EditorComponentesKit produtoId={produtoEmEdicao.id} itensAtuais={produtoEmEdicao.itensDoKit} />
           )}
+
+          {valores.tipoProduto === "SIMPLES" && produtoEmEdicao && (
+            <EditorVariacoes produtoId={produtoEmEdicao.id} variacoesAtuais={produtoEmEdicao.variacoes} />
+          )}
+          {valores.tipoProduto === "SIMPLES" && !produtoEmEdicao && (
+            <p className="mt-3 text-sm text-ink-500">
+              Salve o produto primeiro — depois edite-o novamente para cadastrar variações (tamanho, cor, voltagem...).
+            </p>
+          )}
         </div>
 
         <div className="border-t border-ink-100 pt-4">
@@ -494,6 +503,154 @@ function EditorComponentesKit({
         </Button>
         <Button tamanho="sm" type="button" onClick={salvar} carregando={salvando} className="mt-1 w-fit">
           Salvar componentes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface VariacaoRascunho {
+  chave: string;
+  id?: string;
+  nome: string;
+  sku: string;
+  precoAdicional: string;
+  ativa: boolean;
+}
+
+/** Editor inline das variações de um produto já salvo (ex.: tamanho, cor, voltagem) — cada uma tem seu próprio estoque. */
+function EditorVariacoes({ produtoId, variacoesAtuais }: { produtoId: string; variacoesAtuais: Produto["variacoes"] }) {
+  const [variacoes, setVariacoes] = useState<VariacaoRascunho[]>(
+    variacoesAtuais.map((v) => ({
+      chave: v.id,
+      id: v.id,
+      nome: v.nome,
+      sku: v.sku ?? "",
+      precoAdicional: v.precoAdicional === "0" ? "" : v.precoAdicional,
+      ativa: v.ativa,
+    }))
+  );
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState(false);
+
+  function atualizar(chave: string, campo: "nome" | "sku" | "precoAdicional", valor: string) {
+    setVariacoes((atual) => atual.map((v) => (v.chave === chave ? { ...v, [campo]: valor } : v)));
+    setSucesso(false);
+  }
+
+  function alternarAtiva(chave: string) {
+    setVariacoes((atual) => atual.map((v) => (v.chave === chave ? { ...v, ativa: !v.ativa } : v)));
+    setSucesso(false);
+  }
+
+  async function salvar() {
+    setErro(null);
+    const validas = variacoes.filter((v) => v.nome.trim() !== "");
+    if (validas.length !== variacoes.length) {
+      setErro("Toda variação precisa de um nome (ex.: P, M, G).");
+      return;
+    }
+    setSalvando(true);
+    try {
+      const dados: VariacaoInput[] = validas.map((v) => ({
+        nome: v.nome.trim(),
+        sku: v.sku.trim() || undefined,
+        precoAdicional: v.precoAdicional === "" ? 0 : Number(v.precoAdicional),
+        ativa: v.ativa,
+      }));
+      await produtosApi.atualizarVariacoes(produtoId, dados);
+      setSucesso(true);
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Não foi possível salvar as variações.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border border-ink-200 p-4">
+      <p className="text-sm font-semibold text-ink-900">Variações</p>
+      <p className="mt-1 text-sm text-ink-500">
+        Use quando este produto existe em versões diferentes (tamanho, cor, voltagem...) — cada variação tem seu
+        próprio estoque. Preço adicional é somado ao preço do produto quando essa variação é escolhida.
+      </p>
+
+      {erro && (
+        <div className="mt-2">
+          <Alert tipo="erro">{erro}</Alert>
+        </div>
+      )}
+      {sucesso && (
+        <div className="mt-2">
+          <Alert tipo="sucesso">Variações salvas.</Alert>
+        </div>
+      )}
+
+      <ul className="mt-3 flex flex-col gap-3">
+        {variacoes.map((v) => (
+          <li key={v.chave} className="rounded-lg border border-ink-200 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <Input
+                rotulo="Nome"
+                placeholder="Ex: P, M, G ou Azul, Vermelho..."
+                className="flex-1"
+                value={v.nome}
+                onChange={(e) => atualizar(v.chave, "nome", e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setVariacoes((atual) => atual.filter((it) => it.chave !== v.chave))}
+                aria-label="Remover variação"
+                className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Input
+                rotulo="SKU (opcional)"
+                value={v.sku}
+                onChange={(e) => atualizar(v.chave, "sku", e.target.value)}
+              />
+              <Input
+                rotulo="Preço adicional (opcional)"
+                type="number"
+                step="0.01"
+                value={v.precoAdicional}
+                onChange={(e) => atualizar(v.chave, "precoAdicional", e.target.value)}
+              />
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm font-medium text-ink-700">
+              <input
+                type="checkbox"
+                checked={v.ativa}
+                onChange={() => alternarAtiva(v.chave)}
+                className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+              />
+              Ativa (disponível para escolher)
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex flex-col gap-2">
+        <Button
+          tamanho="sm"
+          variante="secundario"
+          type="button"
+          onClick={() =>
+            setVariacoes((atual) => [
+              ...atual,
+              { chave: crypto.randomUUID(), nome: "", sku: "", precoAdicional: "", ativa: true },
+            ])
+          }
+        >
+          + Adicionar variação
+        </Button>
+        <Button tamanho="sm" type="button" onClick={salvar} carregando={salvando} className="mt-1 w-fit">
+          Salvar variações
         </Button>
       </div>
     </div>

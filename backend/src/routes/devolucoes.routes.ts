@@ -6,10 +6,12 @@ import { devolucaoCreateSchema, conferenciaSchema } from "../schemas/devolucao.s
 import { receberItensEmQuarentena, aplicarResultadoConferencia } from "../lib/devolucoes";
 import { EstoqueInsuficienteError } from "../lib/estoque";
 import { registrarEvento } from "../lib/historico";
+import { exigirModulo } from "../lib/modulos";
 
 const router = Router();
 
 router.use(autenticar);
+router.use(exigirModulo("vendas"));
 
 router.get("/", async (req, res) => {
   try {

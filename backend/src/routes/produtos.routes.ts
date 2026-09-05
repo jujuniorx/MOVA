@@ -5,8 +5,10 @@ import { isForeignKeyViolation } from "../lib/prismaErrors";
 import { produtoCreateSchema, produtoUpdateSchema } from "../schemas/produto.schema";
 import { camposProdutoUpdateSchema } from "../schemas/campoProduto.schema";
 import { kitUpdateSchema } from "../schemas/kit.schema";
+import { variacoesUpdateSchema } from "../schemas/variacao.schema";
 import { idParamSchema } from "../schemas/common.schema";
 import { mensagemLimiteExcedido, verificarLimite } from "../lib/planos";
+import { registrarEvento } from "../lib/historico";
 
 const router = Router();
 
@@ -22,6 +24,7 @@ const includeCampos = {
   itensDoKit: {
     include: { componenteProduto: { select: { id: true, nome: true, sku: true, preco: true } } },
   },
+  variacoes: { orderBy: { nome: "asc" as const } },
 };
 
 router.post("/", async (req, res) => {
@@ -44,6 +47,15 @@ router.post("/", async (req, res) => {
       data: { ...resultado.data, empresaId: req.usuario!.empresaId },
       include: includeCampos,
     });
+
+    registrarEvento({
+      empresaId: req.usuario!.empresaId,
+      tipo: "PRODUTO_CRIADO",
+      entidadeTipo: "Produto",
+      entidadeId: produto.id,
+      descricao: `Produto "${produto.nome}" cadastrado.`,
+    }).catch((e) => console.error("Erro ao registrar histórico:", e));
+
     return res.status(201).json(produto);
   } catch (erro) {
     if (erro && typeof erro === "object" && "code" in erro && (erro as { code?: string }).code === "P2002") {
@@ -248,6 +260,102 @@ router.put("/:id/kit", async (req, res) => {
   } catch (erro) {
     console.error("Erro ao atualizar componentes do kit:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar os componentes do kit." });
+  }
+});
+
+// Substitui TODAS as variações de um produto de uma vez (mesmo padrão de
+// /campos e /kit: apaga e recria numa transação). Variações existentes que
+// já têm estoque/movimentações são identificadas apenas por nome+sku no
+// corpo — recriar a lista NÃO apaga o estoque de uma variação cujo nome
+// permaneça o mesmo, mas renomear efetivamente cria uma variação nova e
+// "abandona" o estoque da antiga sob o id antigo (mesma limitação que já
+// existe em /campos: não há diffing por id, é substituição completa).
+router.put("/:id/variacoes", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.id);
+  if (!idResultado.success) return res.status(400).json({ erro: "ID inválido." });
+
+  const resultado = variacoesUpdateSchema.safeParse(req.body);
+  if (!resultado.success) return res.status(400).json({ erro: resultado.error.issues[0].message });
+
+  const empresaId = req.usuario!.empresaId;
+
+  try {
+    const produto = await prisma.produto.findFirst({ where: { id: idResultado.data, empresaId } });
+    if (!produto) return res.status(404).json({ erro: "Produto não encontrado." });
+    if (produto.tipoProduto === "KIT") {
+      return res.status(400).json({ erro: "Um kit não pode ter variações — variações são só para produtos simples." });
+    }
+
+    const nomesRepetidos = new Set<string>();
+    for (const v of resultado.data.variacoes) {
+      const chave = v.nome.trim().toLowerCase();
+      if (nomesRepetidos.has(chave)) {
+        return res.status(400).json({ erro: `O nome de variação "${v.nome}" está repetido.` });
+      }
+      nomesRepetidos.add(chave);
+    }
+
+    // Variações que já têm estoque ou movimentação registrada não podem ser
+    // apagadas silenciosamente (perderia histórico e saldo real) — só podem
+    // ser desativadas (ativa=false). Detecta isso comparando o conjunto atual
+    // com o que está sendo salvo.
+    const existentes = await prisma.produtoVariacao.findMany({
+      where: { produtoId: produto.id },
+      select: { id: true, nome: true, _count: { select: { estoqueLocais: true, movimentacoes: true } } },
+    });
+    const nomesNovos = new Set(resultado.data.variacoes.map((v) => v.nome.trim().toLowerCase()));
+    const removeriaComHistorico = existentes.find(
+      (v) => !nomesNovos.has(v.nome.trim().toLowerCase()) && (v._count.estoqueLocais > 0 || v._count.movimentacoes > 0)
+    );
+    if (removeriaComHistorico) {
+      return res.status(409).json({
+        erro: `A variação "${removeriaComHistorico.nome}" já tem estoque ou movimentações — para não perder o histórico, desative-a em vez de removê-la (marque "ativa": false).`,
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Só apaga variações que NÃO têm estoque/movimentação (validado acima);
+      // as demais precisam ter sido incluídas de novo no corpo (senão o passo
+      // anterior já teria bloqueado a requisição).
+      const idsParaManter = existentes.filter((v) => nomesNovos.has(v.nome.trim().toLowerCase())).map((v) => v.id);
+      await tx.produtoVariacao.deleteMany({ where: { produtoId: produto.id, id: { notIn: idsParaManter } } });
+
+      for (const variacao of resultado.data.variacoes) {
+        const existente = existentes.find((v) => v.nome.trim().toLowerCase() === variacao.nome.trim().toLowerCase());
+        if (existente) {
+          await tx.produtoVariacao.update({
+            where: { id: existente.id },
+            data: {
+              nome: variacao.nome,
+              sku: variacao.sku ?? null,
+              codigoBarras: variacao.codigoBarras ?? null,
+              precoAdicional: variacao.precoAdicional,
+              ativa: variacao.ativa,
+            },
+          });
+        } else {
+          await tx.produtoVariacao.create({
+            data: {
+              produtoId: produto.id,
+              nome: variacao.nome,
+              sku: variacao.sku ?? null,
+              codigoBarras: variacao.codigoBarras ?? null,
+              precoAdicional: variacao.precoAdicional,
+              ativa: variacao.ativa,
+            },
+          });
+        }
+      }
+    });
+
+    const produtoAtualizado = await prisma.produto.findFirst({
+      where: { id: idResultado.data, empresaId },
+      include: includeCampos,
+    });
+    return res.json(produtoAtualizado);
+  } catch (erro) {
+    console.error("Erro ao atualizar variações do produto:", erro);
+    return res.status(500).json({ erro: "Não foi possível atualizar as variações do produto." });
   }
 });
 

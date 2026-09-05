@@ -5,6 +5,7 @@ import { Logo, LogoSimbolo } from "../Logo";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
+import { useModulos } from "../../context/ModulosContext";
 import { cn } from "../../lib/cn";
 
 type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/operacoes" | "/configuracoes";
@@ -75,18 +76,17 @@ function IconeMaisMenu() {
   );
 }
 
-const itensNav: Array<{ rotulo: string; caminho: Caminho; icone: ReactNode }> = [
+// "Operações" reúne Estoque/Vendas/Pedidos/Devoluções em abas internas — só
+// faz sentido aparecer se pelo menos um desses módulos estiver ativo (ver
+// ModulosContext). Os demais itens são núcleo do MOVA, sempre visíveis.
+const itensNavBase: Array<{ rotulo: string; caminho: Caminho; icone: ReactNode; requerAlgumModulo?: string[] }> = [
   { rotulo: "Início", caminho: "/painel", icone: <IconeInicio /> },
   { rotulo: "Orçamentos", caminho: "/orcamentos", icone: <IconeOrcamentos /> },
   { rotulo: "Clientes", caminho: "/clientes", icone: <IconeClientes /> },
   { rotulo: "Produtos", caminho: "/produtos", icone: <IconeProdutos /> },
-  { rotulo: "Operações", caminho: "/operacoes", icone: <IconeOperacoes /> },
+  { rotulo: "Operações", caminho: "/operacoes", icone: <IconeOperacoes />, requerAlgumModulo: ["estoque", "vendas", "pedidos"] },
   { rotulo: "Configurações", caminho: "/configuracoes", icone: <IconeConfig /> },
 ];
-
-// No mobile só cabem 2 destinos + a ação central — o restante entra em "Mais".
-const itensNavMobilePrincipais = itensNav.slice(0, 2);
-const itensNavMobileSecundarios = itensNav.slice(2);
 
 function iniciais(nome?: string) {
   if (!nome) return "M";
@@ -100,10 +100,16 @@ function iniciais(nome?: string) {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { usuario, empresa, sair } = useAuth();
+  const { moduloAtivo } = useModulos();
   const [maisAberto, setMaisAberto] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const location = useLocation();
   const caminhoAtual = location.pathname;
+
+  const itensNav = itensNavBase.filter((item) => !item.requerAlgumModulo || item.requerAlgumModulo.some(moduloAtivo));
+  // No mobile só cabem 2 destinos + a ação central — o restante entra em "Mais".
+  const itensNavMobilePrincipais = itensNav.slice(0, 2);
+  const itensNavMobileSecundarios = itensNav.slice(2);
 
   function ativo(caminho: string) {
     return caminhoAtual === caminho || caminhoAtual.startsWith(`${caminho}/`);
@@ -133,7 +139,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="px-4">
           <Link
             to="/orcamentos/novo"
-            className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-colors duration-150 hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-colors duration-150 hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:bg-[#176d66] dark:hover:bg-[#12544f]"
           >
             <IconeMais />
             Novo orçamento
@@ -238,7 +244,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             aria-label="Novo orçamento"
             className="flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-ink-700"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-white dark:bg-[#176d66]">
               <IconeMais />
             </span>
           </Link>

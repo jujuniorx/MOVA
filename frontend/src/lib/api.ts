@@ -1,11 +1,22 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-const CHAVE_TOKEN = "orcafacil_token";
+const CHAVE_TOKEN = "mova_token";
+const CHAVE_TOKEN_ANTIGA = "orcafacil_token";
 
 export class ApiError extends Error {
   codigo?: string;
 }
 
+/** Migra sessões salvas com a chave antiga (nome do produto anterior ao MOVA) para a atual, sem deslogar quem já estava autenticado. */
+function migrarTokenAntigo() {
+  const tokenAntigo = localStorage.getItem(CHAVE_TOKEN_ANTIGA);
+  if (tokenAntigo && !localStorage.getItem(CHAVE_TOKEN)) {
+    localStorage.setItem(CHAVE_TOKEN, tokenAntigo);
+  }
+  localStorage.removeItem(CHAVE_TOKEN_ANTIGA);
+}
+
 export function obterToken(): string | null {
+  migrarTokenAntigo();
   return localStorage.getItem(CHAVE_TOKEN);
 }
 
@@ -130,6 +141,14 @@ export interface Empresa {
   paginaPublicaAtiva: boolean;
   slugPublico: string | null;
   exibirPrecosPublico: boolean;
+  memoriaIA: MemoriaIA | null;
+}
+
+export interface MemoriaIA {
+  tomComunicacao?: "formal" | "neutro" | "descontraido";
+  descontoMaximoPercentual?: number;
+  margemMinimaPercentual?: number;
+  regrasLivres?: string;
 }
 
 export interface EmpresaInput {
@@ -147,6 +166,35 @@ export interface EmpresaInput {
   paginaPublicaAtiva?: boolean;
   slugPublico?: string;
   exibirPrecosPublico?: boolean;
+  memoriaIA?: MemoriaIA;
+}
+
+export type ContextoProcesso = "ORCAMENTO";
+
+export interface EtapaProcesso {
+  id: string;
+  nome: string;
+  ordem: number;
+  cor: string | null;
+  statusBase: StatusOrcamento;
+}
+
+export interface ProcessoConfig {
+  id: string;
+  contexto: ContextoProcesso;
+  nome: string;
+  etapas: EtapaProcesso[];
+}
+
+export interface EtapaProcessoInput {
+  nome: string;
+  cor?: string;
+  statusBase: StatusOrcamento;
+}
+
+export interface ProcessoConfigInput {
+  nome: string;
+  etapas: EtapaProcessoInput[];
 }
 
 export const empresaApi = {
@@ -154,7 +202,34 @@ export const empresaApi = {
 
   atualizar: (dados: EmpresaInput) =>
     apiFetch<Empresa>("/empresa", { method: "PATCH", body: JSON.stringify(dados) }),
+
+  // Processo configurável (Etapa 2) — null quando a empresa ainda não
+  // configurou nada; o app continua funcionando normalmente nesse caso.
+  obterProcesso: (contexto: ContextoProcesso) =>
+    apiFetch<ProcessoConfig | null>(`/empresa/processos/${contexto}`),
+
+  atualizarProcesso: (contexto: ContextoProcesso, dados: ProcessoConfigInput) =>
+    apiFetch<ProcessoConfig>(`/empresa/processos/${contexto}`, {
+      method: "PUT",
+      body: JSON.stringify(dados),
+    }),
+
+  // Módulos opcionais (Etapa 5 — "cada empresa vê o que precisa").
+  obterModulos: () => apiFetch<{ modulos: ModuloInfo[] }>("/empresa/modulos"),
+
+  alterarModulo: (moduloId: string, ativo: boolean) =>
+    apiFetch<void>("/empresa/modulos", { method: "PATCH", body: JSON.stringify({ moduloId, ativo }) }),
 };
+
+export interface ModuloInfo {
+  id: string;
+  nome: string;
+  descricao: string;
+  dependeDe: string[];
+  sempreAtivo: boolean;
+  implementado: boolean;
+  ativo: boolean;
+}
 
 export interface RespostaAutenticacao {
   token: string;
@@ -253,6 +328,8 @@ export interface OrcamentoDetalhe {
   clienteId: string;
   cliente: Cliente;
   itens: ItemOrcamentoDetalhe[];
+  etapaProcessoId: string | null;
+  etapaProcesso: EtapaProcesso | null;
 }
 
 export interface ItemOrcamentoPublico {
@@ -290,6 +367,7 @@ export interface OrcamentoResumoItem {
   atualizadoEm: string;
   clienteId: string;
   cliente: { id: string; nome: string };
+  etapaProcesso: EtapaProcesso | null;
   _count: { itens: number };
 }
 
@@ -310,8 +388,29 @@ export const orcamentosApi = {
       body: JSON.stringify({ status }),
     }),
 
+  // Etapa do processo configurável (Etapa 2) — camada de rótulo opcional,
+  // etapaProcessoId null limpa a etapa aplicada.
+  atualizarEtapa: (id: string, etapaProcessoId: string | null) =>
+    apiFetch<OrcamentoDetalhe>(`/orcamentos/${id}/etapa`, {
+      method: "PATCH",
+      body: JSON.stringify({ etapaProcessoId }),
+    }),
+
   obterPublico: (id: string) => apiFetch<OrcamentoPublico>(`/orcamentos-publico/${id}`),
 };
+
+// Respostas às informações extras configuradas em CampoCliente, chaveadas
+// pelo id do campo — mesmo formato livre gravado no banco.
+export type ValoresCamposCliente = Record<string, string | string[] | boolean | undefined>;
+
+export interface EventoHistorico {
+  id: string;
+  tipo: string;
+  entidadeTipo: string;
+  entidadeId: string | null;
+  descricao: string;
+  criadoEm: string;
+}
 
 export interface Cliente {
   id: string;
@@ -322,6 +421,7 @@ export interface Cliente {
   observacoes: string | null;
   criadoEm: string;
   atualizadoEm: string;
+  camposPersonalizados: ValoresCamposCliente | null;
 }
 
 export interface ClienteInput {
@@ -330,6 +430,7 @@ export interface ClienteInput {
   whatsapp?: string;
   email?: string;
   observacoes?: string;
+  camposPersonalizados?: ValoresCamposCliente;
 }
 
 export const clientesApi = {
@@ -342,9 +443,21 @@ export const clientesApi = {
     apiFetch<Cliente>(`/clientes/${id}`, { method: "PATCH", body: JSON.stringify(dados) }),
 
   excluir: (id: string) => apiFetch<null>(`/clientes/${id}`, { method: "DELETE" }),
+
+  // Timeline do cliente — reaproveita o histórico central já registrado
+  // pelas próprias operações (orçamentos, vendas, pedidos, devoluções).
+  historico: (id: string) => apiFetch<EventoHistorico[]>(`/clientes/${id}/historico`),
+
+  // Informações extras que a empresa decide perguntar de todo cliente — por
+  // empresa, não por cliente (mesmo padrão de produtosApi.atualizarCampos,
+  // mas aqui é um único formulário reaproveitado por todos os clientes).
+  listarCampos: () => apiFetch<CampoProduto[]>("/clientes/campos"),
+
+  atualizarCampos: (campos: CampoInput[]) =>
+    apiFetch<CampoProduto[]>("/clientes/campos", { method: "PUT", body: JSON.stringify({ campos }) }),
 };
 
-export type TipoCampo = "TEXTO" | "NUMERO" | "SELECAO_UNICA" | "SELECAO_MULTIPLA";
+export type TipoCampo = "TEXTO" | "NUMERO" | "SELECAO_UNICA" | "SELECAO_MULTIPLA" | "DATA" | "BOOLEANO";
 
 export interface OpcaoCampoProduto {
   id: string;
@@ -381,6 +494,23 @@ export interface ItemKit {
   componenteProduto: { id: string; nome: string; sku: string | null; preco?: string };
 }
 
+export interface ProdutoVariacao {
+  id: string;
+  nome: string;
+  sku: string | null;
+  codigoBarras: string | null;
+  precoAdicional: string;
+  ativa: boolean;
+}
+
+export interface VariacaoInput {
+  nome: string;
+  sku?: string | null;
+  codigoBarras?: string | null;
+  precoAdicional?: number;
+  ativa?: boolean;
+}
+
 export interface Produto {
   id: string;
   nome: string;
@@ -398,6 +528,7 @@ export interface Produto {
   exibirNaPaginaPublica: boolean;
   imagemUrl: string | null;
   itensDoKit: ItemKit[];
+  variacoes: ProdutoVariacao[];
 }
 
 export interface ProdutoInput {
@@ -430,6 +561,9 @@ export const produtosApi = {
   atualizarKit: (id: string, itens: { componenteProdutoId: string; quantidade: number }[]) =>
     apiFetch<Produto>(`/produtos/${id}/kit`, { method: "PUT", body: JSON.stringify({ itens }) }),
 
+  atualizarVariacoes: (id: string, variacoes: VariacaoInput[]) =>
+    apiFetch<Produto>(`/produtos/${id}/variacoes`, { method: "PUT", body: JSON.stringify({ variacoes }) }),
+
   excluir: (id: string) => apiFetch<null>(`/produtos/${id}`, { method: "DELETE" }),
 };
 
@@ -456,7 +590,7 @@ export interface ItemEstoque {
   totalQuarentena: number;
   status: StatusEstoqueCalculado;
   porLocal: { localId: string; localNome: string; quantidade: number; quantidadeQuarentena: number }[];
-  variacoes: unknown[];
+  variacoes: { id: string; nome: string; sku: string | null; totalDisponivel: number }[];
 }
 
 export interface MovimentacaoEstoque {
@@ -537,12 +671,22 @@ export const vendasApi = {
   cancelar: (id: string) => apiFetch<Venda>(`/vendas/${id}/cancelar`, { method: "POST" }),
   criarAPartirDeOrcamento: (orcamentoId: string) =>
     apiFetch<Venda>(`/vendas/a-partir-de-orcamento/${orcamentoId}`, { method: "POST" }),
+  criarAPartirDePedido: (pedidoId: string) =>
+    apiFetch<Venda>(`/vendas/a-partir-de-pedido/${pedidoId}`, { method: "POST" }),
 };
 
 // --- Pedidos --------------------------------------------------------------
 
 export type StatusPedido = "RECEBIDO" | "PROCESSANDO" | "CONFIRMADO" | "CANCELADO";
 export type CanalPedido = "WHATSAPP" | "MERCADO_LIVRE" | "SITE_PROPRIO" | "MANUAL";
+
+export interface ItemPedido {
+  nome: string;
+  quantidade: number;
+  precoUnitario: number;
+  /** Liga este item a um Produto real do catálogo — só quando TODOS os itens têm isso o pedido pode virar venda. */
+  produtoId?: string;
+}
 
 export interface Pedido {
   id: string;
@@ -551,16 +695,17 @@ export interface Pedido {
   status: StatusPedido;
   total: string;
   referenciaExterna: string | null;
-  itens: { nome: string; quantidade: number; precoUnitario: number }[];
+  itens: ItemPedido[];
   criadoEm: string;
   cliente: { id: string; nome: string } | null;
+  venda: { id: string; numero: number } | null;
 }
 
 export interface PedidoInput {
   canal: CanalPedido;
   clienteId?: string;
   referenciaExterna?: string;
-  itens: { nome: string; quantidade: number; precoUnitario: number }[];
+  itens: ItemPedido[];
 }
 
 export const pedidosApi = {
@@ -634,10 +779,25 @@ export interface StatusMercadoLivre {
   conta: { mlUserId: string; conectadoEm: string; atualizadoEm: string } | null;
 }
 
+export interface NotificacaoMercadoLivre {
+  id: string;
+  topico: string;
+  recursoId: string;
+  recebidoEm: string;
+  processadoEm: string | null;
+  erro: string | null;
+}
+
 export const integracoesApi = {
   statusMercadoLivre: () => apiFetch<StatusMercadoLivre>("/integracoes/mercado-livre/status"),
   conectarMercadoLivre: () => apiFetch<{ url: string }>("/integracoes/mercado-livre/conectar"),
   desconectarMercadoLivre: () => apiFetch<null>("/integracoes/mercado-livre/desconectar", { method: "POST" }),
+
+  // Central de problemas operacionais (recorte Mercado Livre).
+  notificacoesMercadoLivre: (somenteComErro = false) =>
+    apiFetch<NotificacaoMercadoLivre[]>(`/integracoes/mercado-livre/notificacoes${somenteComErro ? "?comErro=true" : ""}`),
+  reprocessarNotificacaoMercadoLivre: (id: string) =>
+    apiFetch<NotificacaoMercadoLivre>(`/integracoes/mercado-livre/notificacoes/${id}/reprocessar`, { method: "POST" }),
 };
 
 export interface StatusWhatsApp {
@@ -682,7 +842,10 @@ export type CapacidadeIA =
   | "rascunhar_mensagem_cliente"
   | "rascunhar_orcamento"
   | "sugerir_produtos_segmento"
-  | "estruturar_catalogo_texto";
+  | "estruturar_catalogo_texto"
+  | "resumo_prioridades"
+  | "analise_queda_vendas"
+  | "sugerir_followup";
 
 export interface SugestaoSegmentoResposta {
   produtos: string[];
@@ -696,10 +859,33 @@ export interface CatalogoEstruturadoResposta {
   }>;
 }
 
+export type TipoPrioridade = "ORCAMENTO_PARADO" | "CLIENTE_INATIVO" | "ESTOQUE_BAIXO" | "ESTOQUE_ZERADO" | "DEVOLUCAO_PENDENTE" | "INTEGRACAO_COM_ERRO";
+
+export interface ItemPrioridade {
+  tipo: TipoPrioridade;
+  titulo: string;
+  descricao: string;
+  entidadeId?: string;
+  urgencia: "alta" | "media" | "baixa";
+}
+
+export interface EstimativaPreco {
+  observado: string;
+  informadoPeloUsuario: string | null;
+  faixaMinima: number | null;
+  faixaMaxima: number | null;
+  precoRecomendado: number | null;
+  confianca: "alta" | "media" | "baixa";
+  justificativa: string;
+}
+
 export const iaApi = {
   capacidades: () => apiFetch<{ configurado: boolean; plano: PlanoTipo; capacidades: CapacidadeIA[] }>("/ia/capacidades"),
 
-  perguntar: (capacidade: CapacidadeIA, extra?: { clienteId?: string; observacoes?: string }) =>
+  // Central "o que precisa da sua atenção?" — determinístico, sem custo de IA.
+  prioridades: () => apiFetch<{ itens: ItemPrioridade[] }>("/ia/prioridades"),
+
+  perguntar: (capacidade: CapacidadeIA, extra?: { clienteId?: string; observacoes?: string; orcamentoId?: string }) =>
     apiFetch<{ resposta: string }>("/ia/perguntar", { method: "POST", body: JSON.stringify({ capacidade, ...extra }) }),
 
   sugerirProdutosPorSegmento: (observacoes: string) =>
@@ -714,8 +900,20 @@ export const iaApi = {
       body: JSON.stringify({ capacidade: "estruturar_catalogo_texto", observacoes }),
     }),
 
+  sugerirFollowup: (orcamentoId: string, observacoes?: string) =>
+    apiFetch<{ resposta: string }>("/ia/perguntar", {
+      method: "POST",
+      body: JSON.stringify({ capacidade: "sugerir_followup", orcamentoId, observacoes }),
+    }),
+
   transcreverAudio: (audioBase64: string, tipoMime: string) =>
     apiFetch<{ texto: string }>("/ia/catalogo/transcrever", { method: "POST", body: JSON.stringify({ audioBase64, tipoMime }) }),
+
+  estimarPrecoImagem: (imagemBase64: string, tipoMime: string, descricao?: string) =>
+    apiFetch<{ dados: EstimativaPreco }>("/ia/estimar-preco-imagem", {
+      method: "POST",
+      body: JSON.stringify({ imagemBase64, tipoMime, descricao }),
+    }),
 };
 
 // --- Página pública da empresa ---------------------------------------------
