@@ -9,6 +9,11 @@ const itemPedidoSchema = z.object({
   // só quando preenchido em TODOS os itens o pedido pode virar Venda de
   // verdade (é isso que dá baixa em estoque).
   produtoId: z.string().uuid().optional(),
+  // Só faz sentido quando produtoId também está preenchido — validado de
+  // verdade (pertence ao produto? está ativa?) no momento da conversão para
+  // Venda, mesmo padrão do restante do pedido (preço e produto também só
+  // são validados/travados nesse momento, nunca antes).
+  variacaoId: z.string().uuid().optional(),
 });
 
 export const pedidoCreateSchema = z.object({

@@ -504,7 +504,9 @@ function ModalNovaVenda({
   clientes: Cliente[];
 }) {
   const [clienteId, setClienteId] = useState("");
-  const [itens, setItens] = useState<{ produtoId: string; quantidade: string }[]>([{ produtoId: "", quantidade: "1" }]);
+  const [itens, setItens] = useState<{ produtoId: string; variacaoId: string; quantidade: string }[]>([
+    { produtoId: "", variacaoId: "", quantidade: "1" },
+  ]);
   const [desconto, setDesconto] = useState("0");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -512,21 +514,23 @@ function ModalNovaVenda({
   useEffect(() => {
     if (aberto) {
       setClienteId("");
-      setItens([{ produtoId: produtos[0]?.id ?? "", quantidade: "1" }]);
+      setItens([{ produtoId: produtos[0]?.id ?? "", variacaoId: "", quantidade: "1" }]);
       setDesconto("0");
       setErro(null);
     }
   }, [aberto, produtos]);
 
-  function atualizarItem(indice: number, campo: "produtoId" | "quantidade", valor: string) {
-    setItens((atual) => atual.map((it, i) => (i === indice ? { ...it, [campo]: valor } : it)));
+  function atualizarItem(indice: number, campo: "produtoId" | "variacaoId" | "quantidade", valor: string) {
+    setItens((atual) =>
+      atual.map((it, i) => (i === indice ? { ...it, [campo]: valor, ...(campo === "produtoId" ? { variacaoId: "" } : {}) } : it))
+    );
   }
 
   async function salvar() {
     setErro(null);
     const itensValidos = itens
       .filter((it) => it.produtoId && Number(it.quantidade) > 0)
-      .map((it) => ({ produtoId: it.produtoId, quantidade: Number(it.quantidade) }));
+      .map((it) => ({ produtoId: it.produtoId, variacaoId: it.variacaoId || undefined, quantidade: Number(it.quantidade) }));
     if (itensValidos.length === 0) {
       setErro("Adicione ao menos um item com quantidade válida.");
       return;
@@ -563,44 +567,64 @@ function ModalNovaVenda({
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-ink-700">Itens</p>
           <ul className="flex flex-col gap-3">
-            {itens.map((item, indice) => (
-              <li key={indice} className="rounded-lg border border-ink-200 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <Select
-                    rotulo="Produto"
-                    className="flex-1"
-                    value={item.produtoId}
-                    onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}
-                  >
-                    <option value="">Selecione um produto...</option>
-                    {produtos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome} — {formatoMoeda.format(Number(p.preco))}
-                      </option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
-                    aria-label="Remover item"
-                    className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="mt-3 w-32">
-                  <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
-                </div>
-              </li>
-            ))}
+            {itens.map((item, indice) => {
+              const produtoDoItem = produtos.find((p) => p.id === item.produtoId);
+              const variacoesAtivas = produtoDoItem?.variacoes.filter((v) => v.ativa) ?? [];
+              return (
+                <li key={indice} className="rounded-lg border border-ink-200 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <Select
+                      rotulo="Produto"
+                      className="flex-1"
+                      value={item.produtoId}
+                      onChange={(e) => atualizarItem(indice, "produtoId", e.target.value)}
+                    >
+                      <option value="">Selecione um produto...</option>
+                      {produtos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} — {formatoMoeda.format(Number(p.preco))}
+                        </option>
+                      ))}
+                    </Select>
+                    <button
+                      type="button"
+                      onClick={() => setItens((atual) => atual.filter((_, i) => i !== indice))}
+                      aria-label="Remover item"
+                      className="mt-6 shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-danger-600"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  {variacoesAtivas.length > 0 && (
+                    <div className="mt-3">
+                      <Select
+                        rotulo="Variação"
+                        value={item.variacaoId}
+                        onChange={(e) => atualizarItem(indice, "variacaoId", e.target.value)}
+                      >
+                        <option value="">Sem variação</option>
+                        {variacoesAtivas.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+                  <div className="mt-3 w-32">
+                    <Input rotulo="Quantidade" type="number" min={1} value={item.quantidade} onChange={(e) => atualizarItem(indice, "quantidade", e.target.value)} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           <Button
             tamanho="sm"
             variante="secundario"
             type="button"
-            onClick={() => setItens((atual) => [...atual, { produtoId: "", quantidade: "1" }])}
+            onClick={() => setItens((atual) => [...atual, { produtoId: "", variacaoId: "", quantidade: "1" }])}
             className="self-start"
           >
             + Adicionar item
@@ -762,24 +786,37 @@ function ModalNovoPedido({
   aoFechar: () => void;
   aoSalvar: () => void;
 }) {
-  const [itens, setItens] = useState([{ produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
+  const [itens, setItens] = useState([{ produtoId: "", variacaoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     if (aberto) {
-      setItens([{ produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
+      setItens([{ produtoId: "", variacaoId: "", nome: "", quantidade: "1", precoUnitario: "0" }]);
       setErro(null);
     }
   }, [aberto]);
 
-  function atualizarItem(indice: number, campo: "produtoId" | "nome" | "quantidade" | "precoUnitario", valor: string) {
+  function atualizarItem(indice: number, campo: "produtoId" | "variacaoId" | "nome" | "quantidade" | "precoUnitario", valor: string) {
     setItens((atual) =>
       atual.map((it, i) => {
         if (i !== indice) return it;
-        if (campo === "produtoId" && valor) {
+        if (campo === "produtoId") {
           const produto = produtos.find((p) => p.id === valor);
-          return { ...it, produtoId: valor, nome: produto?.nome ?? it.nome, precoUnitario: produto ? produto.preco : it.precoUnitario };
+          return {
+            ...it,
+            produtoId: valor,
+            variacaoId: "",
+            nome: produto?.nome ?? it.nome,
+            precoUnitario: produto ? produto.preco : it.precoUnitario,
+          };
+        }
+        if (campo === "variacaoId") {
+          const produto = produtos.find((p) => p.id === it.produtoId);
+          const variacao = produto?.variacoes.find((v) => v.id === valor);
+          const nomeBase = variacao ? `${produto!.nome} — ${variacao.nome}` : (produto?.nome ?? it.nome);
+          const precoBase = produto ? Number(produto.preco) + Number(variacao?.precoAdicional ?? 0) : Number(it.precoUnitario);
+          return { ...it, variacaoId: valor, nome: nomeBase, precoUnitario: String(precoBase) };
         }
         return { ...it, [campo]: valor };
       })
@@ -795,6 +832,7 @@ function ModalNovoPedido({
         quantidade: Number(it.quantidade),
         precoUnitario: Number(it.precoUnitario) || 0,
         produtoId: it.produtoId || undefined,
+        variacaoId: it.variacaoId || undefined,
       }));
     if (itensValidos.length === 0) {
       setErro("Adicione ao menos um item válido.");
@@ -849,6 +887,22 @@ function ModalNovoPedido({
                     </svg>
                   </button>
                 </div>
+                {(() => {
+                  const produtoDoItem = produtos.find((p) => p.id === item.produtoId);
+                  const variacoesAtivas = produtoDoItem?.variacoes.filter((v) => v.ativa) ?? [];
+                  return variacoesAtivas.length > 0 ? (
+                    <div className="mt-3">
+                      <Select rotulo="Variação" value={item.variacaoId} onChange={(e) => atualizarItem(indice, "variacaoId", e.target.value)}>
+                        <option value="">Sem variação</option>
+                        {variacoesAtivas.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  ) : null;
+                })()}
                 <div className="mt-3">
                   <Input
                     rotulo="Nome do item"
@@ -868,7 +922,7 @@ function ModalNovoPedido({
             tamanho="sm"
             variante="secundario"
             type="button"
-            onClick={() => setItens((atual) => [...atual, { produtoId: "", nome: "", quantidade: "1", precoUnitario: "0" }])}
+            onClick={() => setItens((atual) => [...atual, { produtoId: "", variacaoId: "", nome: "", quantidade: "1", precoUnitario: "0" }])}
             className="self-start"
           >
             + Adicionar item

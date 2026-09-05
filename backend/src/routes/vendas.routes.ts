@@ -62,22 +62,39 @@ router.post("/", async (req, res) => {
     }
 
     const produtoIds = [...new Set(itens.map((i) => i.produtoId))];
-    const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds }, empresaId } });
+    const produtos = await prisma.produto.findMany({
+      where: { id: { in: produtoIds }, empresaId },
+      include: { variacoes: true },
+    });
     const produtosPorId = new Map(produtos.map((p) => [p.id, p]));
 
     // Preço e total NUNCA vêm do frontend — sempre recalculados aqui a
-    // partir do cadastro real do produto no momento da venda.
+    // partir do cadastro real do produto (e da variação, quando informada)
+    // no momento da venda. A variação precisa pertencer a ESTE produto
+    // (portanto já implicitamente a esta empresa) e estar ativa — mesma
+    // validação já usada em orçamentos, garante isolamento multi-tenant
+    // mesmo que alguém tente enviar o ID de variação de outra empresa.
     let subtotal = new Prisma.Decimal(0);
     const itensPreparados = itens.map((item) => {
       const produto = produtosPorId.get(item.produtoId);
       if (!produto || !produto.ativo) {
         throw new Error(`PRODUTO_INDISPONIVEL:${item.produtoId}`);
       }
-      const precoUnitario = produto.preco;
+
+      let variacao: (typeof produto.variacoes)[number] | undefined;
+      if (item.variacaoId !== undefined) {
+        variacao = produto.variacoes.find((v) => v.id === item.variacaoId);
+        if (!variacao || !variacao.ativa) {
+          throw new Error(`VARIACAO_INVALIDA:${produto.nome}`);
+        }
+      }
+
+      const precoUnitario = produto.preco.plus(variacao?.precoAdicional ?? 0);
       const quantidade = new Prisma.Decimal(item.quantidade);
       const itemSubtotal = quantidade.times(precoUnitario).toDecimalPlaces(2);
       subtotal = subtotal.plus(itemSubtotal);
-      return { produto, quantidade: item.quantidade, variacaoId: item.variacaoId, precoUnitario, itemSubtotal };
+      const nomeItem = variacao ? `${produto.nome} — ${variacao.nome}` : produto.nome;
+      return { produto, nomeItem, quantidade: item.quantidade, variacaoId: variacao?.id, precoUnitario, itemSubtotal };
     });
 
     const descontoDecimal = new Prisma.Decimal(desconto).toDecimalPlaces(2);
@@ -98,7 +115,8 @@ router.post("/", async (req, res) => {
           itens: {
             create: itensPreparados.map((item) => ({
               produtoId: item.produto.id,
-              nome: item.produto.nome,
+              variacaoId: item.variacaoId,
+              nome: item.nomeItem,
               quantidade: item.quantidade,
               precoUnitario: item.precoUnitario,
               subtotal: item.itemSubtotal,
@@ -135,6 +153,9 @@ router.post("/", async (req, res) => {
     if (erro instanceof Error && erro.message.startsWith("PRODUTO_INDISPONIVEL")) {
       return res.status(400).json({ erro: "Um ou mais produtos selecionados não estão disponíveis." });
     }
+    if (erro instanceof Error && erro.message.startsWith("VARIACAO_INVALIDA")) {
+      return res.status(400).json({ erro: `Variação selecionada para "${erro.message.split(":")[1]}" não está disponível.` });
+    }
     console.error("Erro ao criar venda:", erro);
     return res.status(500).json({ erro: "Não foi possível registrar a venda." });
   }
@@ -154,7 +175,7 @@ router.post("/:id/cancelar", async (req, res) => {
       await reverterEstoqueVenda(
         tx,
         empresaId,
-        venda.itens.map((i) => ({ produtoId: i.produtoId, quantidade: Number(i.quantidade) })),
+        venda.itens.map((i) => ({ produtoId: i.produtoId, variacaoId: i.variacaoId, quantidade: Number(i.quantidade) })),
         venda.id,
         req.usuario!.id
       );
@@ -210,6 +231,7 @@ router.post("/a-partir-de-orcamento/:orcamentoId", async (req, res) => {
           itens: {
             create: orcamento.itens.map((item) => ({
               produtoId: item.produtoId,
+              variacaoId: item.variacaoId,
               nome: item.nome,
               quantidade: item.quantidade,
               precoUnitario: item.precoUnitario,
@@ -223,7 +245,7 @@ router.post("/a-partir-de-orcamento/:orcamentoId", async (req, res) => {
       await darBaixaEstoqueVenda(
         tx,
         empresaId,
-        orcamento.itens.map((i) => ({ produtoId: i.produtoId, quantidade: Number(i.quantidade) })),
+        orcamento.itens.map((i) => ({ produtoId: i.produtoId, variacaoId: i.variacaoId, quantidade: Number(i.quantidade) })),
         novaVenda.id,
         req.usuario!.id
       );
@@ -261,6 +283,7 @@ interface ItemPedidoSnapshot {
   quantidade: number;
   precoUnitario: number;
   produtoId?: string;
+  variacaoId?: string;
 }
 
 // Pedido → Venda. CANAL → PEDIDO → PRODUTO → ESTOQUE → VENDA: um pedido é
@@ -298,12 +321,29 @@ router.post("/a-partir-de-pedido/:pedidoId", async (req, res) => {
     }
 
     const produtoIds = [...new Set(itensSnapshot.map((item) => item.produtoId!))];
-    const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds }, empresaId } });
+    const produtos = await prisma.produto.findMany({
+      where: { id: { in: produtoIds }, empresaId },
+      include: { variacoes: true },
+    });
     const produtosPorId = new Map(produtos.map((p) => [p.id, p]));
 
     const itensInvalidos = itensSnapshot.filter((item) => !produtosPorId.get(item.produtoId!)?.ativo);
     if (itensInvalidos.length > 0) {
       return res.status(400).json({ erro: "Um ou mais produtos deste pedido não existem mais ou foram desativados." });
+    }
+
+    // Mesma validação de variação já usada em orçamento/venda direta —
+    // precisa pertencer ao produto do próprio item (logo, à mesma empresa) e
+    // estar ativa. Protege sobretudo a baixa de estoque: sem isso, um
+    // variacaoId de outro produto/empresa poderia acabar não decrementando
+    // nenhum saldo real (silenciosamente) em vez de dar erro claro.
+    for (const item of itensSnapshot) {
+      if (item.variacaoId === undefined) continue;
+      const produto = produtosPorId.get(item.produtoId!);
+      const variacaoValida = produto?.variacoes.some((v) => v.id === item.variacaoId && v.ativa);
+      if (!variacaoValida) {
+        return res.status(400).json({ erro: `Variação selecionada para "${item.nome}" não está disponível.` });
+      }
     }
 
     const subtotal = itensSnapshot.reduce(
@@ -324,6 +364,7 @@ router.post("/a-partir-de-pedido/:pedidoId", async (req, res) => {
           itens: {
             create: itensSnapshot.map((item) => ({
               produtoId: item.produtoId!,
+              variacaoId: item.variacaoId,
               nome: item.nome,
               quantidade: item.quantidade,
               precoUnitario: item.precoUnitario,
@@ -339,7 +380,7 @@ router.post("/a-partir-de-pedido/:pedidoId", async (req, res) => {
       await darBaixaEstoqueVenda(
         tx,
         empresaId,
-        itensSnapshot.map((i) => ({ produtoId: i.produtoId!, quantidade: i.quantidade })),
+        itensSnapshot.map((i) => ({ produtoId: i.produtoId!, variacaoId: i.variacaoId, quantidade: i.quantidade })),
         novaVenda.id,
         req.usuario!.id
       );
