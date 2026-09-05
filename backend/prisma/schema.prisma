@@ -175,13 +175,39 @@ model Usuario {
   senhaHash String
   criadoEm  DateTime @default(now())
 
+  /// Timestamp da última troca de senha (login normal ou recuperação) —
+  /// usado para invalidar, na autenticação, qualquer JWT emitido ANTES
+  /// dessa troca (comparado contra o `iat` do token), mesmo que o token
+  /// ainda não tenha expirado. Null = nunca trocou a senha desde o cadastro.
+  senhaAlteradaEm DateTime?
+
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
   movimentacoesEstoque  MovimentacaoEstoque[]
   conferenciasDevolucao ConferenciaDevolucao[]
+  tokensRecuperacaoSenha TokenRecuperacaoSenha[]
 
   @@index([empresaId])
+}
+
+/// Token de recuperação de senha — de uso único, com expiração curta.
+/// Nunca armazenamos o token em texto puro: só o hash SHA-256 dele (ver
+/// lib/recuperacaoSenha.ts), então mesmo um vazamento do banco não permite
+/// redefinir a senha de ninguém sem também ter o token original enviado
+/// por e-mail.
+model TokenRecuperacaoSenha {
+  id String @id @default(uuid())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  tokenHash String    @unique
+  criadoEm  DateTime  @default(now())
+  expiraEm  DateTime
+  usadoEm   DateTime?
+
+  @@index([usuarioId])
 }
 
 model Cliente {
@@ -542,8 +568,18 @@ model ItemOrcamento {
   produtoId String
   produto   Produto @relation(fields: [produtoId], references: [id])
 
+  /// Variação escolhida (opcional) — o preço adicional dela já está somado
+  /// em `precoUnitario` no momento da criação (snapshot, como o resto do
+  /// item); nunca recalculado depois. Sem relação Prisma de propósito (mesmo
+  /// padrão de ItemVenda/ItemDevolucao): um item de orçamento é histórico —
+  /// se a variação for apagada depois, o item mantém seu snapshot completo
+  /// (nome já inclui o nome da variação) e só perde a referência viva, o que
+  /// é aceitável para um registro passado.
+  variacaoId String?
+
   @@index([orcamentoId])
   @@index([produtoId])
+  @@index([variacaoId])
 }
 
 enum StatusAssinatura {

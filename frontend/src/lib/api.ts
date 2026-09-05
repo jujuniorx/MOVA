@@ -257,6 +257,15 @@ export const authApi = {
     }),
 
   me: () => apiFetch<{ usuario: Usuario; empresa: Empresa }>("/auth/me"),
+
+  esqueciSenha: (email: string) =>
+    apiFetch<{ mensagem: string }>("/auth/esqueci-senha", { method: "POST", body: JSON.stringify({ email }) }),
+
+  redefinirSenha: (token: string, novaSenha: string) =>
+    apiFetch<{ mensagem: string }>("/auth/redefinir-senha", {
+      method: "POST",
+      body: JSON.stringify({ token, novaSenha }),
+    }),
 };
 
 export type StatusOrcamento = "RASCUNHO" | "ENVIADO" | "APROVADO" | "RECUSADO";
@@ -285,6 +294,7 @@ export interface ValorCampoInput {
 
 export interface ItemOrcamentoInput {
   produtoId: string;
+  variacaoId?: string;
   quantidade: number;
   precoUnitario?: number;
   valoresCampos?: ValorCampoInput[];
@@ -306,6 +316,7 @@ export interface OrcamentoInput {
 export interface ItemOrcamentoDetalhe {
   id: string;
   produtoId: string;
+  variacaoId: string | null;
   nome: string;
   quantidade: string;
   precoUnitario: string;

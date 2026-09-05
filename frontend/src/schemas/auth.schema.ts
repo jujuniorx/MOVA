@@ -23,5 +23,16 @@ export const registrarSchema = z.object({
     .max(72, "A senha deve ter no máximo 72 caracteres."),
 });
 
+export const esqueciSenhaSchema = z.object({
+  email: z.string().trim().toLowerCase().max(255).email("Informe um e-mail válido."),
+});
+
+export const redefinirSenhaSchema = z.object({
+  novaSenha: z
+    .string()
+    .min(8, "A senha deve ter ao menos 8 caracteres.")
+    .max(72, "A senha deve ter no máximo 72 caracteres."),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistrarInput = z.infer<typeof registrarSchema>;

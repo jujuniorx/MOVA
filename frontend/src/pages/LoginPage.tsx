@@ -75,6 +75,10 @@ export function LoginPage() {
             required
           />
 
+          <Link to="/esqueci-senha" className="-mt-2 self-end text-sm font-medium text-brand-600 hover:underline">
+            Esqueci minha senha
+          </Link>
+
           <Button type="submit" carregando={enviando} className="mt-2 w-full">
             Entrar
           </Button>

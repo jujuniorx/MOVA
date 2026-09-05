@@ -12,6 +12,10 @@ export interface TokenPayload {
   sub: string;
   empresaId: string;
   email: string;
+  /// Preenchido automaticamente pelo jsonwebtoken ao assinar (não é passado
+  /// em `gerarToken`) — usado para invalidar tokens emitidos antes de uma
+  /// troca de senha (ver middleware/auth.middleware.ts).
+  iat?: number;
 }
 
 export function gerarToken(payload: TokenPayload): string {

@@ -3,6 +3,8 @@ import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { EsqueciSenhaPage } from "./pages/EsqueciSenhaPage";
+import { RedefinirSenhaPage } from "./pages/RedefinirSenhaPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrcamentosPage } from "./pages/OrcamentosPage";
 import { ClientesPage } from "./pages/ClientesPage";
@@ -26,6 +28,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/registrar" element={<RegisterPage />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
       <Route
         path="/painel"
         element={
