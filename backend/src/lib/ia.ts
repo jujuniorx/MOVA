@@ -1,7 +1,7 @@
 import type { PlanoTipo } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "./prisma";
-import { modulosAtivos, moduloEstaAtivo } from "./modulos";
+import { modulosAtivos, moduloEstaAtivo, MODULOS } from "./modulos";
 
 // Único lugar do MOVA onde provedor/modelo/preço de IA aparecem — trocar
 // isso no futuro é editar só este arquivo (ou as env vars), nunca procurar
@@ -299,7 +299,14 @@ async function buscarClientesTop(empresaId: string) {
 }
 
 export interface ItemPrioridade {
-  tipo: "ORCAMENTO_PARADO" | "CLIENTE_INATIVO" | "ESTOQUE_BAIXO" | "ESTOQUE_ZERADO" | "DEVOLUCAO_PENDENTE" | "INTEGRACAO_COM_ERRO";
+  tipo:
+    | "ORCAMENTO_PARADO"
+    | "CLIENTE_INATIVO"
+    | "ESTOQUE_BAIXO"
+    | "ESTOQUE_ZERADO"
+    | "DEVOLUCAO_PENDENTE"
+    | "INTEGRACAO_COM_ERRO"
+    | "SUGESTAO_MODULO";
   titulo: string;
   descricao: string;
   entidadeId?: string;
@@ -406,6 +413,25 @@ export async function detectarPrioridades(empresaId: string): Promise<ItemPriori
     }
   }
 
+  // "O MOVA aprende com o uso": se a empresa desativou Estoque mas já
+  // acumulou um volume real de vendas de produtos, é um sinal de que ela
+  // passou a vender mercadoria de verdade — sugere ativar, nunca ativa
+  // sozinho (mudança de módulo sempre exige uma ação humana explícita).
+  if (!moduloEstaAtivo(ativos, "estoque")) {
+    const vendasComProduto = await prisma.venda.count({
+      where: { empresaId, status: "CONFIRMADA", itens: { some: {} } },
+    });
+    if (vendasComProduto >= 5) {
+      itens.push({
+        tipo: "SUGESTAO_MODULO",
+        titulo: "Você já registrou várias vendas de produtos",
+        descricao: "Ativar o controle de estoque pode ajudar a acompanhar o que você tem disponível.",
+        entidadeId: "estoque",
+        urgencia: "baixa",
+      });
+    }
+  }
+
   const pesoUrgencia: Record<ItemPrioridade["urgencia"], number> = { alta: 0, media: 1, baixa: 2 };
   return itens.sort((a, b) => pesoUrgencia[a.urgencia] - pesoUrgencia[b.urgencia]);
 }
@@ -443,6 +469,17 @@ async function buscarMemoriaEmpresa(empresaId: string): Promise<string> {
   const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { memoriaIA: true } });
   if (!empresa?.memoriaIA) return "(a empresa ainda não configurou nenhuma regra ou preferência)";
   return JSON.stringify(empresa.memoriaIA);
+}
+
+// Contexto curto sobre o tipo de negócio (nunca o objeto perfilOperacional
+// inteiro — só o resumo em linguagem simples já gerado na configuração
+// inicial) para a IA poder ancorar sugestões no negócio real, sem precisar
+// (nem poder) reclassificar nada por conta própria.
+async function buscarResumoPerfilOperacional(empresaId: string): Promise<string> {
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { perfilOperacional: true } });
+  const perfil = empresa?.perfilOperacional as { resumo?: string } | null;
+  if (!perfil?.resumo) return "(a empresa ainda não descreveu o negócio para o MOVA)";
+  return perfil.resumo;
 }
 
 interface ContextoRascunho {
@@ -646,6 +683,105 @@ export function validarEstimativaPreco(texto: string) {
   return extrairJsonSeguro(texto, estimativaPrecoSchema);
 }
 
+// Ids de módulo OPCIONAIS e já implementados — só esses podem ser sugeridos
+// automaticamente (nunca "agenda"/"financeiro", que ainda não têm nenhum
+// recurso real por trás; nunca os sempreAtivo, que já estão sempre ligados).
+const MODULOS_SUGERIVEIS = Object.values(MODULOS)
+  .filter((m) => m.implementado && !m.sempreAtivo)
+  .map((m) => m.id);
+
+const perfilOperacionalSchema = z.object({
+  trabalhaComProdutos: z.boolean(),
+  trabalhaComServicos: z.boolean(),
+  modulosSugeridos: z.array(z.string()).max(10),
+  resumo: z.string().trim().min(1).max(300),
+});
+
+export type PerfilOperacionalInterpretado = z.infer<typeof perfilOperacionalSchema>;
+
+/**
+ * Interpreta a descrição livre que o empresário deu sobre o próprio negócio
+ * e devolve um perfil estruturado — nunca decide sozinho: quem chama ainda
+ * mostra um resumo em português simples para o usuário confirmar (ver
+ * routes/empresa.routes.ts). NUNCA aceita um módulo sugerido pela IA que não
+ * exista de verdade no catálogo (`MODULOS_SUGERIVEIS`) — proteção contra a
+ * IA "inventar" ou alucinar um módulo, mesmo que ela tente.
+ */
+export async function interpretarPerfilNegocio(descricaoNegocio: string, ofertaDescricao: string): Promise<ChamadaIAResultado> {
+  const prompt = `Um empresário brasileiro está configurando o MOVA (sistema de gestão) pela primeira vez e descreveu o próprio negócio com as próprias palavras:
+
+O que a empresa faz: "${descricaoNegocio}"
+O que ela vende ou oferece: "${ofertaDescricao || "(não informado separadamente — considere só a descrição acima)"}"
+
+Módulos opcionais disponíveis no MOVA (sugira só os que fazem sentido para ESTE negócio específico, com base no que foi descrito — nunca sugira um módulo que não faça sentido, e nunca sugira todos por padrão):
+${MODULOS_SUGERIVEIS.map((id) => `- "${id}": ${MODULOS[id].nome} — ${MODULOS[id].descricao}`).join("\n")}
+
+Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
+{"trabalhaComProdutos": true|false, "trabalhaComServicos": true|false, "modulosSugeridos": ["id1", "id2", ...], "resumo": "uma frase curta e simples, em português, tipo 'uma empresa que vende produtos e também presta serviços' — sem jargão técnico, sem mencionar 'módulo' ou nomes de sistema"}
+
+Regras: use APENAS os ids de módulo listados acima em "modulosSugeridos" (nunca invente um id novo). Uma empresa majoritariamente de serviços sem venda de mercadoria geralmente não precisa de "estoque". Uma empresa que só vende produtos prontos (sem prestar serviço) pode não precisar de "pedidos" se ela já usa "vendas" diretamente — use julgamento razoável, isso é só uma sugestão inicial que o empresário pode mudar a qualquer momento.`;
+
+  const modelo = MODELOS[PROVEDOR].simples;
+  return chamarModelo(modelo, prompt, 500);
+}
+
+export function validarPerfilOperacional(texto: string): PerfilOperacionalInterpretado {
+  const validado = extrairJsonSeguro(texto, perfilOperacionalSchema);
+  return {
+    ...validado,
+    modulosSugeridos: validado.modulosSugeridos.filter((id) => MODULOS_SUGERIVEIS.includes(id)),
+  };
+}
+
+/**
+ * Heurística simples (sem IA) para quando o provedor não está configurado —
+ * nunca deixa o onboarding travado por falta de infraestrutura de IA.
+ * Puramente baseada em palavras-chave; sempre rotulada como tal (nunca finge
+ * ser uma interpretação de IA).
+ */
+function removerDiacriticos(texto: string): string {
+  let resultado = "";
+  for (const ch of texto) {
+    const codigo = ch.codePointAt(0)!;
+    if (codigo < 0x0300 || codigo > 0x036f) resultado += ch;
+  }
+  return resultado;
+}
+
+export function interpretarPerfilHeuristico(descricaoNegocio: string, ofertaDescricao: string): PerfilOperacionalInterpretado {
+  const texto = removerDiacriticos(`${descricaoNegocio} ${ofertaDescricao}`.toLowerCase().normalize("NFD"));
+
+  const PALAVRAS_PRODUTO = ["produto", "venda", "vendo", "vendemos", "loja", "mercadoria", "peca", "peças", "estoque", "revenda", "fabrica", "fabricamos"];
+  const PALAVRAS_SERVICO = ["servico", "atendimento", "visita", "conserto", "manutencao", "consulta", "sessao", "instalacao", "reparo", "presto", "prestamos"];
+
+  const sinalProduto = PALAVRAS_PRODUTO.some((p) => texto.includes(p));
+  const sinalServico = PALAVRAS_SERVICO.some((p) => texto.includes(p));
+  // Atividade incomum/ambígua (nenhuma palavra-chave bateu): nunca estreita a
+  // experiência por adivinhação errada — assume os dois e deixa tudo
+  // disponível, igual ao padrão já usado para quem nunca configurou nada.
+  const ambiguo = !sinalProduto && !sinalServico;
+  const trabalhaComProdutos = sinalProduto || ambiguo;
+  const trabalhaComServicos = sinalServico || ambiguo;
+
+  const modulosSugeridos: string[] = ["vendas"];
+  if (trabalhaComProdutos) modulosSugeridos.push("estoque", "pedidos");
+  if (texto.includes("mercado livre") || texto.includes("mercadolivre")) modulosSugeridos.push("mercadolivre");
+  if (texto.includes("whatsapp")) modulosSugeridos.push("whatsapp");
+
+  let resumo: string;
+  if (ambiguo) resumo = "seu negócio, do jeito que você descreveu";
+  else if (trabalhaComProdutos && trabalhaComServicos) resumo = "uma empresa que vende produtos e também presta serviços";
+  else if (trabalhaComProdutos) resumo = "uma empresa que vende produtos";
+  else resumo = "uma empresa que presta serviços";
+
+  return {
+    trabalhaComProdutos,
+    trabalhaComServicos,
+    modulosSugeridos: [...new Set(modulosSugeridos)].filter((id) => MODULOS_SUGERIVEIS.includes(id)),
+    resumo,
+  };
+}
+
 /**
  * Ponto único de entrada de todas as capacidades de IA. A capacidade decide
  * QUAIS dados são buscados (sempre um recorte mínimo e já resumido) — a IA
@@ -690,7 +826,14 @@ export async function executarCapacidadeIA(
       break;
     }
     case "sugerir_produtos_segmento": {
-      const descricao = contexto?.observacoes?.trim();
+      // Se o usuário não descreveu o segmento agora, reaproveita o que ele já
+      // contou ao MOVA na configuração inicial — nunca pergunta de novo algo
+      // que já foi respondido.
+      let descricao = contexto?.observacoes?.trim();
+      if (!descricao) {
+        const resumoPerfil = await buscarResumoPerfilOperacional(empresaId);
+        if (!resumoPerfil.startsWith("(")) descricao = resumoPerfil;
+      }
       if (!descricao) throw new Error("Descreva o segmento do seu negócio para receber sugestões.");
       prompt = `Um empresário brasileiro descreveu o segmento do negócio dele assim: "${descricao}".
 Sugira de 6 a 15 produtos ou serviços TÍPICOS e genéricos desse segmento (nomes curtos, sem preço, sem inventar detalhes que o empresário não mencionou).
@@ -719,7 +862,10 @@ Se um item não tiver variações, use uma única variação com nome igual ao n
         prompt = `A lista de prioridades da empresa está vazia — não há orçamento parado, cliente inativo, estoque baixo, devolução pendente nem erro de integração no momento. Escreva uma frase curta e positiva confirmando isso em português, sem inventar nenhum problema.`;
         break;
       }
-      prompt = `Esta é a lista REAL (já calculada pelo sistema, não invente nada além dela) de coisas que precisam da atenção do dono do negócio hoje, da mais para a menos urgente:
+      const resumoPerfil = await buscarResumoPerfilOperacional(empresaId);
+      prompt = `O MOVA sabe que esta empresa é ${resumoPerfil.startsWith("(") ? "de um tipo ainda não descrito" : resumoPerfil}. Use isso só para dar contexto ao tom da resposta (ex.: falar de "estoque" só faz sentido se a empresa trabalha com produtos) — nunca invente esse tipo de negócio além do que foi dito aqui.
+
+Esta é a lista REAL (já calculada pelo sistema, não invente nada além dela) de coisas que precisam da atenção do dono do negócio hoje, da mais para a menos urgente:
 ${JSON.stringify(itens)}
 
 Escreva um resumo curto em português, priorizando o que é mais urgente primeiro, em linguagem simples de negócio (não cite os nomes técnicos dos "tipo"). No máximo 5 itens — se houver mais na lista, diga quantos itens a mais existem sem detalhar todos. Para cada item, diga o que é e o que o empresário pode fazer a respeito.`;

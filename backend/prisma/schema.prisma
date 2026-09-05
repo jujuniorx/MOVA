@@ -85,6 +85,17 @@ model Empresa {
   /// nenhuma outra.
   memoriaIA Json?
 
+  /// Descrição livre do negócio (em português, nas palavras do próprio
+  /// empresário) e a interpretação estruturada derivada dela — usada só na
+  /// configuração inicial guiada para sugerir quais módulos ativar. Formato:
+  /// { descricaoNegocio, ofertaDescricao, trabalhaComProdutos,
+  ///   trabalhaComServicos, modulosSugeridos: string[], resumo, origem:
+  ///   "ia"|"heuristica", geradoEm }. Nunca é a única fonte de verdade sobre
+  /// módulos — `modulosAtivos` continua sendo isso; este campo é só o
+  /// histórico de como a sugestão inicial foi calculada, útil se a empresa
+  /// quiser reconfigurar depois.
+  perfilOperacional Json?
+
   /// Lista de ids de módulos opcionais ativos para esta empresa (ex.:
   /// ["estoque","vendas"]) — ver backend/src/lib/modulos.ts para o catálogo
   /// completo, dependências e módulos sempre ativos (que nem aparecem aqui).

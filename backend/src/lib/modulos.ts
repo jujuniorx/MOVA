@@ -191,6 +191,21 @@ export async function alterarModuloEmpresa(empresaId: string, moduloId: string, 
 }
 
 /**
+ * Substitui de uma vez o conjunto inteiro de módulos opcionais ativos —
+ * usado só pela configuração inicial guiada pelo perfil operacional
+ * (empresa.routes.ts), nunca pela tela normal de "Recursos do MOVA" (essa
+ * continua usando `alterarModuloEmpresa`, um de cada vez, com todas as
+ * validações de dependência). Aqui não há checagem de dependência porque
+ * hoje nenhum módulo opcional depende de outro opcional (todos dependem só
+ * de "produtos", sempre ativo) — se isso mudar no futuro, esta função
+ * precisa passar a validar dependências também.
+ */
+export async function definirModulosOpcionais(empresaId: string, moduloIds: string[]): Promise<void> {
+  const validos = moduloIds.filter((id) => MODULOS[id]?.implementado && !MODULOS[id]?.sempreAtivo);
+  await prisma.empresa.update({ where: { id: empresaId }, data: { modulosAtivos: validos } });
+}
+
+/**
  * Middleware Express que bloqueia toda a rota se o módulo `moduloId` não
  * estiver ativo para a empresa autenticada — a defesa de verdade contra um
  * módulo desativado (esconder no frontend nunca é suficiente: um usuário

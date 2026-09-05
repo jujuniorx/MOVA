@@ -219,7 +219,29 @@ export const empresaApi = {
 
   alterarModulo: (moduloId: string, ativo: boolean) =>
     apiFetch<void>("/empresa/modulos", { method: "PATCH", body: JSON.stringify({ moduloId, ativo }) }),
+
+  // Perfil operacional ("conte para o MOVA o que sua empresa faz") — usado
+  // na configuração inicial guiada para sugerir e já ativar os módulos
+  // relevantes para o negócio descrito.
+  obterPerfilOperacional: () => apiFetch<{ perfilOperacional: PerfilOperacional | null }>("/empresa/perfil-operacional"),
+
+  definirPerfilOperacional: (descricaoNegocio: string, ofertaDescricao?: string) =>
+    apiFetch<{ perfilOperacional: PerfilOperacional }>("/empresa/perfil-operacional", {
+      method: "POST",
+      body: JSON.stringify({ descricaoNegocio, ofertaDescricao }),
+    }),
 };
+
+export interface PerfilOperacional {
+  descricaoNegocio: string;
+  ofertaDescricao: string | null;
+  trabalhaComProdutos: boolean;
+  trabalhaComServicos: boolean;
+  modulosSugeridos: string[];
+  resumo: string;
+  origem: "ia" | "heuristica";
+  geradoEm: string;
+}
 
 export interface ModuloInfo {
   id: string;
@@ -927,7 +949,14 @@ export interface CatalogoEstruturadoResposta {
   }>;
 }
 
-export type TipoPrioridade = "ORCAMENTO_PARADO" | "CLIENTE_INATIVO" | "ESTOQUE_BAIXO" | "ESTOQUE_ZERADO" | "DEVOLUCAO_PENDENTE" | "INTEGRACAO_COM_ERRO";
+export type TipoPrioridade =
+  | "ORCAMENTO_PARADO"
+  | "CLIENTE_INATIVO"
+  | "ESTOQUE_BAIXO"
+  | "ESTOQUE_ZERADO"
+  | "DEVOLUCAO_PENDENTE"
+  | "INTEGRACAO_COM_ERRO"
+  | "SUGESTAO_MODULO";
 
 export interface ItemPrioridade {
   tipo: TipoPrioridade;

@@ -4,7 +4,7 @@ import { Card, CardHeader } from "../ui/Card";
 import { Skeleton } from "../ui/Skeleton";
 import { Button } from "../ui/Button";
 import { Alert } from "../ui/Alert";
-import { ApiError, iaApi } from "../../lib/api";
+import { ApiError, empresaApi, iaApi } from "../../lib/api";
 import type { ItemPrioridade, TipoPrioridade } from "../../lib/api";
 
 const CORES_URGENCIA: Record<ItemPrioridade["urgencia"], string> = {
@@ -46,17 +46,39 @@ export function CentralPrioridadesCard() {
   const [carregandoResumo, setCarregandoResumo] = useState(false);
   const [erroResumo, setErroResumo] = useState<string | null>(null);
   const [limiteAtingido, setLimiteAtingido] = useState(false);
+  const [ativandoModulo, setAtivandoModulo] = useState<string | null>(null);
+  const [modulosAtivados, setModulosAtivados] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  function carregarPrioridades() {
     iaApi
       .prioridades()
       .then((r) => setItens(r.itens))
       .catch(() => setItens([]));
+  }
+
+  useEffect(() => {
+    carregarPrioridades();
     iaApi
       .capacidades()
       .then((r) => setTemResumoIA(r.capacidades.includes("resumo_prioridades")))
       .catch(() => setTemResumoIA(false));
   }, []);
+
+  // Ação rápida de verdade (não só um link) — a IA nunca ativa um módulo
+  // sozinha, só sugere; ativar continua sendo uma decisão humana explícita,
+  // um clique aqui.
+  async function ativarModulo(moduloId: string) {
+    setAtivandoModulo(moduloId);
+    try {
+      await empresaApi.alterarModulo(moduloId, true);
+      setModulosAtivados((atual) => new Set(atual).add(moduloId));
+    } catch {
+      // silencioso de propósito: o pior caso é o item continuar aparecendo,
+      // e o empresário pode ativar normalmente em Configurações.
+    } finally {
+      setAtivandoModulo(null);
+    }
+  }
 
   async function pedirResumo() {
     setErroResumo(null);
@@ -97,6 +119,33 @@ export function CentralPrioridadesCard() {
       <CardHeader titulo="O que precisa da sua atenção" descricao="As prioridades mais relevantes agora, calculadas a partir dos seus dados." />
       <ul className="mt-3 flex flex-col gap-2.5">
         {principais.map((item, indice) => {
+          if (item.tipo === "SUGESTAO_MODULO" && item.entidadeId) {
+            const moduloId = item.entidadeId;
+            const jaAtivado = modulosAtivados.has(moduloId);
+            return (
+              <li key={indice} className="flex items-start gap-3 rounded-lg p-2 -mx-2">
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${CORES_URGENCIA[item.urgencia]}`} aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink-900">{item.titulo}</p>
+                  <p className="text-sm text-ink-500">{item.descricao}</p>
+                </div>
+                {jaAtivado ? (
+                  <span className="mt-0.5 shrink-0 text-sm font-medium text-success-600 whitespace-nowrap">Ativado</span>
+                ) : (
+                  <Button
+                    tamanho="sm"
+                    variante="secundario"
+                    className="shrink-0"
+                    carregando={ativandoModulo === moduloId}
+                    onClick={() => ativarModulo(moduloId)}
+                  >
+                    Ativar
+                  </Button>
+                )}
+              </li>
+            );
+          }
+
           // Alguns tipos (estoque baixo/zerado, integração com erro) sempre
           // resolvem para uma rota fixa (não usam o id) — não têm
           // entidadeId, mas ainda assim precisam de um link. Corrige um caso

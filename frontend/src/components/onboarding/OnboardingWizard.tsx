@@ -1,9 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
+import { Textarea } from "../ui/Textarea";
+import { Alert } from "../ui/Alert";
 import { LogoSimbolo } from "../Logo";
 import { useAuth } from "../../context/AuthContext";
-import { empresaApi } from "../../lib/api";
+import { ApiError, empresaApi } from "../../lib/api";
+import type { PerfilOperacional } from "../../lib/api";
 
 const EXEMPLOS_PRODUTO = [
   "Portão",
@@ -132,11 +135,16 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizardProps) {
   const [indice, setIndice] = useState(passoInicial); // 0 = boas-vindas, 1-5 = passos, 6 = conclusão
   const [confirmacoesVistas, setConfirmacoesVistas] = useState<Record<number, boolean>>({});
-  // Pergunta feita só na tela de boas-vindas (passo 0) — não é um passo
-  // numerado novo (evitaria reindexar tudo que já depende de 1-5). Uma
-  // empresa que diz "só serviços" nunca precisa ver Estoque: desativa o
-  // módulo automaticamente ao avançar, sem telas extras nem checkboxes.
-  const [tipoNegocio, setTipoNegocio] = useState<"produtos" | "servicos" | "ambos" | null>(null);
+  // "Conte para o MOVA o que sua empresa faz" — pergunta feita só na tela de
+  // boas-vindas (passo 0), não é um passo numerado novo (evitaria reindexar
+  // tudo que já depende de 1-5). A descrição livre é interpretada (IA, ou
+  // heurística por palavra-chave se a IA não estiver configurada) e já ativa
+  // os módulos relevantes — o resumo aparece para o empresário confirmar
+  // antes de seguir, em linguagem simples, nunca como um formulário técnico.
+  const [faseInicial, setFaseInicial] = useState<"pergunta" | "interpretando" | "confirmacao">("pergunta");
+  const [descricaoNegocio, setDescricaoNegocio] = useState("");
+  const [perfilResultado, setPerfilResultado] = useState<PerfilOperacional | null>(null);
+  const [erroPerfil, setErroPerfil] = useState<string | null>(null);
   const navigate = useNavigate();
   const { empresa, atualizarEmpresa } = useAuth();
 
@@ -167,10 +175,28 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
 
   function avancar() {
     if (indice >= 1 && indice <= 5) concluirPasso(indice);
-    if (indice === 0 && tipoNegocio === "servicos" && !modoRevisao) {
-      empresaApi.alterarModulo("estoque", false).catch(() => {});
-    }
     setIndice((atual) => Math.min(atual + 1, 6));
+  }
+
+  // Chamado ao clicar "Vamos começar" na tela de boas-vindas. Se o campo foi
+  // deixado em branco, não força nada — só avança (mesmo comportamento de
+  // antes desta funcionalidade existir). Uma falha na interpretação nunca
+  // trava o onboarding: segue em frente com os módulos como já estavam.
+  async function confirmarDescricao() {
+    if (modoRevisao || !descricaoNegocio.trim()) {
+      avancar();
+      return;
+    }
+    setErroPerfil(null);
+    setFaseInicial("interpretando");
+    try {
+      const { perfilOperacional } = await empresaApi.definirPerfilOperacional(descricaoNegocio.trim());
+      setPerfilResultado(perfilOperacional);
+      setFaseInicial("confirmacao");
+    } catch (e) {
+      setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível configurar automaticamente agora.");
+      setFaseInicial("pergunta");
+    }
   }
 
   function voltar() {
@@ -244,45 +270,46 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
               progresso e você continua de onde parou.
             </p>
 
-            {!modoRevisao && (
+            {!modoRevisao && faseInicial !== "confirmacao" && (
               <div className="mt-5 text-left">
                 <p className="text-sm font-medium text-ink-700">Uma coisa rápida antes de começar:</p>
-                <p className="mt-1 text-sm text-ink-500">Seu negócio vende produtos, presta serviços, ou os dois?</p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {(
-                    [
-                      { valor: "produtos", rotulo: "Produtos" },
-                      { valor: "servicos", rotulo: "Serviços" },
-                      { valor: "ambos", rotulo: "Os dois" },
-                    ] as const
-                  ).map((opcao) => (
-                    <button
-                      key={opcao.valor}
-                      type="button"
-                      onClick={() => setTipoNegocio(opcao.valor)}
-                      className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                        tipoNegocio === opcao.valor
-                          ? "border-brand-600 bg-brand-50 text-brand-800"
-                          : "border-ink-200 text-ink-600 hover:bg-ink-50"
-                      }`}
-                    >
-                      {opcao.rotulo}
-                    </button>
-                  ))}
+                <p className="mt-1 text-sm text-ink-500">Conte para o MOVA o que sua empresa faz e o que ela vende ou oferece.</p>
+                <div className="mt-3">
+                  <Textarea
+                    rotulo="O que sua empresa faz e vende ou oferece"
+                    value={descricaoNegocio}
+                    onChange={(e) => setDescricaoNegocio(e.target.value)}
+                    placeholder='Ex: "Vendo ferramentas e máquinas para construção" ou "Faço limpeza de sofás, colchões e tapetes"'
+                    disabled={faseInicial === "interpretando"}
+                  />
                 </div>
-                {tipoNegocio === "servicos" && (
-                  <p className="mt-2 text-xs text-ink-500">
-                    Sem problema — o MOVA não vai te pedir para controlar estoque. Você pode ativar isso depois em
-                    Configurações, se precisar.
-                  </p>
+                {erroPerfil && (
+                  <div className="mt-2">
+                    <Alert tipo="erro">{erroPerfil}</Alert>
+                  </div>
                 )}
               </div>
             )}
 
+            {faseInicial === "confirmacao" && perfilResultado && (
+              <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4 text-left">
+                <p className="text-sm text-brand-900">
+                  Entendi! Vou configurar o MOVA para {perfilResultado.resumo}. Você pode alterar isso quando quiser em
+                  Configurações → Recursos do MOVA.
+                </p>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col items-center gap-3">
-              <Button onClick={avancar} className="w-full sm:w-auto">
-                Vamos começar
-              </Button>
+              {faseInicial === "confirmacao" ? (
+                <Button onClick={avancar} className="w-full sm:w-auto">
+                  Continuar
+                </Button>
+              ) : (
+                <Button onClick={confirmarDescricao} carregando={faseInicial === "interpretando"} className="w-full sm:w-auto">
+                  Vamos começar
+                </Button>
+              )}
               <button type="button" onClick={pularTourCompleto} className="text-sm font-medium text-ink-500 hover:text-ink-700">
                 Pular por enquanto
               </button>
