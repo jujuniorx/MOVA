@@ -609,7 +609,7 @@ function EditorVariacoes({ produtoId, variacoesAtuais }: { produtoId: string; va
                 </svg>
               </button>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input
                 rotulo="SKU (opcional)"
                 value={v.sku}
