@@ -336,6 +336,8 @@ export interface OrcamentoDetalhe {
   status: StatusOrcamento;
   criadoEm: string;
   atualizadoEm: string;
+  respondidoPeloClienteEm: string | null;
+  motivoRecusa: string | null;
   clienteId: string;
   cliente: Cliente;
   itens: ItemOrcamentoDetalhe[];
@@ -360,6 +362,7 @@ export interface OrcamentoPublico {
   desconto: string;
   total: string;
   status: StatusOrcamento;
+  respondidoPeloClienteEm: string | null;
   empresa: { nome: string; logoUrl: string | null; corPrimaria: string | null };
   cliente: { nome: string };
   itens: ItemOrcamentoPublico[];
@@ -408,6 +411,15 @@ export const orcamentosApi = {
     }),
 
   obterPublico: (id: string) => apiFetch<OrcamentoPublico>(`/orcamentos-publico/${id}`),
+
+  aprovarPublico: (id: string) =>
+    apiFetch<{ status: StatusOrcamento }>(`/orcamentos-publico/${id}/aprovar`, { method: "POST" }),
+
+  recusarPublico: (id: string, motivo?: string) =>
+    apiFetch<{ status: StatusOrcamento }>(`/orcamentos-publico/${id}/recusar`, {
+      method: "POST",
+      body: JSON.stringify({ motivo }),
+    }),
 };
 
 // Respostas às informações extras configuradas em CampoCliente, chaveadas
@@ -648,6 +660,7 @@ export type OrigemVenda = "MOVA" | "WHATSAPP" | "MERCADO_LIVRE" | "SITE_PROPRIO"
 export interface ItemVenda {
   id: string;
   produtoId: string;
+  variacaoId: string | null;
   nome: string;
   quantidade: string;
   precoUnitario: string;
@@ -697,6 +710,7 @@ export interface ItemPedido {
   precoUnitario: number;
   /** Liga este item a um Produto real do catálogo — só quando TODOS os itens têm isso o pedido pode virar venda. */
   produtoId?: string;
+  variacaoId?: string;
 }
 
 export interface Pedido {

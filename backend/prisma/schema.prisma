@@ -531,6 +531,13 @@ model Orcamento {
   criadoEm     DateTime        @default(now())
   atualizadoEm DateTime        @updatedAt
 
+  /// Preenchido só quando o PRÓPRIO CLIENTE aprova ou recusa pelo link
+  /// público (nunca quando a empresa muda o status manualmente) — distingue
+  /// "resposta real do cliente" de "a empresa também pode mudar status".
+  respondidoPeloClienteEm DateTime?
+  /// Motivo opcional que o cliente informa ao recusar pelo link público.
+  motivoRecusa            String?
+
   /// Etapa configurável (opcional) que a empresa aplicou a este orçamento —
   /// só rótulo/organização, nunca a fonte de verdade do status.
   etapaProcessoId String?
@@ -768,8 +775,14 @@ model ItemVenda {
   precoUnitario Decimal @db.Decimal(12, 2)
   subtotal      Decimal @db.Decimal(12, 2)
 
+  /// Variação vendida (opcional) — preço adicional já somado em
+  /// `precoUnitario` no momento da venda (snapshot). Sem relação Prisma de
+  /// propósito, mesmo padrão de ItemDevolucao.
+  variacaoId String?
+
   @@index([vendaId])
   @@index([produtoId])
+  @@index([variacaoId])
 }
 
 enum StatusPedido {

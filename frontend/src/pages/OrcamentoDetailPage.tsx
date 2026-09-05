@@ -234,6 +234,18 @@ export function OrcamentoDetailPage() {
           </div>
         </div>
 
+        {orcamento.respondidoPeloClienteEm && (
+          <div className="mt-3 border-t border-ink-100 pt-3">
+            <p className="text-sm text-ink-600">
+              O próprio cliente {orcamento.status === "APROVADO" ? "aprovou" : "recusou"} este orçamento pelo link
+              público em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(orcamento.respondidoPeloClienteEm))}.
+            </p>
+            {orcamento.motivoRecusa && (
+              <p className="mt-1 text-sm text-ink-600">Motivo informado: "{orcamento.motivoRecusa}"</p>
+            )}
+          </div>
+        )}
+
         {erroStatus && (
           <div className="mt-3">
             <Alert tipo="erro">{erroStatus}</Alert>
