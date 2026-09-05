@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Logo, LogoSimbolo } from "../Logo";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { BuscaGlobal } from "../busca/BuscaGlobal";
 import { useAuth } from "../../context/AuthContext";
 import { useModulos } from "../../context/ModulosContext";
 import { cn } from "../../lib/cn";
@@ -60,6 +61,15 @@ function IconeOperacoes() {
   );
 }
 
+function IconeBusca() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="7" />
+      <path strokeLinecap="round" d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
 function IconeMais() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -103,8 +113,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { moduloAtivo } = useModulos();
   const [maisAberto, setMaisAberto] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
   const location = useLocation();
   const caminhoAtual = location.pathname;
+
+  useEffect(() => {
+    function aoPressionarTecla(evento: KeyboardEvent) {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "k") {
+        evento.preventDefault();
+        setBuscaAberta(true);
+      }
+    }
+    document.addEventListener("keydown", aoPressionarTecla);
+    return () => document.removeEventListener("keydown", aoPressionarTecla);
+  }, []);
 
   const itensNav = itensNavBase.filter((item) => !item.requerAlgumModulo || item.requerAlgumModulo.some(moduloAtivo));
   // No mobile só cabem 2 destinos + a ação central — o restante entra em "Mais".
@@ -136,7 +158,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <div className="px-4">
+        <div className="flex flex-col gap-2 px-4">
           <Link
             to="/orcamentos/novo"
             className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-colors duration-150 hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:bg-[#176d66] dark:hover:bg-[#12544f]"
@@ -144,6 +166,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <IconeMais />
             Novo orçamento
           </Link>
+          <button
+            type="button"
+            onClick={() => setBuscaAberta(true)}
+            className="flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-sm text-ink-500 transition-colors duration-150 hover:bg-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
+            <IconeBusca />
+            <span className="flex-1 text-left">Buscar...</span>
+            <kbd className="rounded border border-ink-200 px-1.5 py-0.5 text-xs text-ink-400">Ctrl K</kbd>
+          </button>
         </div>
 
         <nav className="mt-6 flex flex-1 flex-col gap-1 px-4">
@@ -198,6 +229,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Link>
 
           <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBuscaAberta(true)}
+              aria-label="Buscar"
+              className="rounded-lg border border-ink-200 p-2 text-ink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <IconeBusca />
+            </button>
             <ThemeToggle />
             <button
               type="button"
@@ -338,6 +377,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
         aoConfirmar={sair}
         aoCancelar={() => setConfirmandoSaida(false)}
       />
+
+      <BuscaGlobal aberto={buscaAberta} aoFechar={() => setBuscaAberta(false)} />
 
       <span className="hidden">
         <LogoSimbolo />

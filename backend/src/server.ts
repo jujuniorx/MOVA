@@ -22,6 +22,7 @@ import iaRoutes from "./routes/ia.routes";
 import publicoRoutes from "./routes/publico.routes";
 import adminAuthRoutes from "./routes/adminAuth.routes";
 import adminRoutes from "./routes/admin.routes";
+import buscaRoutes from "./routes/busca.routes";
 
 const app = express();
 
@@ -100,6 +101,7 @@ app.use("/whatsapp", whatsappRoutes);
 app.get("/webhooks/whatsapp", verificarWebhookWhatsApp);
 app.post("/webhooks/whatsapp", limiteWebhook, receberWebhookWhatsApp);
 app.use("/ia", iaRoutes);
+app.use("/busca", buscaRoutes);
 app.use("/publico", publicoRoutes);
 // Autenticação administrativa (login) fica fora do middleware de admin — o
 // resto de /admin/api exige um token administrativo válido.
