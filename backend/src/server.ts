@@ -11,7 +11,7 @@ import empresaRoutes from "./routes/empresa.routes";
 import planosRoutes from "./routes/planos.routes";
 import indicacaoRoutes from "./routes/indicacao.routes";
 import assinaturasRoutes from "./routes/assinaturas.routes";
-import webhooksRoutes from "./routes/webhooks.routes";
+import webhooksRoutes, { limiteWebhook } from "./routes/webhooks.routes";
 import estoqueRoutes from "./routes/estoque.routes";
 import vendasRoutes from "./routes/vendas.routes";
 import pedidosRoutes from "./routes/pedidos.routes";
@@ -39,7 +39,18 @@ app.use(helmet());
 app.use(cors({ origin: FRONTEND_URL ?? "http://localhost:5173" }));
 // Limite elevado (padrão do Express é 100kb) para acomodar áudio em base64
 // no cadastro de catálogo por voz — ainda assim finito, nunca "sem limite".
-app.use(express.json({ limit: "15mb" }));
+// `verify` guarda os bytes crus do corpo em req.rawBody: necessário para
+// validar a assinatura HMAC do webhook do WhatsApp (X-Hub-Signature-256),
+// que é calculada sobre o payload exato recebido, não sobre o JSON já
+// reserializado pelo parser.
+app.use(
+  express.json({
+    limit: "15mb",
+    verify: (req: Request, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // express.json() lança um SyntaxError (não uma rejeição HTTP) quando o corpo
 // não é JSON válido — sem este handler, ele cairia no error handler genérico
@@ -87,7 +98,7 @@ app.get("/integracoes/mercado-livre/callback", callbackMercadoLivre);
 app.use("/integracoes", integracoesRoutes);
 app.use("/whatsapp", whatsappRoutes);
 app.get("/webhooks/whatsapp", verificarWebhookWhatsApp);
-app.post("/webhooks/whatsapp", receberWebhookWhatsApp);
+app.post("/webhooks/whatsapp", limiteWebhook, receberWebhookWhatsApp);
 app.use("/ia", iaRoutes);
 app.use("/publico", publicoRoutes);
 // Autenticação administrativa (login) fica fora do middleware de admin — o

@@ -84,7 +84,20 @@ export async function renovarToken(refreshToken: string): Promise<TokenMercadoLi
  * um loop infinito. Usado para SEMPRE buscar o estado real de um recurso
  * (pedido, anúncio) em vez de confiar no corpo de uma notificação de webhook.
  */
+// Só aceita um caminho relativo "limpo" (ex.: "/orders/2000012345678"). Isso é
+// concatenado diretamente com ML_API_BASE antes de virar uma URL real — sem
+// essa validação, um `caminho` como "@evil.com/x" faria o parser de URL
+// tratar "api.mercadolibre.com" como userinfo e "evil.com" como o host de
+// verdade, vazando o access_token (no header Authorization) para fora do
+// Mercado Livre. `caminho` pode vir de uma notificação de webhook (dado
+// externo, não confiável) — nunca deve ser aceito sem essa checagem.
+const CAMINHO_RECURSO_SEGURO = /^\/[A-Za-z0-9/_-]+$/;
+
 export async function buscarRecursoAutenticado(caminho: string, accessToken: string): Promise<unknown> {
+  if (!CAMINHO_RECURSO_SEGURO.test(caminho) || caminho.startsWith("//")) {
+    throw new Error(`Caminho de recurso do Mercado Livre inválido — requisição rejeitada por segurança.`);
+  }
+
   const maxTentativas = 3;
   let ultimoErro: unknown;
 

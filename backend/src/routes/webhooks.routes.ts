@@ -18,6 +18,10 @@ const limiteWebhook = rateLimit({
   message: { erro: "Muitas requisições." },
 });
 
+// Exportado para uso também pelo webhook do WhatsApp em server.ts, que fica
+// fora deste router (precisa do corpo cru para validar assinatura HMAC).
+export { limiteWebhook };
+
 router.post("/mercado-pago", limiteWebhook, async (req, res) => {
   const segredo = process.env.MP_WEBHOOK_SECRET;
   if (!segredo) {
@@ -111,15 +115,24 @@ router.post("/mercado-pago", limiteWebhook, async (req, res) => {
 // registra a notificação antes de responder; o processamento de verdade
 // (buscar o recurso na API, aplicar no MOVA) roda depois, sem bloquear a
 // resposta — o ML exige resposta rápida e penaliza handlers lentos.
+// Mesma validação de `caminho` usada em `buscarRecursoAutenticado` — aplicada
+// aqui também, na borda, para nunca persistir (nem permitir reprocessamento
+// futuro de) um `resource` malformado vindo de fora.
+const RECURSO_MERCADO_LIVRE_SEGURO = /^\/[A-Za-z0-9/_-]+$/;
+
 router.post("/mercado-livre", limiteWebhook, async (req, res) => {
   const { _id, resource, topic, user_id } = req.body ?? {};
   if (!_id || !resource || !topic || !user_id) {
     return res.status(400).send();
   }
+  if (typeof resource !== "string" || !RECURSO_MERCADO_LIVRE_SEGURO.test(resource) || resource.startsWith("//")) {
+    console.error("Webhook Mercado Livre: campo 'resource' com formato inválido — rejeitado.");
+    return res.status(400).send();
+  }
 
   try {
     await prisma.notificacaoMercadoLivre.create({
-      data: { notificacaoId: String(_id), topico: String(topic), recursoId: String(resource) },
+      data: { notificacaoId: String(_id), topico: String(topic), recursoId: String(resource), mlUserId: String(user_id) },
     });
   } catch (erro) {
     if (erro && typeof erro === "object" && "code" in erro && (erro as { code?: string }).code === "P2002") {

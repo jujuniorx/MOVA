@@ -3,6 +3,8 @@
 // ambiente, o envio retorna erro controlado — nunca simula um envio
 // bem-sucedido que não aconteceu de verdade.
 
+import crypto from "crypto";
+
 function obterCredenciais(): { accessToken: string; phoneNumberId: string } {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -37,4 +39,28 @@ export async function enviarMensagemTexto(paraTelefone: string, texto: string): 
     const corpo = await resposta.text();
     throw new Error(`Falha ao enviar mensagem via WhatsApp (status ${resposta.status}): ${corpo}`);
   }
+}
+
+/**
+ * Valida a assinatura HMAC-SHA256 que a Meta envia no header
+ * `X-Hub-Signature-256` de todo webhook (formato `sha256=<hex>`), calculada
+ * sobre os bytes exatos do corpo recebido usando o App Secret do app da
+ * Meta. Sem isso, qualquer POST bem formado seria aceito como se viesse do
+ * WhatsApp de verdade — comparação em tempo constante para não vazar
+ * informação por timing. Retorna false (nunca lança) para qualquer entrada
+ * inesperada; o chamador trata "não validado" como "rejeitar", sempre.
+ */
+export function validarAssinaturaWebhookWhatsApp(rawBody: Buffer | undefined, assinaturaHeader: string | undefined): boolean {
+  const segredo = process.env.WHATSAPP_APP_SECRET;
+  if (!segredo || !rawBody || !assinaturaHeader) return false;
+
+  const [algoritmo, hashRecebido] = assinaturaHeader.split("=");
+  if (algoritmo !== "sha256" || !hashRecebido) return false;
+
+  const hashCalculado = crypto.createHmac("sha256", segredo).update(rawBody).digest("hex");
+
+  const bufferCalculado = Buffer.from(hashCalculado, "hex");
+  const bufferRecebido = Buffer.from(hashRecebido, "hex");
+  if (bufferCalculado.length !== bufferRecebido.length) return false;
+  return crypto.timingSafeEqual(bufferCalculado, bufferRecebido);
 }

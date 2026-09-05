@@ -13,6 +13,34 @@ export async function garantirLocalPadrao(tx: TransacaoPrisma, empresaId: string
   return criado.id;
 }
 
+/**
+ * Decrementa (ou soma um delta negativo) com a checagem de saldo suficiente
+ * embutida NA PRÓPRIA cláusula WHERE do UPDATE — não "lê, confere em JS,
+ * depois escreve". Isso fecha a janela de corrida entre duas requisições
+ * simultâneas pedindo, cada uma, o saldo inteiro disponível: o Postgres
+ * serializa as duas escritas por lock de linha, e a segunda reavalia o WHERE
+ * já contra o valor decrementado pela primeira — só uma das duas pode
+ * passar. `updateMany` (não `update`) é o que permite combinar o filtro de
+ * suficiência com a igualdade de id numa única instrução atômica.
+ */
+async function decrementarComGuarda(
+  tx: TransacaoPrisma,
+  estoqueId: string,
+  campo: "quantidade" | "quantidadeQuarentena",
+  quantidade: number,
+  mensagemErro: string,
+  camposExtra: Prisma.EstoqueLocalUpdateManyMutationInput = {}
+) {
+  const resultado = await tx.estoqueLocal.updateMany({
+    where: { id: estoqueId, [campo]: { gte: quantidade } },
+    data: { [campo]: { decrement: quantidade }, ...camposExtra },
+  });
+  if (resultado.count === 0) {
+    throw new EstoqueInsuficienteError(mensagemErro);
+  }
+  return tx.estoqueLocal.findUniqueOrThrow({ where: { id: estoqueId } });
+}
+
 async function obterOuCriarEstoqueLocal(
   tx: TransacaoPrisma,
   produtoId: string,
@@ -59,13 +87,13 @@ export async function registrarMovimentacao(tx: TransacaoPrisma, input: Registra
     if (input.quantidade <= 0) throw new Error("Quantidade da transferência deve ser positiva.");
 
     const origem = await obterOuCriarEstoqueLocal(tx, input.produtoId, variacaoId, input.localOrigemId);
-    if (origem.quantidade < input.quantidade) {
-      throw new EstoqueInsuficienteError(`Saldo insuficiente no local de origem (disponível: ${origem.quantidade}).`);
-    }
-    await tx.estoqueLocal.update({
-      where: { id: origem.id },
-      data: { quantidade: { decrement: input.quantidade } },
-    });
+    await decrementarComGuarda(
+      tx,
+      origem.id,
+      "quantidade",
+      input.quantidade,
+      `Saldo insuficiente no local de origem (disponível: ${origem.quantidade}).`
+    );
     const destino = await obterOuCriarEstoqueLocal(tx, input.produtoId, variacaoId, input.localId);
     const destinoAtualizado = await tx.estoqueLocal.update({
       where: { id: destino.id },
@@ -91,63 +119,84 @@ export async function registrarMovimentacao(tx: TransacaoPrisma, input: Registra
   }
 
   const estoque = await obterOuCriarEstoqueLocal(tx, input.produtoId, variacaoId, input.localId);
-  let dataUpdate: Prisma.EstoqueLocalUpdateInput = {};
+  let atualizado;
 
   switch (input.tipo) {
     case "ENTRADA": {
       if (input.quantidade <= 0) throw new Error("Quantidade de entrada deve ser positiva.");
-      dataUpdate = { quantidade: { increment: input.quantidade } };
+      atualizado = await tx.estoqueLocal.update({
+        where: { id: estoque.id },
+        data: { quantidade: { increment: input.quantidade } },
+      });
       break;
     }
     case "SAIDA": {
       if (input.quantidade <= 0) throw new Error("Quantidade de saída deve ser positiva.");
-      if (estoque.quantidade < input.quantidade) {
-        throw new EstoqueInsuficienteError(`Saldo insuficiente (disponível: ${estoque.quantidade}, solicitado: ${input.quantidade}).`);
-      }
-      dataUpdate = { quantidade: { decrement: input.quantidade } };
+      atualizado = await decrementarComGuarda(
+        tx,
+        estoque.id,
+        "quantidade",
+        input.quantidade,
+        `Saldo insuficiente (disponível: ${estoque.quantidade}, solicitado: ${input.quantidade}).`
+      );
       break;
     }
     case "AJUSTE": {
       // Delta assinado: pode zerar/corrigir saldo para mais ou para menos,
-      // mas nunca deixa o resultado negativo.
-      const resultado = estoque.quantidade + input.quantidade;
-      if (resultado < 0) {
-        throw new EstoqueInsuficienteError("Ajuste resultaria em saldo negativo — não permitido.");
+      // mas nunca deixa o resultado negativo. Delta negativo usa a mesma
+      // guarda atômica das saídas; delta positivo é um increment simples.
+      if (input.quantidade < 0) {
+        atualizado = await decrementarComGuarda(
+          tx,
+          estoque.id,
+          "quantidade",
+          -input.quantidade,
+          "Ajuste resultaria em saldo negativo — não permitido."
+        );
+      } else {
+        atualizado = await tx.estoqueLocal.update({
+          where: { id: estoque.id },
+          data: { quantidade: { increment: input.quantidade } },
+        });
       }
-      dataUpdate = { quantidade: resultado };
       break;
     }
     case "DEVOLUCAO_QUARENTENA": {
       // Devolução NUNCA soma em `quantidade` (disponível) — só na quarentena.
       if (input.quantidade <= 0) throw new Error("Quantidade da devolução deve ser positiva.");
-      dataUpdate = { quantidadeQuarentena: { increment: input.quantidade } };
+      atualizado = await tx.estoqueLocal.update({
+        where: { id: estoque.id },
+        data: { quantidadeQuarentena: { increment: input.quantidade } },
+      });
       break;
     }
     case "DEVOLUCAO_LIBERADA": {
       if (input.quantidade <= 0) throw new Error("Quantidade liberada deve ser positiva.");
-      if (estoque.quantidadeQuarentena < input.quantidade) {
-        throw new EstoqueInsuficienteError("Quantidade em quarentena insuficiente para liberar.");
-      }
-      dataUpdate = {
-        quantidadeQuarentena: { decrement: input.quantidade },
-        quantidade: { increment: input.quantidade },
-      };
+      atualizado = await decrementarComGuarda(
+        tx,
+        estoque.id,
+        "quantidadeQuarentena",
+        input.quantidade,
+        "Quantidade em quarentena insuficiente para liberar.",
+        { quantidade: { increment: input.quantidade } }
+      );
       break;
     }
     case "DEVOLUCAO_AVARIA": {
       if (input.quantidade <= 0) throw new Error("Quantidade de baixa por avaria deve ser positiva.");
-      if (estoque.quantidadeQuarentena < input.quantidade) {
-        throw new EstoqueInsuficienteError("Quantidade em quarentena insuficiente para dar baixa.");
-      }
       // Write-off definitivo: sai da quarentena e NUNCA entra em disponível.
-      dataUpdate = { quantidadeQuarentena: { decrement: input.quantidade } };
+      atualizado = await decrementarComGuarda(
+        tx,
+        estoque.id,
+        "quantidadeQuarentena",
+        input.quantidade,
+        "Quantidade em quarentena insuficiente para dar baixa."
+      );
       break;
     }
     default:
       throw new Error(`Tipo de movimentação não tratado: ${input.tipo}`);
   }
-
-  const atualizado = await tx.estoqueLocal.update({ where: { id: estoque.id }, data: dataUpdate });
 
   return tx.movimentacaoEstoque.create({
     data: {
