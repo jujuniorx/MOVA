@@ -132,6 +132,11 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizardProps) {
   const [indice, setIndice] = useState(passoInicial); // 0 = boas-vindas, 1-5 = passos, 6 = conclusão
   const [confirmacoesVistas, setConfirmacoesVistas] = useState<Record<number, boolean>>({});
+  // Pergunta feita só na tela de boas-vindas (passo 0) — não é um passo
+  // numerado novo (evitaria reindexar tudo que já depende de 1-5). Uma
+  // empresa que diz "só serviços" nunca precisa ver Estoque: desativa o
+  // módulo automaticamente ao avançar, sem telas extras nem checkboxes.
+  const [tipoNegocio, setTipoNegocio] = useState<"produtos" | "servicos" | "ambos" | null>(null);
   const navigate = useNavigate();
   const { empresa, atualizarEmpresa } = useAuth();
 
@@ -162,6 +167,9 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
 
   function avancar() {
     if (indice >= 1 && indice <= 5) concluirPasso(indice);
+    if (indice === 0 && tipoNegocio === "servicos" && !modoRevisao) {
+      empresaApi.alterarModulo("estoque", false).catch(() => {});
+    }
     setIndice((atual) => Math.min(atual + 1, 6));
   }
 
@@ -235,6 +243,42 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
               São 5 passos rápidos. Você pode sair a qualquer momento — a gente guarda seu
               progresso e você continua de onde parou.
             </p>
+
+            {!modoRevisao && (
+              <div className="mt-5 text-left">
+                <p className="text-sm font-medium text-ink-700">Uma coisa rápida antes de começar:</p>
+                <p className="mt-1 text-sm text-ink-500">Seu negócio vende produtos, presta serviços, ou os dois?</p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {(
+                    [
+                      { valor: "produtos", rotulo: "Produtos" },
+                      { valor: "servicos", rotulo: "Serviços" },
+                      { valor: "ambos", rotulo: "Os dois" },
+                    ] as const
+                  ).map((opcao) => (
+                    <button
+                      key={opcao.valor}
+                      type="button"
+                      onClick={() => setTipoNegocio(opcao.valor)}
+                      className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                        tipoNegocio === opcao.valor
+                          ? "border-brand-600 bg-brand-50 text-brand-800"
+                          : "border-ink-200 text-ink-600 hover:bg-ink-50"
+                      }`}
+                    >
+                      {opcao.rotulo}
+                    </button>
+                  ))}
+                </div>
+                {tipoNegocio === "servicos" && (
+                  <p className="mt-2 text-xs text-ink-500">
+                    Sem problema — o MOVA não vai te pedir para controlar estoque. Você pode ativar isso depois em
+                    Configurações, se precisar.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col items-center gap-3">
               <Button onClick={avancar} className="w-full sm:w-auto">
                 Vamos começar

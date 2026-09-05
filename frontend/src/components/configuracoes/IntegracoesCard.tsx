@@ -6,9 +6,11 @@ import { Alert } from "../ui/Alert";
 import { ApiError, integracoesApi, whatsappApi } from "../../lib/api";
 import type { StatusMercadoLivre, StatusWhatsApp, NotificacaoMercadoLivre } from "../../lib/api";
 import { useModulos } from "../../context/ModulosContext";
+import { useAuth } from "../../context/AuthContext";
 
 export function IntegracoesCard() {
   const { moduloAtivo } = useModulos();
+  const { empresa } = useAuth();
   const mercadoLivreAtivo = moduloAtivo("mercadolivre");
   const whatsappAtivo = moduloAtivo("whatsapp");
   const [ml, setMl] = useState<StatusMercadoLivre | null>(null);
@@ -38,7 +40,11 @@ export function IntegracoesCard() {
       .status()
       .then((r) => {
         setWa(r);
-        setNumeroWa(r.conta?.numeroTelefone ?? "");
+        // O MOVA já sabe o telefone/WhatsApp da empresa (cadastrado em "Minha
+        // empresa") — só pergunta de novo se realmente não houver conta
+        // conectada ainda, e mesmo assim já vem preenchido, nunca em branco
+        // à toa.
+        setNumeroWa(r.conta?.numeroTelefone ?? empresa?.whatsapp ?? empresa?.telefone ?? "");
       })
       .catch(() => setWa(null));
   }

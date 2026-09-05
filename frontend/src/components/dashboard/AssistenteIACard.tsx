@@ -17,7 +17,6 @@ const ROTULOS: Partial<Record<CapacidadeIA, string>> = {
   clientes_top: "Quem são meus melhores clientes?",
   rascunhar_mensagem_cliente: "Rascunhar uma mensagem para um cliente",
   rascunhar_orcamento: "Rascunhar a descrição de um item de orçamento",
-  resumo_prioridades: "O que eu devo fazer agora?",
   analise_queda_vendas: "Por que minhas vendas caíram?",
 };
 
