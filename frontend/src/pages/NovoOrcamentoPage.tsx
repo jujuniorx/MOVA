@@ -20,6 +20,7 @@ type ValoresCampos = Record<string, string | string[]>;
 interface LinhaItem {
   chave: string;
   produtoId: string;
+  variacaoId?: string;
   nome: string;
   quantidade: string;
   precoUnitario: string;
@@ -233,6 +234,19 @@ export function NovoOrcamentoPage() {
     );
   }
 
+  function atualizarVariacao(chave: string, variacaoId: string) {
+    setItens((atual) =>
+      atual.map((item) => {
+        if (item.chave !== chave) return item;
+        const produto = produtoDoItem(item.produtoId);
+        const variacao = produto?.variacoes.find((v) => v.id === variacaoId);
+        const nomeBase = variacao ? `${produto!.nome} — ${variacao.nome}` : (produto?.nome ?? item.nome);
+        const precoBase = produto ? Number(produto.preco) + Number(variacao?.precoAdicional ?? 0) : Number(item.precoUnitario);
+        return { ...item, variacaoId: variacaoId || undefined, nome: nomeBase, precoUnitario: String(precoBase) };
+      })
+    );
+  }
+
   function atualizarValorCampo(itemChave: string, campoId: string, valor: string) {
     setItens((atual) =>
       atual.map((item) =>
@@ -322,6 +336,7 @@ export function NovoOrcamentoPage() {
       desconto: Number(desconto) || 0,
       itens: itens.map((item) => ({
         produtoId: item.produtoId,
+        variacaoId: item.variacaoId,
         quantidade: Number(item.quantidade),
         precoUnitario: Number(item.precoUnitario),
         valoresCampos: montarValoresCamposParaEnvio(item),
@@ -484,6 +499,7 @@ export function NovoOrcamentoPage() {
               {itens.map((item) => {
                 const produto = produtoDoItem(item.produtoId);
                 const campos = produto?.campos ?? [];
+                const variacoesAtivas = produto?.variacoes.filter((v) => v.ativa) ?? [];
 
                 return (
                   <li
@@ -503,6 +519,23 @@ export function NovoOrcamentoPage() {
                         </svg>
                       </button>
                     </div>
+
+                    {variacoesAtivas.length > 0 && (
+                      <div className="mt-3">
+                        <Select
+                          rotulo="Variação"
+                          value={item.variacaoId ?? ""}
+                          onChange={(evento) => atualizarVariacao(item.chave, evento.target.value)}
+                        >
+                          <option value="">Sem variação</option>
+                          {variacoesAtivas.map((variacao) => (
+                            <option key={variacao.id} value={variacao.id}>
+                              {variacao.nome}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
 
                     <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       <Input

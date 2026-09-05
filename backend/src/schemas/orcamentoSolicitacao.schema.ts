@@ -14,6 +14,7 @@ const valorCampoInputSchema = z.object({
 // produto, nunca algo que o visitante possa influenciar.
 const itemSolicitacaoSchema = z.object({
   produtoId: z.string().uuid("ID de produto inválido."),
+  variacaoId: z.string().uuid("ID de variação inválido.").optional(),
   quantidade: z
     .number({ error: "Quantidade deve ser um número." })
     .positive("Quantidade deve ser maior que zero.")

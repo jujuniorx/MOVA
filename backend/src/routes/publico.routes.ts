@@ -197,6 +197,7 @@ router.post("/:slug/orcamentos", limiteSolicitacao, async (req, res) => {
         itens: {
           create: preparo.itens.map((item) => ({
             produtoId: item.produtoId,
+            variacaoId: item.variacaoId,
             nome: item.nome,
             quantidade: item.quantidade,
             precoUnitario: item.precoUnitario,

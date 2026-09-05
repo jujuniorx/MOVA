@@ -19,6 +19,7 @@ router.use(autenticar);
 
 export interface ItemPreparado {
   produtoId: string;
+  variacaoId?: string;
   nome: string;
   quantidade: Prisma.Decimal;
   precoUnitario: Prisma.Decimal;
@@ -27,7 +28,7 @@ export interface ItemPreparado {
 }
 
 type ProdutoComCampos = Prisma.ProdutoGetPayload<{
-  include: { campos: { include: { opcoes: true } } };
+  include: { campos: { include: { opcoes: true } }; variacoes: true };
 }>;
 
 /**
@@ -115,7 +116,7 @@ export async function prepararItens(
 
   const produtos = await prisma.produto.findMany({
     where: { id: { in: produtoIds }, empresaId },
-    include: { campos: { include: { opcoes: true } } },
+    include: { campos: { include: { opcoes: true } }, variacoes: true },
   });
   const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
 
@@ -128,19 +129,36 @@ export async function prepararItens(
       return { erro: "Um ou mais produtos/serviços selecionados não estão disponíveis." };
     }
 
+    // A variação, se informada, precisa pertencer a ESTE produto (e portanto
+    // já implicitamente a esta empresa, já que `produto` só veio da busca
+    // acima filtrada por empresaId) e estar ativa — nunca confia em preço
+    // nenhum vindo do frontend para ela, o adicional sempre vem do cadastro
+    // real da variação.
+    let variacao: ProdutoComCampos["variacoes"][number] | undefined;
+    if (item.variacaoId !== undefined) {
+      variacao = produto.variacoes.find((v) => v.id === item.variacaoId);
+      if (!variacao || !variacao.ativa) {
+        return { erro: `Variação selecionada para "${produto.nome}" não está disponível.` };
+      }
+    }
+
     const resultadoDetalhes = resolverDetalhesItem(produto, item.valoresCampos);
     if ("erro" in resultadoDetalhes) {
       return { erro: resultadoDetalhes.erro };
     }
 
+    const precoBase = produto.preco.plus(variacao?.precoAdicional ?? 0);
     const precoUnitario =
-      item.precoUnitario !== undefined ? new Prisma.Decimal(item.precoUnitario) : produto.preco;
+      item.precoUnitario !== undefined ? new Prisma.Decimal(item.precoUnitario) : precoBase;
     const quantidade = new Prisma.Decimal(item.quantidade);
     const subtotal = quantidade.times(precoUnitario).toDecimalPlaces(2);
 
+    const nomeBase = variacao ? `${produto.nome} — ${variacao.nome}` : produto.nome;
+
     itens.push({
       produtoId: produto.id,
-      nome: item.nome ?? produto.nome,
+      variacaoId: variacao?.id,
+      nome: item.nome ?? nomeBase,
       quantidade,
       precoUnitario,
       subtotal,
@@ -213,6 +231,7 @@ router.post("/", async (req, res) => {
         itens: {
           create: preparo.itens.map((item) => ({
             produtoId: item.produtoId,
+            variacaoId: item.variacaoId,
             nome: item.nome,
             quantidade: item.quantidade,
             precoUnitario: item.precoUnitario,
@@ -408,6 +427,7 @@ router.put("/:id", async (req, res) => {
           itens: {
             create: preparo.itens.map((item) => ({
               produtoId: item.produtoId,
+              variacaoId: item.variacaoId,
               nome: item.nome,
               quantidade: item.quantidade,
               precoUnitario: item.precoUnitario,

@@ -11,6 +11,7 @@ const valorCampoFormSchema = z.object({
 
 export const itemFormSchema = z.object({
   produtoId: z.string().uuid(),
+  variacaoId: z.string().uuid().optional(),
   quantidade: z
     .number({ error: "Quantidade deve ser um número." })
     .positive("Quantidade deve ser maior que zero.")
