@@ -12,9 +12,11 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { AssistenteIACard } from "../components/dashboard/AssistenteIACard";
 import { CentralPrioridadesCard } from "../components/dashboard/CentralPrioridadesCard";
+import { Modal } from "../components/ui/Modal";
+import { PerfilOperacionalForm } from "../components/configuracoes/PerfilOperacionalCard";
 import { useAuth } from "../context/AuthContext";
 import { useModulos } from "../context/ModulosContext";
-import { ApiError, devolucoesApi, estoqueApi, orcamentosApi, vendasApi } from "../lib/api";
+import { ApiError, empresaApi, devolucoesApi, estoqueApi, orcamentosApi, vendasApi } from "../lib/api";
 import type { ResumoOrcamentos } from "../lib/api";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -73,6 +75,17 @@ export function DashboardPage() {
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
   const [passoOnboarding, setPassoOnboarding] = useState(0);
   const [resumoOperacoes, setResumoOperacoes] = useState<ResumoOperacoes | null>(null);
+  // null = ainda não sabemos; false = empresa nunca contou como trabalha.
+  // Convite só desaparece de vez quando isso vira true — não tem "dispensar".
+  const [perfilOperacionalDefinido, setPerfilOperacionalDefinido] = useState<boolean | null>(null);
+  const [mostrarPerfilOperacional, setMostrarPerfilOperacional] = useState(false);
+
+  useEffect(() => {
+    empresaApi
+      .obterPerfilOperacional()
+      .then((r) => setPerfilOperacionalDefinido(r.perfilOperacional !== null))
+      .catch(() => setPerfilOperacionalDefinido(true)); // falha ao checar: não insiste no convite
+  }, []);
 
   // Cada indicador só é buscado (e só aparece) se o módulo correspondente
   // estiver ativo — uma empresa sem Estoque nunca deve ver um card vazio de
@@ -158,6 +171,18 @@ export function DashboardPage() {
           </div>
           <Button variante="secundario" className="w-full sm:w-auto" onClick={continuarConfiguracao}>
             Continuar configuração →
+          </Button>
+        </Card>
+      )}
+
+      {perfilOperacionalDefinido === false && !mostrarOnboarding && (
+        <Card className="mt-4 flex flex-col gap-3 border-brand-200 bg-brand-50 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-brand-800">Personalize o MOVA para o seu negócio</p>
+            <p className="text-sm text-ink-600">Conte como sua empresa trabalha e o MOVA se adapta.</p>
+          </div>
+          <Button variante="secundario" className="w-full sm:w-auto" onClick={() => setMostrarPerfilOperacional(true)}>
+            Contar como minha empresa trabalha
           </Button>
         </Card>
       )}
@@ -311,6 +336,19 @@ export function DashboardPage() {
       {mostrarOnboarding && (
         <OnboardingWizard passoInicial={passoOnboarding} aoFechar={() => setMostrarOnboarding(false)} />
       )}
+
+      <Modal
+        titulo="Como sua empresa trabalha"
+        aberto={mostrarPerfilOperacional}
+        aoFechar={() => setMostrarPerfilOperacional(false)}
+      >
+        <PerfilOperacionalForm
+          aoConcluir={() => {
+            setPerfilOperacionalDefinido(true);
+            setMostrarPerfilOperacional(false);
+          }}
+        />
+      </Modal>
     </AppLayout>
   );
 }
