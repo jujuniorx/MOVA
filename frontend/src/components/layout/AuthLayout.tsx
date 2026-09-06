@@ -29,19 +29,16 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, legendaMobile = "Sua operação comercial em um só lugar" }: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh flex-col bg-ink-50">
-      <header className="border-b border-ink-200 bg-surface">
-        <div className="mx-auto flex max-w-6xl px-4 py-3.5 sm:px-6">
-          <Link
-            to="/"
-            className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-          >
-            <Logo />
-          </Link>
-        </div>
-      </header>
-
       <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-14">
         <div className="w-full max-w-sm">
+          <div className="mb-8 flex justify-center">
+            <Link
+              to="/"
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <Logo className="scale-125" />
+            </Link>
+          </div>
           <p className="mb-6 text-center text-sm text-ink-500">{legendaMobile}</p>
           {children}
         </div>
