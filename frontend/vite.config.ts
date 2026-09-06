@@ -9,6 +9,10 @@ export default defineConfig({
     port: 5173,
   },
   preview: {
-    allowedHosts: ['zesty-surprise-production-0d64.up.railway.app'],
+    allowedHosts: [
+      'zesty-surprise-production-0d64.up.railway.app',
+      'mova.tec.br',
+      'www.mova.tec.br',
+    ],
   },
 })
