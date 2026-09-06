@@ -48,10 +48,11 @@ app.use(
       // servidor-a-servidor) não são requisições de navegador sujeitas a
       // CORS — sempre permitidas aqui, sem afetar a proteção real, que é
       // aplicada pelo navegador com base neste header nas respostas.
-      if (!origin || frontendUrlsPermitidas.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Origem não permitida por CORS."));
+      // `callback(null, false)` — não `callback(new Error(...))` — é a forma
+      // correta de rejeitar aqui: nega os cabeçalhos de CORS sem virar um
+      // 500 de erro interno; o navegador é quem efetivamente bloqueia a
+      // resposta do lado do cliente por causa disso.
+      callback(null, !origin || frontendUrlsPermitidas.includes(origin));
     },
   })
 );
