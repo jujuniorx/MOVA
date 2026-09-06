@@ -12,7 +12,7 @@ import { clienteFormSchema } from "../../schemas/cliente.schema";
 import { formatarTelefone } from "../../lib/telefone";
 import { useToast } from "../../context/ToastContext";
 
-type CamposFormulario = "nome" | "telefone" | "whatsapp" | "email" | "observacoes";
+type CamposFormulario = "nome" | "telefone" | "whatsapp" | "email" | "observacoes" | "estagioCrm" | "motivoPerda" | "proximoContatoEm";
 
 interface ClienteFormModalProps {
   aberto: boolean;
@@ -21,7 +21,16 @@ interface ClienteFormModalProps {
   aoSalvar: (cliente: Cliente) => void;
 }
 
-const valoresIniciais = { nome: "", telefone: "", whatsapp: "", email: "", observacoes: "" };
+const valoresIniciais = {
+  nome: "",
+  telefone: "",
+  whatsapp: "",
+  email: "",
+  observacoes: "",
+  estagioCrm: "NOVO",
+  motivoPerda: "",
+  proximoContatoEm: "",
+};
 
 // Uma informação extra que a própria empresa configurou (em Configurações)
 // para perguntar de todo cliente — ex.: "Data de nascimento" numa clínica.
@@ -152,6 +161,9 @@ export function ClienteFormModal({
             whatsapp: clienteEmEdicao.whatsapp ?? "",
             email: clienteEmEdicao.email ?? "",
             observacoes: clienteEmEdicao.observacoes ?? "",
+            estagioCrm: clienteEmEdicao.estagioCrm,
+            motivoPerda: clienteEmEdicao.motivoPerda ?? "",
+            proximoContatoEm: clienteEmEdicao.proximoContatoEm ? clienteEmEdicao.proximoContatoEm.slice(0, 10) : "",
           }
         : valoresIniciais
     );
@@ -282,6 +294,38 @@ export function ClienteFormModal({
           onChange={(evento) => atualizarCampo("observacoes", evento.target.value)}
           erro={erros.observacoes}
         />
+
+        <div className="flex flex-col gap-4 border-t border-ink-100 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Acompanhamento (opcional)</p>
+          <Select
+            rotulo="Estágio"
+            value={valores.estagioCrm}
+            onChange={(evento) => atualizarCampo("estagioCrm", evento.target.value)}
+          >
+            <option value="NOVO">Novo</option>
+            <option value="EM_CONTATO">Em contato</option>
+            <option value="PROPOSTA">Proposta enviada</option>
+            <option value="GANHO">Ganho</option>
+            <option value="PERDIDO">Perdido</option>
+          </Select>
+
+          <Input
+            rotulo="Retornar em"
+            type="date"
+            dica="A Central de Prioridades avisa quando essa data chegar."
+            value={valores.proximoContatoEm}
+            onChange={(evento) => atualizarCampo("proximoContatoEm", evento.target.value)}
+          />
+
+          {valores.estagioCrm === "PERDIDO" && (
+            <Input
+              rotulo="Motivo da perda"
+              value={valores.motivoPerda}
+              onChange={(evento) => atualizarCampo("motivoPerda", evento.target.value)}
+              erro={erros.motivoPerda}
+            />
+          )}
+        </div>
 
         {camposEmpresa.length > 0 && (
           <div className="flex flex-col gap-4 border-t border-ink-100 pt-4">

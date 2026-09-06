@@ -12,6 +12,7 @@ import { PaginaPublicaCard } from "../components/configuracoes/PaginaPublicaCard
 import { IntegracoesCard } from "../components/configuracoes/IntegracoesCard";
 import { CamposClienteCard } from "../components/configuracoes/CamposClienteCard";
 import { MemoriaEmpresaCard } from "../components/configuracoes/MemoriaEmpresaCard";
+import { PerfilTrabalhoCard } from "../components/configuracoes/PerfilTrabalhoCard";
 import { ProcessoOrcamentoCard } from "../components/configuracoes/ProcessoOrcamentoCard";
 import { ModulosCard } from "../components/configuracoes/ModulosCard";
 import { useAuth } from "../context/AuthContext";
@@ -245,6 +246,8 @@ export function ConfiguracoesPage() {
           <CamposClienteCard />
 
           <MemoriaEmpresaCard />
+
+          <PerfilTrabalhoCard />
 
           <IntegracoesCard />
 

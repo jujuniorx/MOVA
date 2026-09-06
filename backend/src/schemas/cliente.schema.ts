@@ -17,6 +17,14 @@ const camposPersonalizadosOpcional = z
   .refine((valor) => JSON.stringify(valor).length <= 20000, "Informações personalizadas muito longas.")
   .optional();
 
+// CRM leve — todos opcionais de propósito: uma empresa que não usa CRM nunca
+// precisa preencher nada disso e o comportamento continua o mesmo de antes.
+const estagioCrmOpcional = z.enum(["NOVO", "EM_CONTATO", "PROPOSTA", "GANHO", "PERDIDO"]).optional();
+const proximoContatoEmOpcional = z.preprocess(
+  paraUndefinedSeVazio,
+  z.coerce.date().optional()
+);
+
 export const clienteCreateSchema = z.object({
   nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres.").max(120),
   telefone: stringOpcional(20),
@@ -24,6 +32,10 @@ export const clienteCreateSchema = z.object({
   email: emailOpcional,
   observacoes: stringOpcional(1000),
   camposPersonalizados: camposPersonalizadosOpcional,
+  estagioCrm: estagioCrmOpcional,
+  origem: stringOpcional(60),
+  motivoPerda: stringOpcional(300),
+  proximoContatoEm: proximoContatoEmOpcional,
 });
 
 export const clienteUpdateSchema = clienteCreateSchema

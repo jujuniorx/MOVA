@@ -16,6 +16,7 @@ const CORES_URGENCIA: Record<ItemPrioridade["urgencia"], string> = {
 const LINK_POR_TIPO: Partial<Record<TipoPrioridade, (entidadeId: string) => string>> = {
   ORCAMENTO_PARADO: (id) => `/orcamentos/${id}`,
   CLIENTE_INATIVO: (id) => `/clientes?abrir=${id}`,
+  CONTATO_AGUARDANDO_RETORNO: (id) => `/clientes?abrir=${id}`,
   DEVOLUCAO_PENDENTE: () => `/operacoes?aba=devolucoes`,
   ESTOQUE_BAIXO: () => `/operacoes?aba=estoque`,
   ESTOQUE_ZERADO: () => `/operacoes?aba=estoque`,
@@ -27,6 +28,7 @@ const LINK_POR_TIPO: Partial<Record<TipoPrioridade, (entidadeId: string) => stri
 const ACAO_POR_TIPO: Partial<Record<TipoPrioridade, string>> = {
   ORCAMENTO_PARADO: "Ver orçamento",
   CLIENTE_INATIVO: "Ver clientes",
+  CONTATO_AGUARDANDO_RETORNO: "Ver cliente",
   DEVOLUCAO_PENDENTE: "Ver devolução",
   ESTOQUE_BAIXO: "Ver estoque",
   ESTOQUE_ZERADO: "Ver estoque",

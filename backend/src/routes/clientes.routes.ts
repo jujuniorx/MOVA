@@ -342,18 +342,29 @@ router.patch("/:id", async (req, res) => {
   }
 
   try {
-    const atualizacao = await prisma.cliente.updateMany({
-      where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
-      data: resultado.data,
+    const empresaId = req.usuario!.empresaId;
+    const anterior = await prisma.cliente.findFirst({
+      where: { id: idResultado.data, empresaId },
+      select: { estagioCrm: true },
     });
-
-    if (atualizacao.count === 0) {
+    if (!anterior) {
       return res.status(404).json({ erro: "Cliente não encontrado." });
     }
 
-    const cliente = await prisma.cliente.findFirst({
-      where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
+    const cliente = await prisma.cliente.update({
+      where: { id: idResultado.data },
+      data: resultado.data,
     });
+
+    if (resultado.data.estagioCrm && resultado.data.estagioCrm !== anterior.estagioCrm) {
+      registrarEvento({
+        empresaId,
+        tipo: "CLIENTE_ESTAGIO_ALTERADO",
+        entidadeTipo: "Cliente",
+        entidadeId: cliente.id,
+        descricao: `Estágio de ${cliente.nome} alterado para ${resultado.data.estagioCrm}${cliente.motivoPerda ? `: "${cliente.motivoPerda}"` : "."}`,
+      }).catch((e) => console.error("Erro ao registrar histórico:", e));
+    }
 
     return res.json(cliente);
   } catch (erro) {

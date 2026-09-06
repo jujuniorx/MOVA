@@ -68,7 +68,7 @@ const limiteChamadaIA = rateLimit({
 // consultas normais ao banco desta empresa, não uma chamada ao provedor.
 router.get("/prioridades", async (req, res) => {
   try {
-    const itens = await detectarPrioridades(req.usuario!.empresaId);
+    const itens = await detectarPrioridades(req.usuario!.empresaId, req.usuario!.id);
     return res.json({ itens });
   } catch (erro) {
     console.error("Erro ao detectar prioridades:", erro);

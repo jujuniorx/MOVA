@@ -302,6 +302,7 @@ export interface ItemPrioridade {
   tipo:
     | "ORCAMENTO_PARADO"
     | "CLIENTE_INATIVO"
+    | "CONTATO_AGUARDANDO_RETORNO"
     | "ESTOQUE_BAIXO"
     | "ESTOQUE_ZERADO"
     | "DEVOLUCAO_PENDENTE"
@@ -313,6 +314,22 @@ export interface ItemPrioridade {
   urgencia: "alta" | "media" | "baixa";
 }
 
+// Conecta cada tipo de prioridade às áreas de foco do perfil de trabalho
+// (ver AREAS_FOCO_VALIDAS) — é isto que torna a central adaptativa por
+// USUÁRIO, não só por empresa: um item cuja tag bate com o que a pessoa
+// disse que faz sobe na lista, sem que a lista fique diferente por empresa
+// nem que nenhum item deixe de existir para os outros usuários.
+const TAGS_POR_TIPO_PRIORIDADE: Record<ItemPrioridade["tipo"], AreaFoco[]> = {
+  ORCAMENTO_PARADO: ["atendimento", "crm", "vendas", "orcamentos"],
+  CLIENTE_INATIVO: ["atendimento", "crm"],
+  CONTATO_AGUARDANDO_RETORNO: ["atendimento", "crm"],
+  ESTOQUE_BAIXO: ["estoque"],
+  ESTOQUE_ZERADO: ["estoque"],
+  DEVOLUCAO_PENDENTE: ["vendas", "estoque"],
+  INTEGRACAO_COM_ERRO: ["estrategico"],
+  SUGESTAO_MODULO: ["estrategico"],
+};
+
 /**
  * Central de prioridades ("o que precisa da sua atenção?") — 100%
  * determinístico, ZERO chamada de IA aqui. Cada item vem de uma consulta
@@ -320,8 +337,13 @@ export interface ItemPrioridade {
  * porque não há geração de texto livre nesta função. A capacidade
  * "resumo_prioridades" usa esta lista como contexto só para ORGANIZAR e
  * EXPLICAR em linguagem simples — nunca para inventar item novo.
+ *
+ * `usuarioId` é opcional e só PERSONALIZA A ORDEM (itens relevantes para as
+ * áreas de foco do usuário sobem na lista) — nunca filtra nem esconde item
+ * nenhum, e o comportamento sem `usuarioId` (ou sem perfilTrabalho definido)
+ * continua idêntico ao de antes desta capacidade existir.
  */
-export async function detectarPrioridades(empresaId: string): Promise<ItemPrioridade[]> {
+export async function detectarPrioridades(empresaId: string, usuarioId?: string): Promise<ItemPrioridade[]> {
   const itens: ItemPrioridade[] = [];
   const agora = new Date();
   const diasAtras = (n: number) => new Date(agora.getTime() - n * 24 * 60 * 60 * 1000);
@@ -365,6 +387,26 @@ export async function detectarPrioridades(empresaId: string): Promise<ItemPriori
       descricao: "Já foi cliente antes — pode valer a pena reativar o contato.",
       entidadeId: c.id,
       urgencia: "baixa",
+    });
+  }
+
+  // CRM leve (estagioCrm/proximoContatoEm em Cliente): só aparece para quem
+  // de fato usa esses campos — a maioria dos clientes nunca terá
+  // proximoContatoEm preenchido, então isto nunca gera itens "do nada".
+  const contatosParaRetornar = await prisma.cliente.findMany({
+    where: { empresaId, proximoContatoEm: { lte: agora }, estagioCrm: { notIn: ["GANHO", "PERDIDO"] } },
+    select: { id: true, nome: true, proximoContatoEm: true },
+    orderBy: { proximoContatoEm: "asc" },
+    take: 10,
+  });
+  for (const c of contatosParaRetornar) {
+    const diasAtraso = Math.floor((agora.getTime() - c.proximoContatoEm!.getTime()) / 86_400_000);
+    itens.push({
+      tipo: "CONTATO_AGUARDANDO_RETORNO",
+      titulo: `Retornar para ${c.nome}`,
+      descricao: diasAtraso > 0 ? `Retorno estava previsto há ${diasAtraso} dia(s).` : "Retorno previsto para hoje.",
+      entidadeId: c.id,
+      urgencia: diasAtraso >= 2 ? "alta" : "media",
     });
   }
 
@@ -433,7 +475,26 @@ export async function detectarPrioridades(empresaId: string): Promise<ItemPriori
   }
 
   const pesoUrgencia: Record<ItemPrioridade["urgencia"], number> = { alta: 0, media: 1, baixa: 2 };
-  return itens.sort((a, b) => pesoUrgencia[a.urgencia] - pesoUrgencia[b.urgencia]);
+
+  // Personalização por usuário: só reordena (nunca remove item). Dentro do
+  // mesmo nível de urgência, o que bate com a área de foco da pessoa vem
+  // primeiro — sem usuarioId, ou sem perfilTrabalho definido, o resultado é
+  // idêntico ao comportamento anterior (só por urgência).
+  let areasFoco: AreaFoco[] = [];
+  if (usuarioId) {
+    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { perfilTrabalho: true } });
+    const perfil = usuario?.perfilTrabalho as { areasFoco?: string[] } | null;
+    if (Array.isArray(perfil?.areasFoco)) {
+      areasFoco = perfil.areasFoco.filter((tag): tag is AreaFoco => (AREAS_FOCO_VALIDAS as readonly string[]).includes(tag));
+    }
+  }
+  const relevantePara = (item: ItemPrioridade) => (areasFoco.length === 0 ? 0 : TAGS_POR_TIPO_PRIORIDADE[item.tipo].some((t) => areasFoco.includes(t)) ? 0 : 1);
+
+  return itens.sort((a, b) => {
+    const relevancia = relevantePara(a) - relevantePara(b);
+    if (relevancia !== 0) return relevancia;
+    return pesoUrgencia[a.urgencia] - pesoUrgencia[b.urgencia];
+  });
 }
 
 async function buscarDadosQuedaVendas(empresaId: string) {
@@ -779,6 +840,113 @@ export function interpretarPerfilHeuristico(descricaoNegocio: string, ofertaDesc
     trabalhaComServicos,
     modulosSugeridos: [...new Set(modulosSugeridos)].filter((id) => MODULOS_SUGERIVEIS.includes(id)),
     resumo,
+  };
+}
+
+// Vocabulário fixo e universal de "áreas de foco" do trabalho de uma pessoa
+// dentro da empresa — o motor adaptativo combina essas tags em vez de ramificar
+// por profissão (nunca "if cargo === 'secretaria'"). As mesmas tags também
+// classificam cada tipo de item da Central de Prioridades (ver
+// TAGS_POR_TIPO_PRIORIDADE), o que é o que de fato conecta "como a pessoa
+// trabalha" a "o que aparece primeiro para ela".
+export const AREAS_FOCO_VALIDAS = [
+  "atendimento",
+  "crm",
+  "agenda",
+  "vendas",
+  "orcamentos",
+  "estoque",
+  "producao",
+  "financeiro",
+  "marketing",
+  "relatorios",
+  "execucao_campo",
+  "estrategico",
+] as const;
+
+export type AreaFoco = (typeof AREAS_FOCO_VALIDAS)[number];
+
+const perfilTrabalhoSchema = z.object({
+  areasFoco: z.array(z.string()).max(AREAS_FOCO_VALIDAS.length),
+  resumo: z.string().trim().min(1).max(300),
+});
+
+export type PerfilTrabalhoInterpretado = z.infer<typeof perfilTrabalhoSchema>;
+
+/**
+ * Interpreta a descrição livre que a PESSOA deu sobre o próprio trabalho
+ * dentro da empresa ("conte como você trabalha") — não confundir com
+ * interpretarPerfilNegocio, que é sobre a EMPRESA. Mesma garantia de
+ * segurança: nunca aceita uma área de foco fora do vocabulário fixo, mesmo
+ * que a IA tente inventar uma.
+ */
+export async function interpretarPerfilTrabalho(descricaoLivre: string): Promise<ChamadaIAResultado> {
+  const prompt = `Uma pessoa que trabalha em uma empresa (usando o MOVA, um sistema de gestão) descreveu com as próprias palavras o que ela faz no dia a dia:
+
+"${descricaoLivre}"
+
+Áreas de foco possíveis (escolha só as que fazem sentido para o que essa pessoa descreveu, com base no texto — nunca escolha todas por padrão, nunca invente uma área fora desta lista):
+- "atendimento": responder clientes, WhatsApp, primeiro contato
+- "crm": acompanhar contatos/leads, estágio de negociação, motivo de perda
+- "agenda": compromissos, horários, visitas marcadas
+- "vendas": fechar vendas, acompanhar resultado comercial
+- "orcamentos": montar e enviar orçamentos
+- "estoque": controlar produtos, entradas e saídas
+- "producao": fabricar, montar, executar um projeto/produção
+- "financeiro": pagamentos, despesas, contas
+- "marketing": campanhas, redes sociais, influenciadores
+- "relatorios": montar relatórios e análises
+- "execucao_campo": ir até o cliente, prestar serviço no local
+- "estrategico": visão geral do negócio, decisões, resultados da empresa
+
+Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
+{"areasFoco": ["tag1", "tag2", ...], "resumo": "uma frase curta e simples, em português, descrevendo o que essa pessoa faz — sem jargão técnico, sem mencionar 'tag' ou nomes de sistema"}`;
+
+  const modelo = MODELOS[PROVEDOR].simples;
+  return chamarModelo(modelo, prompt, 400);
+}
+
+export function validarPerfilTrabalho(texto: string): PerfilTrabalhoInterpretado {
+  const validado = extrairJsonSeguro(texto, perfilTrabalhoSchema);
+  return {
+    ...validado,
+    areasFoco: [...new Set(validado.areasFoco)].filter((tag): tag is AreaFoco => (AREAS_FOCO_VALIDAS as readonly string[]).includes(tag)),
+  };
+}
+
+/**
+ * Heurística simples (sem IA) para quando o provedor não está configurado —
+ * mesma filosofia de interpretarPerfilHeuristico: nunca deixa a experiência
+ * travada por falta de infraestrutura de IA, sempre rotulada como heurística.
+ */
+export function interpretarPerfilTrabalhoHeuristico(descricaoLivre: string): PerfilTrabalhoInterpretado {
+  const texto = removerDiacriticos(descricaoLivre.toLowerCase().normalize("NFD"));
+
+  const PALAVRAS_POR_AREA: Record<AreaFoco, string[]> = {
+    atendimento: ["atend", "whatsapp", "responder", "mensagem", "contato inicial"],
+    crm: ["crm", "lead", "estagio", "negociacao", "conversao", "perda"],
+    agenda: ["agenda", "compromisso", "horario", "marcar", "agendamento"],
+    vendas: ["venda", "vendo", "fechamento", "comercial"],
+    orcamentos: ["orcamento", "proposta"],
+    estoque: ["estoque", "produto em estoque", "entrada e saida"],
+    producao: ["producao", "fabrico", "fabrica", "monto", "montagem", "projeto"],
+    financeiro: ["financeiro", "pagamento", "despesa", "conta a pagar", "conta a receber"],
+    marketing: ["marketing", "campanha", "influenciador", "rede social", "instagram", "seguidor"],
+    relatorios: ["relatorio", "planilha", "analise"],
+    execucao_campo: ["visita", "campo", "instalacao", "vou ate", "atendimento presencial", "domicilio"],
+    estrategico: ["decisao", "resultado", "indicador", "visao geral", "gestao do negocio"],
+  };
+
+  const areasFoco = AREAS_FOCO_VALIDAS.filter((area) => PALAVRAS_POR_AREA[area].some((p) => texto.includes(p)));
+
+  // Descrição ambígua/incomum: nunca deixa vazio (uma lista vazia faria a
+  // Central de Prioridades parecer "quebrada", sem nada priorizado) — cai
+  // num recorte amplo e seguro que serve para qualquer papel operacional.
+  const areasFinal = areasFoco.length > 0 ? areasFoco : (["atendimento", "agenda"] as AreaFoco[]);
+
+  return {
+    areasFoco: areasFinal,
+    resumo: "seu dia a dia, do jeito que você descreveu",
   };
 }
 

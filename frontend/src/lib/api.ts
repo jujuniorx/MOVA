@@ -241,6 +241,55 @@ export const empresaApi = {
     }),
 };
 
+// Perfil de trabalho da PESSOA ("conte como você trabalha") — não confundir
+// com perfilOperacionalApi acima, que é sobre a EMPRESA. Mesmo fluxo em dois
+// passos: "interpretar" nunca grava nada; "confirmar" é quem aplica.
+export const usuariosApi = {
+  obterPerfilTrabalho: () =>
+    apiFetch<{ cargo: string | null; perfilTrabalho: PerfilTrabalho | null }>("/usuarios/me/perfil-trabalho"),
+
+  atualizarCargo: (cargo: string | null) =>
+    apiFetch<void>("/usuarios/me/cargo", { method: "PATCH", body: JSON.stringify({ cargo }) }),
+
+  interpretarPerfilTrabalho: (descricaoLivre: string) =>
+    apiFetch<PerfilTrabalhoRascunho>("/usuarios/me/perfil-trabalho/interpretar", {
+      method: "POST",
+      body: JSON.stringify({ descricaoLivre }),
+    }),
+
+  confirmarPerfilTrabalho: (rascunho: PerfilTrabalhoRascunho) =>
+    apiFetch<{ perfilTrabalho: PerfilTrabalho }>("/usuarios/me/perfil-trabalho/confirmar", {
+      method: "POST",
+      body: JSON.stringify(rascunho),
+    }),
+};
+
+export interface PerfilTrabalhoRascunho {
+  descricaoLivre: string;
+  areasFoco: string[];
+  resumo: string;
+  origem: "ia" | "heuristica";
+}
+
+export interface PerfilTrabalho extends PerfilTrabalhoRascunho {
+  geradoEm: string;
+}
+
+export const AREAS_FOCO_ROTULOS: Record<string, string> = {
+  atendimento: "Atendimento",
+  crm: "CRM / contatos",
+  agenda: "Agenda",
+  vendas: "Vendas",
+  orcamentos: "Orçamentos",
+  estoque: "Estoque",
+  producao: "Produção",
+  financeiro: "Financeiro",
+  marketing: "Marketing",
+  relatorios: "Relatórios",
+  execucao_campo: "Execução em campo",
+  estrategico: "Visão estratégica",
+};
+
 export interface PerfilOperacionalRascunho {
   descricaoNegocio: string;
   ofertaDescricao: string | null;
@@ -469,6 +518,8 @@ export interface EventoHistorico {
   criadoEm: string;
 }
 
+export type EstagioCrm = "NOVO" | "EM_CONTATO" | "PROPOSTA" | "GANHO" | "PERDIDO";
+
 export interface Cliente {
   id: string;
   nome: string;
@@ -479,6 +530,9 @@ export interface Cliente {
   criadoEm: string;
   atualizadoEm: string;
   camposPersonalizados: ValoresCamposCliente | null;
+  estagioCrm: EstagioCrm;
+  motivoPerda: string | null;
+  proximoContatoEm: string | null;
 }
 
 export interface ClienteInput {
@@ -488,6 +542,9 @@ export interface ClienteInput {
   email?: string;
   observacoes?: string;
   camposPersonalizados?: ValoresCamposCliente;
+  estagioCrm?: EstagioCrm;
+  motivoPerda?: string;
+  proximoContatoEm?: string;
 }
 
 // --- Importação inteligente (CSV) -----------------------------------------
@@ -964,6 +1021,7 @@ export interface CatalogoEstruturadoResposta {
 export type TipoPrioridade =
   | "ORCAMENTO_PARADO"
   | "CLIENTE_INATIVO"
+  | "CONTATO_AGUARDANDO_RETORNO"
   | "ESTOQUE_BAIXO"
   | "ESTOQUE_ZERADO"
   | "DEVOLUCAO_PENDENTE"

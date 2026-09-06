@@ -192,6 +192,21 @@ model Usuario {
   /// ainda não tenha expirado. Null = nunca trocou a senha desde o cadastro.
   senhaAlteradaEm DateTime?
 
+  /// Rótulo livre da função da pessoa na empresa (ex.: "Proprietário",
+  /// "Secretária", "Vendedor") — só exibição/contexto, nunca usado para
+  /// autorização de acesso a dados (isso continua sendo só empresaId).
+  cargo String?
+
+  /// Perfil de trabalho do usuário ("como você trabalha"), estruturado pela
+  /// mesma lógica de interpretar→mostrar→confirmar→aplicar do Perfil
+  /// Operacional da empresa (ver perfilOperacional em Empresa) — só que numa
+  /// granularidade de PESSOA, não de empresa. Formato:
+  /// { descricaoLivre, areasFoco: string[] (tags de um vocabulário fixo, ver
+  /// AREAS_FOCO_VALIDAS em lib/perfilTrabalho.ts), resumo, origem: "ia"|"heuristica",
+  /// geradoEm }. Usado só para PERSONALIZAR (ordenar prioridades, por
+  /// exemplo) — nunca para restringir acesso a dado nenhum.
+  perfilTrabalho Json?
+
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
@@ -221,6 +236,17 @@ model TokenRecuperacaoSenha {
   @@index([usuarioId])
 }
 
+/// Estágio de relacionamento comercial (CRM) — opcional e informativo, nunca
+/// obrigatório: uma empresa que não usa CRM simplesmente nunca define isso e
+/// nada muda para ela. NOVO é o padrão para todo cliente criado.
+enum EstagioCrm {
+  NOVO
+  EM_CONTATO
+  PROPOSTA
+  GANHO
+  PERDIDO
+}
+
 model Cliente {
   id           String   @id @default(uuid())
   nome         String
@@ -230,6 +256,15 @@ model Cliente {
   observacoes  String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  /// Campos de CRM — todos opcionais, pensados para o caso de uso de
+  /// atendimento/follow-up (seções 11 e 12 do motor adaptativo), mas nunca
+  /// exigidos de quem não usa esse fluxo. `proximoContatoEm` é o que a
+  /// Central de Prioridades usa para sugerir "contato aguardando retorno".
+  estagioCrm       EstagioCrm @default(NOVO)
+  origem           String?
+  motivoPerda      String?
+  proximoContatoEm DateTime?
 
   /// Respostas às informações extras que a empresa configurou em
   /// CampoCliente, guardadas como { "<campoId>": valor } — mesmo padrão de
