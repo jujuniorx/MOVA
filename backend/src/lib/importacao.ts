@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { parseCsv } from "./csv";
 import type { CsvParseado } from "./csv";
 import { MAX_LINHAS_IMPORTACAO } from "../schemas/importacao.schema";
@@ -15,18 +16,83 @@ export interface ArquivoDecodificado extends CsvParseado {
 
 export class ArquivoImportacaoError extends Error {}
 
-/** Decodifica o base64, faz o parse do CSV e aplica o limite de linhas — nunca trunca silenciosamente. */
-export function decodificarArquivo(arquivoBase64: string): ArquivoDecodificado {
-  let texto: string;
+// Um .xlsx é, por baixo, um .zip — todo arquivo ZIP começa com essa
+// assinatura de 4 bytes. Detectar pelo conteúdo (em vez de confiar só na
+// extensão do nome do arquivo) evita que um CSV renomeado para .xlsx (ou
+// vice-versa) seja interpretado do jeito errado.
+const ASSINATURA_ZIP = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
+function pareceXlsx(bytes: Buffer): boolean {
+  return bytes.length >= 4 && bytes.subarray(0, 4).equals(ASSINATURA_ZIP);
+}
+
+async function parseXlsx(bytes: Buffer): Promise<CsvParseado> {
+  const workbook = new ExcelJS.Workbook();
   try {
-    texto = Buffer.from(arquivoBase64, "base64").toString("utf-8");
+    // exceljs empacota sua própria declaração de tipo global `Buffer extends
+    // ArrayBuffer` (pensada para quem não tem @types/node instalado), que
+    // conflita por merge de declaração com o Buffer real do Node em
+    // @types/node recentes — só um problema de tipagem em tempo de
+    // compilação; em tempo de execução um Buffer normal do Node é aceito.
+    await workbook.xlsx.load(bytes as any);
   } catch {
-    throw new ArquivoImportacaoError("Não foi possível ler o arquivo. Envie um CSV válido.");
+    throw new ArquivoImportacaoError("Não foi possível ler esta planilha. Verifique se o arquivo .xlsx não está corrompido.");
   }
 
-  const parseado = parseCsv(texto);
+  const planilha = workbook.worksheets[0];
+  if (!planilha) {
+    throw new ArquivoImportacaoError("A planilha não tem nenhuma aba com dados.");
+  }
+
+  const linhasBrutas: string[][] = [];
+  planilha.eachRow((linha) => {
+    const valores: string[] = [];
+    // ExcelJS usa índice de coluna baseado em 1 e `row.values[0]` é sempre
+    // vazio — por isso o slice(1) — e cada célula pode ser um valor rico
+    // (fórmula, hyperlink, data) que precisa virar texto simples aqui, já
+    // que o resto do pipeline de importação só entende string[][].
+    const celulas = Array.isArray(linha.values) ? linha.values.slice(1) : [];
+    for (const valor of celulas) {
+      valores.push(celulaParaTexto(valor));
+    }
+    linhasBrutas.push(valores);
+  });
+
+  const linhasNaoVazias = linhasBrutas.filter((linha) => linha.some((v) => v.trim() !== ""));
+  if (linhasNaoVazias.length === 0) {
+    return { cabecalho: [], linhas: [] };
+  }
+
+  const [cabecalho, ...linhas] = linhasNaoVazias;
+  return { cabecalho: cabecalho.map((c) => c.trim()), linhas };
+}
+
+function celulaParaTexto(valor: unknown): string {
+  if (valor === null || valor === undefined) return "";
+  if (valor instanceof Date) return valor.toLocaleDateString("pt-BR");
+  if (typeof valor === "object") {
+    // Célula com fórmula: usa o resultado calculado, nunca a fórmula em si.
+    if ("result" in (valor as Record<string, unknown>)) return celulaParaTexto((valor as { result: unknown }).result);
+    // Célula com hyperlink: usa o texto exibido, não a URL.
+    if ("text" in (valor as Record<string, unknown>)) return String((valor as { text: unknown }).text ?? "");
+    return "";
+  }
+  return String(valor);
+}
+
+/** Decodifica o base64 (CSV ou XLSX, detectado pelo conteúdo), faz o parse e aplica o limite de linhas — nunca trunca silenciosamente. */
+export async function decodificarArquivo(arquivoBase64: string): Promise<ArquivoDecodificado> {
+  let bytes: Buffer;
+  try {
+    bytes = Buffer.from(arquivoBase64, "base64");
+  } catch {
+    throw new ArquivoImportacaoError("Não foi possível ler o arquivo. Envie um CSV ou XLSX válido.");
+  }
+
+  const parseado = pareceXlsx(bytes) ? await parseXlsx(bytes) : parseCsv(bytes.toString("utf-8"));
+
   if (parseado.cabecalho.length === 0) {
-    throw new ArquivoImportacaoError("O arquivo está vazio ou não é um CSV válido.");
+    throw new ArquivoImportacaoError("O arquivo está vazio ou não é um CSV/XLSX válido.");
   }
   if (parseado.linhas.length > MAX_LINHAS_IMPORTACAO) {
     throw new ArquivoImportacaoError(

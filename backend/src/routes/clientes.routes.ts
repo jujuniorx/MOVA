@@ -95,7 +95,7 @@ router.post("/importar/preview", async (req, res) => {
     return res.status(400).json({ erro: resultado.error.issues[0].message });
   }
   try {
-    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+    const arquivo = await decodificarArquivo(resultado.data.arquivoBase64);
     return res.json({
       colunas: arquivo.cabecalho,
       linhasExemplo: arquivo.linhas.slice(0, 10),
@@ -121,7 +121,7 @@ router.post("/importar/confirmar", async (req, res) => {
   const { mapeamento, importarDuplicados } = resultado.data;
 
   try {
-    const arquivo = decodificarArquivo(resultado.data.arquivoBase64);
+    const arquivo = await decodificarArquivo(resultado.data.arquivoBase64);
 
     const empresa = await prisma.empresa.findUniqueOrThrow({
       where: { id: empresaId },

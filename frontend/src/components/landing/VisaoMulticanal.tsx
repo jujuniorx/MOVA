@@ -1,15 +1,15 @@
-const CANAIS = ["Mercado Livre", "WhatsApp", "Site próprio"];
-const DEPOIS_DO_MOVA = ["Pedido / Venda", "Estoque", "Cliente", "Histórico / Relatórios"];
+const CANAIS = ["Mercado Livre", "WhatsApp"];
+const DEPOIS_DO_MOVA = ["Pedido / Venda", "Estoque", "Cliente", "Histórico"];
 
 export function VisaoMulticanal() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl text-center">
-        <span className="inline-flex items-center rounded-full bg-warning-100 px-3 py-1 text-xs font-medium text-warning-700">
-          Visão futura — planejado
+        <span className="inline-flex items-center rounded-full bg-success-100 px-3 py-1 text-xs font-medium text-success-700">
+          Disponível hoje
         </span>
         <h2 className="mt-4 text-2xl font-bold text-ink-900 sm:text-3xl">Você vende onde quiser</h2>
-        <p className="mt-3 text-ink-600">O MOVA organiza o que acontece por trás, não importa o canal.</p>
+        <p className="mt-3 text-ink-600">O MOVA já organiza o que acontece por trás, não importa o canal.</p>
       </div>
 
       <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-6">

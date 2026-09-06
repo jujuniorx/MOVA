@@ -96,12 +96,30 @@ router.patch("/:id/status", async (req, res) => {
   }
 
   try {
+    const empresaId = req.usuario!.empresaId;
     const atualizacao = await prisma.pedido.updateMany({
-      where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
+      where: { id: idResultado.data, empresaId, status: { not: status } },
       data: { status },
     });
-    if (atualizacao.count === 0) return res.status(404).json({ erro: "Pedido não encontrado." });
-    const pedido = await prisma.pedido.findFirst({ where: { id: idResultado.data, empresaId: req.usuario!.empresaId } });
+    const pedido = await prisma.pedido.findFirst({ where: { id: idResultado.data, empresaId } });
+    if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+
+    if (atualizacao.count > 0) {
+      const DESCRICAO_POR_STATUS: Record<string, string> = {
+        RECEBIDO: `Pedido #${pedido.numero} voltou para recebido.`,
+        PROCESSANDO: `Pedido #${pedido.numero} entrou em processamento.`,
+        CONFIRMADO: `Pedido #${pedido.numero} confirmado.`,
+        CANCELADO: `Pedido #${pedido.numero} cancelado.`,
+      };
+      registrarEvento({
+        empresaId,
+        tipo: "PEDIDO_STATUS_ALTERADO",
+        entidadeTipo: "Pedido",
+        entidadeId: pedido.id,
+        descricao: DESCRICAO_POR_STATUS[status] ?? `Pedido #${pedido.numero} teve o status alterado para ${status}.`,
+      }).catch((e) => console.error("Erro ao registrar histórico:", e));
+    }
+
     return res.json(pedido);
   } catch (erro) {
     console.error("Erro ao atualizar status do pedido:", erro);

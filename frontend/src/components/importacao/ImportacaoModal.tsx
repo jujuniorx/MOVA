@@ -113,15 +113,21 @@ export function ImportacaoModal({ aberto, aoFechar, aoConcluir, titulo, apiPrevi
         {etapa === "upload" && (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink-600">
-              Envie um arquivo CSV (exportado do Excel, Google Planilhas ou outro sistema). Limite de 2MB e 2000 linhas
-              por importação.
+              Envie um arquivo CSV ou XLSX (exportado do Excel, Google Planilhas ou outro sistema). Limite de 2MB e
+              2000 linhas por importação.
             </p>
             <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink-200 px-6 py-10 text-center hover:border-brand-400 hover:bg-brand-50/40">
               <svg viewBox="0 0 24 24" className="h-8 w-8 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
               </svg>
-              <span className="text-sm font-medium text-ink-700">Clique para escolher um arquivo .csv</span>
-              <input type="file" accept=".csv,text/csv" className="hidden" onChange={aoSelecionarArquivo} disabled={carregando} />
+              <span className="text-sm font-medium text-ink-700">Clique para escolher um arquivo .csv ou .xlsx</span>
+              <input
+                type="file"
+                accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="hidden"
+                onChange={aoSelecionarArquivo}
+                disabled={carregando}
+              />
             </label>
             {carregando && <p className="text-center text-sm text-ink-500">Lendo arquivo...</p>}
           </div>

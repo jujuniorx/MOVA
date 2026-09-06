@@ -50,36 +50,41 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <Card>
-        <h1 className="mb-6 text-lg font-semibold text-ink-900">Entrar na sua conta</h1>
+        <h1 className="text-lg font-semibold text-ink-900">Entrar na sua conta</h1>
+        <p className="mt-1 text-sm text-ink-500">Acesse o painel da sua empresa no MOVA.</p>
 
-        <form className="flex flex-col gap-4" onSubmit={aoEnviar} noValidate>
+        <form className="mt-6 flex flex-col gap-5" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
 
-          <Input
-            rotulo="E-mail"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(evento) => setEmail(evento.target.value)}
-            erro={erros.email}
-            required
-          />
+          <div className="flex flex-col gap-4">
+            <Input
+              rotulo="E-mail"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(evento) => setEmail(evento.target.value)}
+              erro={erros.email}
+              required
+            />
 
-          <Input
-            rotulo="Senha"
-            type="password"
-            autoComplete="current-password"
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
-            erro={erros.senha}
-            required
-          />
+            <div className="flex flex-col gap-1.5">
+              <Input
+                rotulo="Senha"
+                type="password"
+                autoComplete="current-password"
+                value={senha}
+                onChange={(evento) => setSenha(evento.target.value)}
+                erro={erros.senha}
+                required
+              />
+              <Link to="/esqueci-senha" className="self-end text-sm font-medium text-brand-600 hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
+          </div>
 
-          <Link to="/esqueci-senha" className="-mt-2 self-end text-sm font-medium text-brand-600 hover:underline">
-            Esqueci minha senha
-          </Link>
-
-          <Button type="submit" carregando={enviando} className="mt-2 w-full">
+          <Button type="submit" carregando={enviando} className="w-full">
             Entrar
           </Button>
         </form>

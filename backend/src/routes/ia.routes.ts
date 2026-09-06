@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { prisma } from "../lib/prisma";
 import { autenticar } from "../middleware/auth.middleware";
 import { perguntarIASchema, transcreverAudioSchema, estimarPrecoImagemSchema } from "../schemas/ia.schema";
@@ -48,6 +49,20 @@ const router = Router();
 router.use(autenticar);
 router.use(exigirModulo("ia"));
 
+// O limite geral da API (por IP) não protege contra uma empresa autenticada
+// disparando várias chamadas caras de IA em rajada dentro da própria cota
+// mensal — a cota por plano é o controle de custo real, mas ainda vale um
+// limite de rajada por empresa nas rotas que de fato chamam o provedor de IA
+// (não em /prioridades e /capacidades, que nunca chamam o provedor).
+const limiteChamadaIA = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.usuario!.empresaId,
+  message: { erro: "Muitas solicitações de IA em pouco tempo. Tente novamente em alguns minutos." },
+});
+
 // Central "o que precisa da sua atenção?" — 100% determinístico (ver
 // lib/ia.ts::detectarPrioridades), sem custo de IA e sem gate de plano: são
 // consultas normais ao banco desta empresa, não uma chamada ao provedor.
@@ -74,7 +89,7 @@ router.get("/capacidades", async (req, res) => {
 // exclusão de dados) — só lê um recorte mínimo de dados já resumido e
 // devolve texto. Qualquer ação sensível continua exigindo confirmação
 // explícita do usuário em uma tela normal do MOVA.
-router.post("/perguntar", async (req, res) => {
+router.post("/perguntar", limiteChamadaIA, async (req, res) => {
   const resultado = perguntarIASchema.safeParse(req.body);
   if (!resultado.success) return res.status(400).json({ erro: resultado.error.issues[0].message });
 
@@ -205,7 +220,7 @@ router.post("/perguntar", async (req, res) => {
 // (capacidade "estruturar_catalogo_texto"), reaproveitando a mesma validação
 // e o mesmo aviso de "não inventar" que o texto digitado já tem. Requer o
 // mesmo nível de plano da estruturação de catálogo (Business/Pro).
-router.post("/catalogo/transcrever", async (req, res) => {
+router.post("/catalogo/transcrever", limiteChamadaIA, async (req, res) => {
   const resultado = transcreverAudioSchema.safeParse(req.body);
   if (!resultado.success) return res.status(400).json({ erro: resultado.error.issues[0].message });
 
@@ -245,7 +260,7 @@ router.post("/catalogo/transcrever", async (req, res) => {
 // estruturação de catálogo (é a capacidade mais próxima em maturidade/custo).
 // NUNCA altera preço de catálogo sozinha: só devolve uma sugestão estruturada
 // para o empresário revisar e, se quiser, digitar manualmente no produto.
-router.post("/estimar-preco-imagem", async (req, res) => {
+router.post("/estimar-preco-imagem", limiteChamadaIA, async (req, res) => {
   const resultado = estimarPrecoImagemSchema.safeParse(req.body);
   if (!resultado.success) return res.status(400).json({ erro: resultado.error.issues[0].message });
 

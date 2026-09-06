@@ -9,17 +9,16 @@ interface Beneficio {
 
 const BENEFICIOS_PADRAO: Beneficio[] = [
   {
-    titulo: "Orçamentos profissionais em minutos",
-    descricao: "Monte um orçamento completo com poucos cliques e envie na hora.",
+    titulo: "O que precisa da sua atenção, primeiro",
+    descricao: "O MOVA analisa sua operação e mostra só o que realmente importa agora.",
   },
   {
-    titulo: "Envio direto pelo WhatsApp",
-    descricao: "Seu cliente recebe um link organizado, sem precisar instalar nada.",
+    titulo: "Do orçamento à venda, sem retrabalho",
+    descricao: "Aprove um orçamento e ele vira venda, com o estoque atualizado automaticamente.",
   },
   {
-    titulo: "Feito para qualquer negócio",
-    descricao:
-      "Você configura o que vende e o que precisa saber do cliente — sem depender de programador.",
+    titulo: "Feito para o seu tipo de negócio",
+    descricao: "Você configura o que vende — produto, serviço ou os dois — e o MOVA se adapta.",
   },
 ];
 
@@ -42,10 +41,10 @@ interface AuthLayoutProps {
 
 export function AuthLayout({
   children,
-  titulo = "Crie, envie e acompanhe seus orçamentos de forma simples.",
-  subtitulo = "Organize clientes, produtos e orçamentos em um só lugar — e feche negócio mais rápido.",
+  titulo = "Sua operação, sempre à mão.",
+  subtitulo = "Clientes, produtos, orçamentos e vendas organizados em um só lugar — do jeito que faz sentido para o seu negócio.",
   beneficios = BENEFICIOS_PADRAO,
-  legendaMobile = "Orçamentos rápidos e profissionais",
+  legendaMobile = "Sua operação comercial em um só lugar",
 }: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh bg-ink-50">
