@@ -8,4 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  preview: {
+    allowedHosts: ['zesty-surprise-production-0d64.up.railway.app'],
+  },
 })
