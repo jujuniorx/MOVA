@@ -50,8 +50,8 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <Card>
-        <h1 className="text-lg font-semibold text-ink-900">Entrar na sua conta</h1>
-        <p className="mt-1 text-sm text-ink-500">Acesse o painel da sua empresa no MOVA.</p>
+        <h1 className="text-xl font-bold tracking-tight text-ink-900">Entrar na sua conta</h1>
+        <p className="mt-1.5 text-sm text-ink-500">Acesse o painel da sua empresa no MOVA.</p>
 
         <form className="mt-6 flex flex-col gap-5" onSubmit={aoEnviar} noValidate>
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
