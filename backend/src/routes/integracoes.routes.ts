@@ -8,6 +8,7 @@ import { cifrar } from "../lib/crypto";
 import { registrarEvento } from "../lib/historico";
 import { idParamSchema } from "../schemas/common.schema";
 import { exigirModulo } from "../lib/modulos";
+import { frontendUrlPrincipal } from "../lib/config";
 
 const router = Router();
 
@@ -100,12 +101,10 @@ export const callbackMercadoLivre = async (req: import("express").Request, res: 
       descricao: "Conta do Mercado Livre conectada.",
     }).catch((e) => console.error("Erro ao registrar histórico:", e));
 
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
-    return res.redirect(`${frontendUrl}/configuracoes?integracao=mercado-livre&status=conectado`);
+    return res.redirect(`${frontendUrlPrincipal}/configuracoes?integracao=mercado-livre&status=conectado`);
   } catch (erro) {
     console.error("Erro no callback do Mercado Livre:", erro);
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
-    return res.redirect(`${frontendUrl}/configuracoes?integracao=mercado-livre&status=erro`);
+    return res.redirect(`${frontendUrlPrincipal}/configuracoes?integracao=mercado-livre&status=erro`);
   }
 };
 

@@ -11,6 +11,7 @@ import { solicitarRecuperacaoSchema, redefinirSenhaSchema } from "../schemas/rec
 import { gerarCodigoIndicacaoUnico, vincularIndicacaoSeValida } from "../lib/indicacao";
 import { criarTokenRecuperacao, consumirTokenRecuperacao } from "../lib/recuperacaoSenha";
 import { enviarEmail, escaparHtml } from "../lib/mailer";
+import { frontendUrlPrincipal } from "../lib/config";
 
 const router = Router();
 
@@ -121,7 +122,7 @@ router.post("/esqueci-senha", limiteAuth, async (req, res) => {
 
     if (usuario) {
       const tokenBruto = await criarTokenRecuperacao(usuario.id);
-      const link = `${process.env.FRONTEND_URL ?? "http://localhost:5173"}/redefinir-senha?token=${tokenBruto}`;
+      const link = `${frontendUrlPrincipal}/redefinir-senha?token=${tokenBruto}`;
       await enviarEmail({
         para: resultado.data.email,
         assunto: "Recuperação de senha — MOVA",

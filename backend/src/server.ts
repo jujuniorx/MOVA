@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { frontendUrlsPermitidas } from "./lib/config";
 import authRoutes from "./routes/auth.routes";
 import clientesRoutes from "./routes/clientes.routes";
 import produtosRoutes from "./routes/produtos.routes";
@@ -30,15 +31,30 @@ const app = express();
 // Em produção, a origem do frontend precisa vir explicitamente do ambiente —
 // nunca cair silenciosamente para localhost, o que quebraria o CORS em
 // produção de um jeito difícil de diagnosticar (parece bug no frontend).
-const FRONTEND_URL = process.env.FRONTEND_URL;
-if (process.env.NODE_ENV === "production" && !FRONTEND_URL) {
+// Aceita uma ou mais origens separadas por vírgula (ex: domínio oficial +
+// domínio com "www" + URL de preview do Railway) — nunca um wildcard: cada
+// origem precisa estar explicitamente listada.
+if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
   throw new Error(
-    "FRONTEND_URL precisa estar definida em produção (a origem exata do frontend, ex: https://app.seudominio.com)."
+    "FRONTEND_URL precisa estar definida em produção (a(s) origem(ns) exata(s) do frontend, separadas por vírgula se houver mais de uma, ex: https://app.seudominio.com,https://www.app.seudominio.com)."
   );
 }
 
 app.use(helmet());
-app.use(cors({ origin: FRONTEND_URL ?? "http://localhost:5173" }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Requisições sem cabeçalho Origin (curl, health checks, chamadas
+      // servidor-a-servidor) não são requisições de navegador sujeitas a
+      // CORS — sempre permitidas aqui, sem afetar a proteção real, que é
+      // aplicada pelo navegador com base neste header nas respostas.
+      if (!origin || frontendUrlsPermitidas.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Origem não permitida por CORS."));
+    },
+  })
+);
 // Limite elevado (padrão do Express é 100kb) para acomodar áudio em base64
 // no cadastro de catálogo por voz — ainda assim finito, nunca "sem limite".
 // `verify` guarda os bytes crus do corpo em req.rawBody: necessário para

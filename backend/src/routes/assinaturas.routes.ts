@@ -5,6 +5,7 @@ import { autenticar } from "../middleware/auth.middleware";
 import { checkoutSchema } from "../schemas/assinatura.schema";
 import { obterConfigPlano } from "../lib/planos";
 import { criarAssinaturaMercadoPago, cancelarAssinaturaMercadoPago } from "../lib/mercadoPago";
+import { frontendUrlPrincipal } from "../lib/config";
 
 const router = Router();
 
@@ -83,7 +84,6 @@ router.post("/checkout", limiteCheckout, async (req, res) => {
       update: { planoTipo, cicloFaturamento, status: "PENDENTE", payerEmail: req.usuario!.email },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
     const nomesPlano: Record<string, string> = { START: "MOVA Start", BUSINESS: "MOVA Business", PRO: "MOVA Pro" };
 
     const preapproval = await criarAssinaturaMercadoPago({
@@ -92,7 +92,7 @@ router.post("/checkout", limiteCheckout, async (req, res) => {
       valorMensalEquivalente: valorCobranca,
       frequenciaMeses,
       payerEmail: req.usuario!.email,
-      backUrl: `${frontendUrl}/planos`,
+      backUrl: `${frontendUrlPrincipal}/planos`,
     });
 
     await prisma.assinatura.update({
