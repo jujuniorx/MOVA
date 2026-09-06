@@ -126,7 +126,23 @@ router.post("/esqueci-senha", limiteAuth, async (req, res) => {
         para: resultado.data.email,
         assunto: "Recuperação de senha — MOVA",
         textoSimples: `Olá, ${usuario.nome}.\n\nRecebemos um pedido para redefinir sua senha no MOVA. Acesse o link abaixo para criar uma nova senha (válido por 1 hora):\n\n${link}\n\nSe você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.`,
-        textoHtml: `<p>Olá, ${escaparHtml(usuario.nome)}.</p><p>Recebemos um pedido para redefinir sua senha no MOVA. Clique no link abaixo para criar uma nova senha (válido por 1 hora):</p><p><a href="${link}">${link}</a></p><p>Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.</p>`,
+        // HTML de e-mail: estilos sempre inline (clientes de e-mail ignoram
+        // <style> em bloco) e nunca reagem ao tema do app — um e-mail é
+        // sempre "modo claro". O único dado dinâmico interpolado é o nome do
+        // usuário, sempre escapado (escaparHtml) antes de entrar no HTML.
+        textoHtml: `
+          <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1c2020;">
+            <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#12403d;">MOVA</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Olá, ${escaparHtml(usuario.nome)}.</p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.5;">Recebemos um pedido para redefinir sua senha no MOVA. Clique no botão abaixo para criar uma nova senha — o link é válido por 1 hora.</p>
+            <p style="margin:0 0 24px;">
+              <a href="${link}" style="display:inline-block;background-color:#14615c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 24px;border-radius:8px;">Criar nova senha</a>
+            </p>
+            <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#5b6565;">Se o botão não funcionar, copie e cole este link no navegador:</p>
+            <p style="margin:0 0 24px;font-size:13px;line-height:1.5;word-break:break-all;color:#5b6565;">${link}</p>
+            <p style="margin:0;font-size:13px;line-height:1.5;color:#5b6565;">Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.</p>
+          </div>
+        `.trim(),
       });
     }
 
