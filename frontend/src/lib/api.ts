@@ -221,18 +221,27 @@ export const empresaApi = {
     apiFetch<void>("/empresa/modulos", { method: "PATCH", body: JSON.stringify({ moduloId, ativo }) }),
 
   // Perfil operacional ("conte para o MOVA o que sua empresa faz") — usado
-  // na configuração inicial guiada para sugerir e já ativar os módulos
-  // relevantes para o negócio descrito.
+  // na configuração inicial guiada para sugerir os módulos relevantes para
+  // o negócio descrito. Fluxo em dois passos: "interpretar" nunca grava
+  // nada nem muda módulo algum (só devolve um rascunho para o usuário ver);
+  // "confirmar" é quem de fato aplica, e só depois que o usuário concordou
+  // com o que foi mostrado na tela.
   obterPerfilOperacional: () => apiFetch<{ perfilOperacional: PerfilOperacional | null }>("/empresa/perfil-operacional"),
 
-  definirPerfilOperacional: (descricaoNegocio: string, ofertaDescricao?: string) =>
-    apiFetch<{ perfilOperacional: PerfilOperacional }>("/empresa/perfil-operacional", {
+  interpretarPerfilOperacional: (descricaoNegocio: string, ofertaDescricao?: string) =>
+    apiFetch<PerfilOperacionalRascunho>("/empresa/perfil-operacional/interpretar", {
       method: "POST",
       body: JSON.stringify({ descricaoNegocio, ofertaDescricao }),
     }),
+
+  confirmarPerfilOperacional: (rascunho: PerfilOperacionalRascunho) =>
+    apiFetch<{ perfilOperacional: PerfilOperacional }>("/empresa/perfil-operacional/confirmar", {
+      method: "POST",
+      body: JSON.stringify(rascunho),
+    }),
 };
 
-export interface PerfilOperacional {
+export interface PerfilOperacionalRascunho {
   descricaoNegocio: string;
   ofertaDescricao: string | null;
   trabalhaComProdutos: boolean;
@@ -240,6 +249,9 @@ export interface PerfilOperacional {
   modulosSugeridos: string[];
   resumo: string;
   origem: "ia" | "heuristica";
+}
+
+export interface PerfilOperacional extends PerfilOperacionalRascunho {
   geradoEm: string;
 }
 

@@ -6,7 +6,7 @@ import { Alert } from "../ui/Alert";
 import { LogoSimbolo } from "../Logo";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError, empresaApi } from "../../lib/api";
-import type { PerfilOperacional } from "../../lib/api";
+import type { PerfilOperacionalRascunho } from "../../lib/api";
 
 const EXEMPLOS_PRODUTO = [
   "Portão",
@@ -137,13 +137,14 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
   const [confirmacoesVistas, setConfirmacoesVistas] = useState<Record<number, boolean>>({});
   // "Conte para o MOVA o que sua empresa faz" — pergunta feita só na tela de
   // boas-vindas (passo 0), não é um passo numerado novo (evitaria reindexar
-  // tudo que já depende de 1-5). A descrição livre é interpretada (IA, ou
-  // heurística por palavra-chave se a IA não estiver configurada) e já ativa
-  // os módulos relevantes — o resumo aparece para o empresário confirmar
-  // antes de seguir, em linguagem simples, nunca como um formulário técnico.
-  const [faseInicial, setFaseInicial] = useState<"pergunta" | "interpretando" | "confirmacao">("pergunta");
+  // tudo que já depende de 1-5). Fluxo obrigatório em dois passos: a
+  // descrição livre só é INTERPRETADA (IA, ou heurística por palavra-chave
+  // se a IA não estiver configurada) e mostrada em linguagem simples — só
+  // quando o empresário clica "Continuar" é que os módulos são de fato
+  // aplicados (rota /confirmar). Nada muda de verdade antes dessa confirmação.
+  const [faseInicial, setFaseInicial] = useState<"pergunta" | "interpretando" | "confirmacao" | "aplicando">("pergunta");
   const [descricaoNegocio, setDescricaoNegocio] = useState("");
-  const [perfilResultado, setPerfilResultado] = useState<PerfilOperacional | null>(null);
+  const [perfilRascunho, setPerfilRascunho] = useState<PerfilOperacionalRascunho | null>(null);
   const [erroPerfil, setErroPerfil] = useState<string | null>(null);
   const navigate = useNavigate();
   const { empresa, atualizarEmpresa } = useAuth();
@@ -178,11 +179,12 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
     setIndice((atual) => Math.min(atual + 1, 6));
   }
 
-  // Chamado ao clicar "Vamos começar" na tela de boas-vindas. Se o campo foi
+  // Passo 1 do fluxo — chamado ao clicar "Vamos começar". Se o campo foi
   // deixado em branco, não força nada — só avança (mesmo comportamento de
-  // antes desta funcionalidade existir). Uma falha na interpretação nunca
-  // trava o onboarding: segue em frente com os módulos como já estavam.
-  async function confirmarDescricao() {
+  // antes desta funcionalidade existir). Só INTERPRETA (nunca aplica nada
+  // ainda); uma falha aqui nunca trava o onboarding: segue em frente com os
+  // módulos como já estavam.
+  async function interpretarDescricao() {
     if (modoRevisao || !descricaoNegocio.trim()) {
       avancar();
       return;
@@ -190,12 +192,31 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
     setErroPerfil(null);
     setFaseInicial("interpretando");
     try {
-      const { perfilOperacional } = await empresaApi.definirPerfilOperacional(descricaoNegocio.trim());
-      setPerfilResultado(perfilOperacional);
+      const rascunho = await empresaApi.interpretarPerfilOperacional(descricaoNegocio.trim());
+      setPerfilRascunho(rascunho);
       setFaseInicial("confirmacao");
     } catch (e) {
-      setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível configurar automaticamente agora.");
+      setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível entender a descrição agora.");
       setFaseInicial("pergunta");
+    }
+  }
+
+  // Passo 2 — chamado ao clicar "Continuar" na tela de confirmação. Só
+  // agora os módulos são de fato aplicados; uma falha aqui também nunca
+  // trava o onboarding, só mantém os módulos como já estavam antes.
+  async function confirmarEAplicarPerfil() {
+    if (!perfilRascunho) {
+      avancar();
+      return;
+    }
+    setErroPerfil(null);
+    setFaseInicial("aplicando");
+    try {
+      await empresaApi.confirmarPerfilOperacional(perfilRascunho);
+      avancar();
+    } catch (e) {
+      setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível aplicar a configuração agora.");
+      setFaseInicial("confirmacao");
     }
   }
 
@@ -270,7 +291,7 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
               progresso e você continua de onde parou.
             </p>
 
-            {!modoRevisao && faseInicial !== "confirmacao" && (
+            {!modoRevisao && faseInicial !== "confirmacao" && faseInicial !== "aplicando" && (
               <div className="mt-5 text-left">
                 <p className="text-sm font-medium text-ink-700">Uma coisa rápida antes de começar:</p>
                 <p className="mt-1 text-sm text-ink-500">Conte para o MOVA o que sua empresa faz e o que ela vende ou oferece.</p>
@@ -291,22 +312,22 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
               </div>
             )}
 
-            {faseInicial === "confirmacao" && perfilResultado && (
+            {(faseInicial === "confirmacao" || faseInicial === "aplicando") && perfilRascunho && (
               <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4 text-left">
                 <p className="text-sm text-brand-900">
-                  Entendi! Vou configurar o MOVA para {perfilResultado.resumo}. Você pode alterar isso quando quiser em
+                  Entendi! Vou configurar o MOVA para {perfilRascunho.resumo}. Você pode alterar isso quando quiser em
                   Configurações → Recursos do MOVA.
                 </p>
               </div>
             )}
 
             <div className="mt-6 flex flex-col items-center gap-3">
-              {faseInicial === "confirmacao" ? (
-                <Button onClick={avancar} className="w-full sm:w-auto">
+              {faseInicial === "confirmacao" || faseInicial === "aplicando" ? (
+                <Button onClick={confirmarEAplicarPerfil} carregando={faseInicial === "aplicando"} className="w-full sm:w-auto">
                   Continuar
                 </Button>
               ) : (
-                <Button onClick={confirmarDescricao} carregando={faseInicial === "interpretando"} className="w-full sm:w-auto">
+                <Button onClick={interpretarDescricao} carregando={faseInicial === "interpretando"} className="w-full sm:w-auto">
                   Vamos começar
                 </Button>
               )}

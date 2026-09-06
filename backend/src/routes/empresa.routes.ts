@@ -6,7 +6,7 @@ import { empresaUpdateSchema } from "../schemas/empresa.schema";
 import { contextoProcessoEnum, processoUpdateSchema } from "../schemas/processo.schema";
 import { MODULOS, modulosAtivos, moduloEstaAtivo, alterarModuloEmpresa, definirModulosOpcionais } from "../lib/modulos";
 import { alterarModuloSchema } from "../schemas/modulos.schema";
-import { definirPerfilOperacionalSchema } from "../schemas/perfilOperacional.schema";
+import { interpretarPerfilOperacionalSchema, confirmarPerfilOperacionalSchema } from "../schemas/perfilOperacional.schema";
 import {
   iaConfigurada,
   interpretarPerfilNegocio,
@@ -133,37 +133,25 @@ router.get("/perfil-operacional", async (req, res) => {
   }
 });
 
-// Recebe a descrição livre, interpreta (IA ou heurística) e JÁ APLICA os
-// módulos sugeridos (ou os escolhidos manualmente pelo usuário, se ele
-// preferiu ajustar) — a confirmação "isso está certo?" acontece no
-// frontend ANTES de chamar esta rota, então quando ela é chamada o usuário
-// já concordou. Desativar um módulo aqui passa pelo MESMO caminho usado em
-// qualquer outro lugar (`definirModulosOpcionais`/`alterarModuloEmpresa`),
-// nunca apaga dado nenhum — só muda o que aparece na experiência.
-router.post("/perfil-operacional", async (req, res) => {
-  const resultado = definirPerfilOperacionalSchema.safeParse(req.body);
+// Passo 1 do fluxo obrigatório: EMPRESÁRIO DESCREVE → MOVA INTERPRETA →
+// MOVA MOSTRA O QUE ENTENDEU. Só interpreta (IA quando configurada,
+// heurística por palavra-chave como fallback — nunca trava o onboarding por
+// falta de infraestrutura de IA) e devolve o rascunho para o frontend
+// mostrar em linguagem simples. NUNCA grava nada no banco nem toca em
+// módulo algum — a interpretação sozinha nunca é uma mudança crítica.
+router.post("/perfil-operacional/interpretar", async (req, res) => {
+  const resultado = interpretarPerfilOperacionalSchema.safeParse(req.body);
   if (!resultado.success) {
     return res.status(400).json({ erro: resultado.error.issues[0].message });
   }
 
-  const empresaId = req.usuario!.empresaId;
-  const { descricaoNegocio, ofertaDescricao, modulosEscolhidos } = resultado.data;
+  const { descricaoNegocio, ofertaDescricao } = resultado.data;
 
   try {
     let interpretado;
     let origem: "ia" | "heuristica";
 
-    if (modulosEscolhidos) {
-      // Usuário decidiu ajustar manualmente na tela de confirmação — não
-      // precisa reinterpretar nada, só registra o que ele escolheu.
-      interpretado = {
-        trabalhaComProdutos: true,
-        trabalhaComServicos: true,
-        modulosSugeridos: modulosEscolhidos,
-        resumo: "os módulos que você escolheu manualmente",
-      };
-      origem = "heuristica";
-    } else if (iaConfigurada()) {
+    if (iaConfigurada()) {
       try {
         const resultadoIA = await interpretarPerfilNegocio(descricaoNegocio, ofertaDescricao ?? "");
         interpretado = validarPerfilOperacional(resultadoIA.texto);
@@ -178,15 +166,47 @@ router.post("/perfil-operacional", async (req, res) => {
       origem = "heuristica";
     }
 
-    await definirModulosOpcionais(empresaId, interpretado.modulosSugeridos);
-
-    const perfilParaSalvar = {
+    return res.json({
       descricaoNegocio,
       ofertaDescricao: ofertaDescricao ?? null,
       trabalhaComProdutos: interpretado.trabalhaComProdutos,
       trabalhaComServicos: interpretado.trabalhaComServicos,
       modulosSugeridos: interpretado.modulosSugeridos,
       resumo: interpretado.resumo,
+      origem,
+    });
+  } catch (erro) {
+    console.error("Erro ao interpretar perfil operacional:", erro);
+    return res.status(500).json({ erro: "Não foi possível entender a descrição agora. Tente novamente." });
+  }
+});
+
+// Passo 2: EMPRESÁRIO CONFIRMA → MOVA CONFIGURA. O corpo é o rascunho que a
+// rota acima devolveu (o frontend só ecoa de volta o que já mostrou na
+// tela — o usuário pode ter ajustado `modulosSugeridos` antes de confirmar).
+// `modulosSugeridos` nunca é aplicado cegamente: `definirModulosOpcionais`
+// filtra contra o catálogo real de módulos implementados, então um valor
+// forjado no corpo da requisição nunca ativa algo que não existe ou não
+// está pronto — a arquitetura modular continua sendo a única autoridade.
+router.post("/perfil-operacional/confirmar", async (req, res) => {
+  const resultado = confirmarPerfilOperacionalSchema.safeParse(req.body);
+  if (!resultado.success) {
+    return res.status(400).json({ erro: resultado.error.issues[0].message });
+  }
+
+  const empresaId = req.usuario!.empresaId;
+  const { descricaoNegocio, ofertaDescricao, trabalhaComProdutos, trabalhaComServicos, modulosSugeridos, resumo, origem } = resultado.data;
+
+  try {
+    await definirModulosOpcionais(empresaId, modulosSugeridos);
+
+    const perfilParaSalvar = {
+      descricaoNegocio,
+      ofertaDescricao: ofertaDescricao ?? null,
+      trabalhaComProdutos,
+      trabalhaComServicos,
+      modulosSugeridos,
+      resumo,
       origem,
       geradoEm: new Date().toISOString(),
     };
@@ -198,7 +218,7 @@ router.post("/perfil-operacional", async (req, res) => {
 
     return res.json({ perfilOperacional: perfilParaSalvar });
   } catch (erro) {
-    console.error("Erro ao definir perfil operacional:", erro);
+    console.error("Erro ao confirmar perfil operacional:", erro);
     return res.status(500).json({ erro: "Não foi possível configurar o MOVA para sua empresa agora. Tente novamente." });
   }
 });
