@@ -1267,6 +1267,90 @@ export interface StatusTecnico {
   erros: { notificacoesMercadoLivreComErro: number };
 }
 
+export interface UsuarioAdmin {
+  id: string;
+  nome: string;
+  email: string;
+  cargo: string | null;
+  ativo: boolean;
+  criadoEm: string;
+  empresaId: string;
+  empresa: { id: string; nome: string; suspensa: boolean };
+}
+
+export interface AssinaturaAdmin {
+  id: string;
+  planoTipo: PlanoTipo;
+  cicloFaturamento: "MENSAL" | "ANUAL";
+  status: string;
+  iniciadaEm: string | null;
+  proximaCobranca: string | null;
+  canceladaEm: string | null;
+  criadoEm: string;
+  empresa: { id: string; nome: string };
+}
+
+export interface AcessoEspecialAdmin extends AcessoEspecialInfo {
+  empresaId: string;
+  ativo: boolean;
+  revogadoEm: string | null;
+  empresa: { id: string; nome: string };
+}
+
+export interface MetricasAdmin {
+  empresas: { total: number; ativas: number; suspensas: number; novas30d: number };
+  usuarios: { total: number };
+  empresasPorPlano: { plano: PlanoTipo; total: number }[];
+  assinaturas: { ativas: number; comProblema: number };
+  ia: { chamadas30d: number };
+  funilAtivacao: {
+    totalEmpresas: number;
+    configurouEmpresa: number;
+    cadastrouProduto: number;
+    cadastrouCliente: number;
+    fezOrcamento: number;
+    fezVenda: number;
+  };
+}
+
+export interface FeatureFlagAdmin {
+  id: string;
+  chave: string;
+  nome: string;
+  descricao: string | null;
+  ativoGlobal: boolean;
+  empresasHabilitadas: string[] | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface SaudeServico {
+  status: "operacional" | "atencao" | "indisponivel";
+  detalhe?: string;
+  latenciaMs?: number | null;
+}
+
+export interface SaudeSistema {
+  geral: "operacional" | "atencao" | "indisponivel";
+  servicos: Record<string, SaudeServico>;
+  verificadoEm: string;
+}
+
+export interface ProblemaDerivado {
+  categoria: "MERCADO_LIVRE" | "PAGAMENTO";
+  severidade: "baixa" | "media" | "alta";
+  titulo: string;
+  detalhe: string;
+  data: string;
+  empresa: { id: string; nome: string } | null;
+  referenciaId: string;
+}
+
+export interface BuscaAdminResultado {
+  empresas: { id: string; nome: string; suspensa: boolean; planoTipo: PlanoTipo }[];
+  usuarios: { id: string; nome: string; email: string; empresaId: string; empresa: { nome: string } }[];
+}
+
 export const adminApi = {
   login: (email: string, senha: string) =>
     apiFetchAdmin<{ token: string; admin: AdminAutenticado }>("/admin/auth/login", {
@@ -1274,10 +1358,19 @@ export const adminApi = {
       body: JSON.stringify({ email, senha }),
     }),
 
+  logout: () => apiFetchAdmin<void>("/admin/auth/logout", { method: "POST" }),
+
   me: () => apiFetchAdmin<{ admin: AdminAutenticado }>("/admin/auth/me"),
 
-  listarEmpresas: (q?: string, campo?: "nome" | "id" | "email_admin") =>
-    apiFetchAdmin<EmpresaAdmin[]>(`/admin/api/empresas${q ? `?q=${encodeURIComponent(q)}&campo=${campo ?? "nome"}` : ""}`),
+  listarEmpresas: (q?: string, campo?: "nome" | "id" | "email_admin", filtros?: { status?: "ativa" | "suspensa"; plano?: PlanoTipo }) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (campo) params.set("campo", campo);
+    if (filtros?.status) params.set("status", filtros.status);
+    if (filtros?.plano) params.set("plano", filtros.plano);
+    const qs = params.toString();
+    return apiFetchAdmin<EmpresaAdmin[]>(`/admin/api/empresas${qs ? `?${qs}` : ""}`);
+  },
 
   obterEmpresa: (id: string) => apiFetchAdmin<EmpresaAdminDetalhe>(`/admin/api/empresas/${id}`),
 
@@ -1295,8 +1388,69 @@ export const adminApi = {
 
   auditoriaEmpresa: (id: string) => apiFetchAdmin<LogAuditoriaAdmin[]>(`/admin/api/empresas/${id}/auditoria`),
 
-  auditoriaGlobal: () => apiFetchAdmin<LogAuditoriaAdmin[]>("/admin/api/auditoria"),
+  auditoriaGlobal: (opcoes?: { tipo?: string; skip?: number; take?: number }) => {
+    const params = new URLSearchParams();
+    if (opcoes?.tipo) params.set("tipo", opcoes.tipo);
+    if (opcoes?.skip) params.set("skip", String(opcoes.skip));
+    if (opcoes?.take) params.set("take", String(opcoes.take));
+    const qs = params.toString();
+    return apiFetchAdmin<{ logs: LogAuditoriaAdmin[]; total: number; skip: number; take: number }>(`/admin/api/auditoria${qs ? `?${qs}` : ""}`);
+  },
 
   statusTecnico: () => apiFetchAdmin<StatusTecnico>("/admin/api/status-tecnico"),
+
+  listarUsuarios: (q?: string, skip?: number) =>
+    apiFetchAdmin<{ usuarios: UsuarioAdmin[]; total: number; skip: number; take: number }>(
+      `/admin/api/usuarios?${new URLSearchParams({ ...(q ? { q } : {}), ...(skip ? { skip: String(skip) } : {}) })}`
+    ),
+
+  alterarStatusUsuario: (id: string, ativo: boolean, motivo?: string) =>
+    apiFetchAdmin<UsuarioAdmin>(`/admin/api/usuarios/${id}/ativo`, { method: "PATCH", body: JSON.stringify({ ativo, motivo }) }),
+
+  listarPlanos: () => apiFetchAdmin<PlanoConfig[]>("/admin/api/planos"),
+
+  atualizarPlano: (
+    tipo: PlanoTipo,
+    dados: Partial<{
+      precoMensal: number;
+      precoAnual: number;
+      limiteClientes: number | null;
+      limiteProdutos: number | null;
+      limiteOrcamentos: number | null;
+      limiteUsuarios: number | null;
+      recursos: Record<string, boolean>;
+    }>
+  ) => apiFetchAdmin<PlanoConfig>(`/admin/api/planos/${tipo}`, { method: "PATCH", body: JSON.stringify(dados) }),
+
+  listarAssinaturas: (status?: string, skip?: number) =>
+    apiFetchAdmin<{ assinaturas: AssinaturaAdmin[]; total: number; skip: number; take: number }>(
+      `/admin/api/assinaturas?${new URLSearchParams({ ...(status ? { status } : {}), ...(skip ? { skip: String(skip) } : {}) })}`
+    ),
+
+  listarAcessosEspeciais: (apenasAtivos = true, skip?: number) =>
+    apiFetchAdmin<{ acessos: AcessoEspecialAdmin[]; total: number; skip: number; take: number }>(
+      `/admin/api/acessos-especiais?${new URLSearchParams({ ativo: String(apenasAtivos), ...(skip ? { skip: String(skip) } : {}) })}`
+    ),
+
+  metricas: () => apiFetchAdmin<MetricasAdmin>("/admin/api/metricas"),
+
+  listarFeatureFlags: () => apiFetchAdmin<FeatureFlagAdmin[]>("/admin/api/feature-flags"),
+
+  criarFeatureFlag: (dados: { chave: string; nome: string; descricao?: string }) =>
+    apiFetchAdmin<FeatureFlagAdmin>("/admin/api/feature-flags", { method: "POST", body: JSON.stringify(dados) }),
+
+  atualizarFeatureFlag: (id: string, dados: Partial<{ nome: string; descricao: string; ativoGlobal: boolean; empresasHabilitadas: string[] }>) =>
+    apiFetchAdmin<FeatureFlagAdmin>(`/admin/api/feature-flags/${id}`, { method: "PATCH", body: JSON.stringify(dados) }),
+
+  saude: () => apiFetchAdmin<SaudeSistema>("/admin/api/saude"),
+
+  seguranca: (dias?: number, tipo?: string) =>
+    apiFetchAdmin<{ eventos: LogAuditoriaAdmin[]; tiposConhecidos: string[] }>(
+      `/admin/api/seguranca?${new URLSearchParams({ ...(dias ? { dias: String(dias) } : {}), ...(tipo ? { tipo } : {}) })}`
+    ),
+
+  buscaGlobal: (q: string) => apiFetchAdmin<BuscaAdminResultado>(`/admin/api/busca?q=${encodeURIComponent(q)}`),
+
+  problemas: () => apiFetchAdmin<{ problemas: ProblemaDerivado[]; statusDisponivel: boolean }>("/admin/api/problemas"),
 };
 

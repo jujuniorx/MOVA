@@ -90,6 +90,10 @@ router.post("/login", limiteAuth, async (req, res) => {
       return res.status(403).json({ erro: "Esta conta está suspensa. Entre em contato com o suporte." });
     }
 
+    if (!usuario.ativo) {
+      return res.status(403).json({ erro: "Este usuário foi desativado. Entre em contato com o administrador da empresa." });
+    }
+
     const token = gerarToken({ sub: usuario.id, empresaId: usuario.empresaId, email: usuario.email });
 
     return res.json({

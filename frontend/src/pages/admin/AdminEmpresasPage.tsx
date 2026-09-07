@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { Card, CardHeader } from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Button } from "../../components/ui/Button";
@@ -11,7 +11,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Badge } from "../../components/ui/Badge";
 import { ApiError, adminApi } from "../../lib/api";
-import type { DuracaoAcessoEspecial, EmpresaAdmin, EmpresaAdminDetalhe, LogAuditoriaAdmin, StatusTecnico, PlanoTipo } from "../../lib/api";
+import type { DuracaoAcessoEspecial, EmpresaAdmin, EmpresaAdminDetalhe, LogAuditoriaAdmin, PlanoTipo } from "../../lib/api";
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -24,73 +24,34 @@ const ROTULOS_DURACAO: Record<DuracaoAcessoEspecial, string> = {
 };
 
 export function AdminEmpresasPage() {
-  const [status, setStatus] = useState<StatusTecnico | null>(null);
   const [termo, setTermo] = useState("");
   const [campo, setCampo] = useState<"nome" | "id" | "email_admin">("nome");
+  const [statusFiltro, setStatusFiltro] = useState<"" | "ativa" | "suspensa">("");
   const [empresas, setEmpresas] = useState<EmpresaAdmin[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [empresaSelecionadaId, setEmpresaSelecionadaId] = useState<string | null>(null);
 
-  function carregarLista(q?: string, c?: typeof campo) {
+  function carregarLista(q?: string, c?: typeof campo, s?: typeof statusFiltro) {
     setCarregando(true);
     setErro(null);
     adminApi
-      .listarEmpresas(q, c)
+      .listarEmpresas(q, c, s ? { status: s } : undefined)
       .then(setEmpresas)
       .catch((e) => setErro(e instanceof ApiError ? e.message : "Não foi possível carregar as empresas."))
       .finally(() => setCarregando(false));
   }
 
-  useEffect(() => {
-    carregarLista();
-    adminApi.statusTecnico().then(setStatus).catch(() => setStatus(null));
-  }, []);
+  useEffect(() => carregarLista(), []);
 
   function aoBuscar(e: React.FormEvent) {
     e.preventDefault();
-    carregarLista(termo.trim() || undefined, campo);
+    carregarLista(termo.trim() || undefined, campo, statusFiltro);
   }
 
   return (
     <AdminLayout>
       <PageHeader titulo="Empresas" subtitulo="Gestão administrativa da plataforma MOVA." />
-
-      {status && (
-        <Card className="mt-4">
-          <CardHeader titulo="Status técnico" descricao="Visão geral das integrações e da plataforma." />
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div>
-              <p className="text-xs text-ink-500">Empresas</p>
-              <p className="text-lg font-semibold text-ink-900">{status.totalEmpresas}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-500">Suspensas</p>
-              <p className="text-lg font-semibold text-ink-900">{status.empresasSuspensas}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-500">Mercado Livre conectados</p>
-              <p className="text-lg font-semibold text-ink-900">{status.integracoes.mercadoLivre.empresasConectadas}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-500">WhatsApp conectados</p>
-              <p className="text-lg font-semibold text-ink-900">{status.integracoes.whatsapp.empresasConectadas}</p>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {Object.entries(status.integracoes).map(([nome, info]) => (
-              <Badge key={nome} className={info.configurado ? "bg-success-100 text-success-700" : "bg-ink-100 text-ink-500"}>
-                {nome}: {info.configurado ? "configurado" : "não configurado"}
-              </Badge>
-            ))}
-            {status.erros.notificacoesMercadoLivreComErro > 0 && (
-              <Badge className="bg-danger-100 text-danger-700">
-                {status.erros.notificacoesMercadoLivreComErro} notificação(ões) do Mercado Livre com erro
-              </Badge>
-            )}
-          </div>
-        </Card>
-      )}
 
       <Card className="mt-6">
         <form onSubmit={aoBuscar} className="flex flex-col gap-3 sm:flex-row">
@@ -100,6 +61,19 @@ export function AdminEmpresasPage() {
             <option value="email_admin">E-mail do administrador</option>
           </Select>
           <Input rotulo="Termo de busca" className="flex-1" placeholder="Buscar..." value={termo} onChange={(e) => setTermo(e.target.value)} />
+          <Select
+            className="sm:w-44"
+            value={statusFiltro}
+            onChange={(e) => {
+              const v = e.target.value as typeof statusFiltro;
+              setStatusFiltro(v);
+              carregarLista(termo.trim() || undefined, campo, v);
+            }}
+          >
+            <option value="">Todas</option>
+            <option value="ativa">Ativas</option>
+            <option value="suspensa">Suspensas</option>
+          </Select>
           <Button type="submit">Buscar</Button>
         </form>
       </Card>

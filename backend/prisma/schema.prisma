@@ -197,6 +197,12 @@ model Usuario {
   /// autorização de acesso a dados (isso continua sendo só empresaId).
   cargo String?
 
+  /// Desativação administrativa de UM usuário (diferente de suspender a
+  /// empresa inteira) — bloqueia login e invalida qualquer token já emitido
+  /// (checado em middleware/auth.middleware.ts, mesmo padrão de
+  /// Empresa.suspensa). Nunca apaga nenhum dado do usuário.
+  ativo Boolean @default(true)
+
   /// Perfil de trabalho do usuário ("como você trabalha"), estruturado pela
   /// mesma lógica de interpretar→mostrar→confirmar→aplicar do Perfil
   /// Operacional da empresa (ver perfilOperacional em Empresa) — só que numa
@@ -1207,4 +1213,24 @@ model LogAuditoriaAdmin {
 
   @@index([empresaId, criadoEm])
   @@index([adminId, criadoEm])
+}
+
+/// Liberação gradual de funcionalidades — estrutura mínima e extensível.
+/// `ativoGlobal` liga/desliga para TODA a plataforma; `empresasHabilitadas`
+/// (lista de ids) permite ligar só para empresas específicas mesmo com
+/// `ativoGlobal` desligado (rollout experimental), formato: string[].
+/// Nenhuma funcionalidade do produto lê isto ainda — existe só como base
+/// segura para quando a primeira feature realmente precisar de um flag.
+model FeatureFlag {
+  id String @id @default(uuid())
+
+  chave       String  @unique
+  nome        String
+  descricao   String?
+  ativoGlobal Boolean @default(false)
+
+  empresasHabilitadas Json?
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

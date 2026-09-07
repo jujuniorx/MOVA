@@ -19,7 +19,18 @@ import { OperacoesPage } from "./pages/OperacoesPage";
 import { PublicStorefrontPage } from "./pages/PublicStorefrontPage";
 import { AdminProtectedRoute } from "./components/layout/AdminProtectedRoute";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
+import { AdminInicioPage } from "./pages/admin/AdminInicioPage";
 import { AdminEmpresasPage } from "./pages/admin/AdminEmpresasPage";
+import { AdminUsuariosPage } from "./pages/admin/AdminUsuariosPage";
+import { AdminPlanosPage } from "./pages/admin/AdminPlanosPage";
+import { AdminAssinaturasPage } from "./pages/admin/AdminAssinaturasPage";
+import { AdminAcessosEspeciaisPage } from "./pages/admin/AdminAcessosEspeciaisPage";
+import { AdminProblemasPage } from "./pages/admin/AdminProblemasPage";
+import { AdminIntegracoesPage } from "./pages/admin/AdminIntegracoesPage";
+import { AdminMetricasPage } from "./pages/admin/AdminMetricasPage";
+import { AdminFuncionalidadesExperimentaisPage } from "./pages/admin/AdminFuncionalidadesExperimentaisPage";
+import { AdminSaudePage } from "./pages/admin/AdminSaudePage";
+import { AdminSegurancaPage } from "./pages/admin/AdminSegurancaPage";
 import { AdminAuditoriaPage } from "./pages/admin/AdminAuditoriaPage";
 
 function App() {
@@ -117,7 +128,95 @@ function App() {
         path="/admin"
         element={
           <AdminProtectedRoute>
+            <AdminInicioPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/empresas"
+        element={
+          <AdminProtectedRoute>
             <AdminEmpresasPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/usuarios"
+        element={
+          <AdminProtectedRoute>
+            <AdminUsuariosPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/planos"
+        element={
+          <AdminProtectedRoute>
+            <AdminPlanosPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/assinaturas"
+        element={
+          <AdminProtectedRoute>
+            <AdminAssinaturasPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/acessos-especiais"
+        element={
+          <AdminProtectedRoute>
+            <AdminAcessosEspeciaisPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/problemas"
+        element={
+          <AdminProtectedRoute>
+            <AdminProblemasPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/integracoes"
+        element={
+          <AdminProtectedRoute>
+            <AdminIntegracoesPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/metricas"
+        element={
+          <AdminProtectedRoute>
+            <AdminMetricasPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/funcionalidades-experimentais"
+        element={
+          <AdminProtectedRoute>
+            <AdminFuncionalidadesExperimentaisPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/saude"
+        element={
+          <AdminProtectedRoute>
+            <AdminSaudePage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/seguranca"
+        element={
+          <AdminProtectedRoute>
+            <AdminSegurancaPage />
           </AdminProtectedRoute>
         }
       />

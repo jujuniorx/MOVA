@@ -36,6 +36,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }
 
   function sair() {
+    // Best-effort: o token local já é limpo independente da resposta —
+    // isso só existe para deixar rastro de auditoria de logout intencional.
+    adminApi.logout().catch(() => {});
     limparTokenAdmin();
     setAdmin(null);
   }

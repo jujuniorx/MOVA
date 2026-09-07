@@ -7,7 +7,18 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { cn } from "../../lib/cn";
 
 const itensNav = [
-  { rotulo: "Empresas", caminho: "/admin" },
+  { rotulo: "Início", caminho: "/admin" },
+  { rotulo: "Empresas", caminho: "/admin/empresas" },
+  { rotulo: "Usuários", caminho: "/admin/usuarios" },
+  { rotulo: "Planos", caminho: "/admin/planos" },
+  { rotulo: "Assinaturas", caminho: "/admin/assinaturas" },
+  { rotulo: "Acessos especiais", caminho: "/admin/acessos-especiais" },
+  { rotulo: "Problemas", caminho: "/admin/problemas" },
+  { rotulo: "Integrações", caminho: "/admin/integracoes" },
+  { rotulo: "Métricas", caminho: "/admin/metricas" },
+  { rotulo: "Funcionalidades experimentais", caminho: "/admin/funcionalidades-experimentais" },
+  { rotulo: "Saúde", caminho: "/admin/saude" },
+  { rotulo: "Segurança", caminho: "/admin/seguranca" },
   { rotulo: "Auditoria", caminho: "/admin/auditoria" },
 ];
 
