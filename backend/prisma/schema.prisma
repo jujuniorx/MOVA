@@ -62,6 +62,13 @@ model Empresa {
   endereco            String?
   descricao           String?
   logoUrl             String?
+  /// Bytes da logo enviada por upload (ver POST /empresa/logo) — quando
+  /// preenchido, `logoUrl` aponta para a rota própria que serve estes bytes
+  /// (`GET /publico/logo/:id`), nunca para uma URL externa. `null` quando a
+  /// empresa nunca fez upload (ou usa uma URL externa antiga, de antes desta
+  /// funcionalidade existir — continua funcionando normalmente).
+  logoBytes           Bytes?
+  logoMimeType        String?
   corPrimaria         String?
   corSecundaria       String?
   /// Verdadeiro quando o tour de boas-vindas foi finalizado até o fim ou

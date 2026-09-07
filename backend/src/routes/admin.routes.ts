@@ -4,6 +4,7 @@ import { autenticarAdmin } from "../middleware/adminAuth.middleware";
 import { idParamSchema } from "../schemas/common.schema";
 import {
   concederAcessoEspecialSchema,
+  excluirEmpresaSchema,
   reativarEmpresaSchema,
   revogarAcessoEspecialSchema,
   suspenderEmpresaSchema,
@@ -13,6 +14,7 @@ import {
   featureFlagUpdateSchema,
 } from "../schemas/admin.schema";
 import { registrarAcaoAdmin } from "../lib/adminAuditoria";
+import { excluirEmpresaCompleta } from "../lib/empresaExclusao";
 
 const router = Router();
 
@@ -206,6 +208,36 @@ router.post("/empresas/:id/reativar", async (req, res) => {
   } catch (erro) {
     console.error("Erro ao reativar empresa:", erro);
     return res.status(500).json({ erro: "Não foi possível reativar a empresa." });
+  }
+});
+
+// Exclusão DEFINITIVA de uma empresa e tudo que pertence a ela — pensada
+// para limpar empresas de teste, não para uso comercial normal (suspender já
+// cobre esse caso, sem apagar nada). Duas travas contra exclusão acidental:
+// (1) o admin precisa digitar o nome exato da empresa, verificado no
+// backend, nunca só confiado do frontend; (2) o registro de auditoria desta
+// ação é gravado DEPOIS que a empresa já não existe mais (por isso sem
+// empresaId — a própria linha de auditoria da empresa some junto com ela),
+// preservando nome/id originais como texto para sempre, mesmo sem a FK.
+router.delete("/empresas/:id", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.id);
+  if (!idResultado.success) return res.status(400).json({ erro: "ID inválido." });
+  const corpo = excluirEmpresaSchema.safeParse(req.body);
+  if (!corpo.success) return res.status(400).json({ erro: corpo.error.issues[0].message });
+
+  try {
+    const empresa = await prisma.empresa.findUnique({ where: { id: idResultado.data }, select: { id: true, nome: true } });
+    if (!empresa) return res.status(404).json({ erro: "Empresa não encontrada." });
+    if (corpo.data.confirmarNome !== empresa.nome) {
+      return res.status(400).json({ erro: "O nome digitado não confere com o nome exato da empresa. Nada foi excluído." });
+    }
+
+    await excluirEmpresaCompleta(empresa.id, { adminId: req.admin!.id, nomeEmpresa: empresa.nome, motivo: corpo.data.motivo });
+
+    return res.status(204).send();
+  } catch (erro) {
+    console.error("Erro ao excluir empresa:", erro);
+    return res.status(500).json({ erro: "Não foi possível excluir a empresa. Nenhum dado foi alterado." });
   }
 });
 

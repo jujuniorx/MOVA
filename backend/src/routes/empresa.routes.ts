@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { prisma } from "../lib/prisma";
 import { autenticar } from "../middleware/auth.middleware";
 import { empresaSelectPropria } from "../lib/empresaSelect";
@@ -17,6 +18,24 @@ import {
 const router = Router();
 
 router.use(autenticar);
+
+// Guardamos os bytes da logo no próprio Postgres (não no filesystem da
+// Railway, que é efêmero, nem numa credencial de storage externa que ainda
+// não existe) — adequado para o tamanho de uma logo (limite de 2MB abaixo).
+// `memoryStorage` mantém o arquivo só em memória durante a requisição, nunca
+// grava em disco.
+const TIPOS_LOGO_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp"]);
+const uploadLogo = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, callback) => {
+    if (!TIPOS_LOGO_PERMITIDOS.has(file.mimetype)) {
+      callback(new Error("FORMATO_INVALIDO"));
+      return;
+    }
+    callback(null, true);
+  },
+});
 
 // Sem parâmetro de ID: a empresa afetada é sempre a do usuário autenticado
 // (req.usuario.empresaId), nunca uma vinda do corpo da requisição ou da URL.
@@ -59,6 +78,58 @@ router.patch("/", async (req, res) => {
     }
     console.error("Erro ao atualizar dados da empresa:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar os dados da empresa." });
+  }
+});
+
+// Upload real de logo — substitui a experiência antiga de colar uma URL
+// externa. Guarda os bytes + mimetype e aponta `logoUrl` para a rota própria
+// que serve essa imagem (GET /publico/logo/:id), nunca para uma URL externa.
+// Isolamento: sempre grava em req.usuario.empresaId, nunca em ID vindo do
+// corpo/query — não há como uma empresa sobrescrever a logo de outra.
+router.post("/logo", (req, res) => {
+  uploadLogo.single("logo")(req, res, async (erroUpload) => {
+    if (erroUpload) {
+      const mensagem =
+        erroUpload instanceof Error && erroUpload.message === "FORMATO_INVALIDO"
+          ? "Formato de imagem não suportado. Envie PNG, JPEG ou WEBP."
+          : "Não foi possível processar a imagem. Verifique o tamanho (máximo 2MB) e tente novamente.";
+      return res.status(400).json({ erro: mensagem });
+    }
+    if (!req.file) {
+      return res.status(400).json({ erro: "Nenhuma imagem enviada." });
+    }
+
+    try {
+      const empresaId = req.usuario!.empresaId;
+      const logoUrl = `${req.protocol}://${req.get("host")}/publico/logo/${empresaId}`;
+
+      const empresa = await prisma.empresa.update({
+        where: { id: empresaId },
+        data: { logoBytes: new Uint8Array(req.file.buffer), logoMimeType: req.file.mimetype, logoUrl },
+        select: empresaSelectPropria,
+      });
+
+      return res.json(empresa);
+    } catch (erro) {
+      console.error("Erro ao salvar logo da empresa:", erro);
+      return res.status(500).json({ erro: "Não foi possível salvar a imagem. Tente novamente." });
+    }
+  });
+});
+
+// Remove a logo enviada por upload — volta ao estado "sem logo" (a página
+// pública e os orçamentos passam a mostrar o avatar de iniciais).
+router.delete("/logo", async (req, res) => {
+  try {
+    const empresa = await prisma.empresa.update({
+      where: { id: req.usuario!.empresaId },
+      data: { logoBytes: null, logoMimeType: null, logoUrl: null },
+      select: empresaSelectPropria,
+    });
+    return res.json(empresa);
+  } catch (erro) {
+    console.error("Erro ao remover logo da empresa:", erro);
+    return res.status(500).json({ erro: "Não foi possível remover a imagem." });
   }
 });
 
@@ -173,6 +244,7 @@ router.post("/perfil-operacional/interpretar", async (req, res) => {
       trabalhaComServicos: interpretado.trabalhaComServicos,
       modulosSugeridos: interpretado.modulosSugeridos,
       resumo: interpretado.resumo,
+      perguntaPendente: interpretado.perguntaPendente ?? null,
       origem,
     });
   } catch (erro) {

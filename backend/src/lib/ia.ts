@@ -307,7 +307,8 @@ export interface ItemPrioridade {
     | "ESTOQUE_ZERADO"
     | "DEVOLUCAO_PENDENTE"
     | "INTEGRACAO_COM_ERRO"
-    | "SUGESTAO_MODULO";
+    | "SUGESTAO_MODULO"
+    | "EMPRESA_INCOMPLETA";
   titulo: string;
   descricao: string;
   entidadeId?: string;
@@ -328,6 +329,7 @@ const TAGS_POR_TIPO_PRIORIDADE: Record<ItemPrioridade["tipo"], AreaFoco[]> = {
   DEVOLUCAO_PENDENTE: ["vendas", "estoque"],
   INTEGRACAO_COM_ERRO: ["estrategico"],
   SUGESTAO_MODULO: ["estrategico"],
+  EMPRESA_INCOMPLETA: ["estrategico"],
 };
 
 /**
@@ -351,8 +353,23 @@ export async function detectarPrioridades(empresaId: string, usuarioId?: string)
   // A IA (mesmo esta central 100% determinística) só considera um assunto
   // relevante para a empresa se o módulo correspondente estiver ativo —
   // estoque baixo não é "prioridade" para quem desativou o módulo Estoque.
-  const empresaModulos = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { modulosAtivos: true } });
-  const ativos = modulosAtivos(empresaModulos?.modulosAtivos);
+  const dadosEmpresa = await prisma.empresa.findUnique({
+    where: { id: empresaId },
+    select: { modulosAtivos: true, descricao: true, perfilOperacional: true },
+  });
+  const ativos = modulosAtivos(dadosEmpresa?.modulosAtivos);
+
+  // Nudge único e discreto (urgência baixa) para quem nunca contou ao MOVA
+  // como a empresa funciona nem preencheu uma descrição — some sozinho assim
+  // que qualquer um dos dois existir, nunca reaparece à toa depois disso.
+  if (!dadosEmpresa?.descricao && !dadosEmpresa?.perfilOperacional) {
+    itens.push({
+      tipo: "EMPRESA_INCOMPLETA",
+      titulo: "Conte ao MOVA como sua empresa funciona",
+      descricao: "Isso ajuda o sistema a se adaptar ao seu negócio — leva menos de um minuto.",
+      urgencia: "baixa",
+    });
+  }
 
   const orcamentosParados = await prisma.orcamento.findMany({
     where: { empresaId, status: "ENVIADO", atualizadoEm: { lte: diasAtras(3) } },
@@ -756,6 +773,10 @@ const perfilOperacionalSchema = z.object({
   trabalhaComServicos: z.boolean(),
   modulosSugeridos: z.array(z.string()).max(10),
   resumo: z.string().trim().min(1).max(300),
+  // Uma única pergunta curta quando a descrição não deixou claro algo
+  // relevante (ex.: o que a empresa vende/presta) — nunca inventa a resposta.
+  // null/ausente quando a descrição já foi clara o suficiente.
+  perguntaPendente: z.string().trim().min(1).max(200).nullish(),
 });
 
 export type PerfilOperacionalInterpretado = z.infer<typeof perfilOperacionalSchema>;
@@ -778,9 +799,9 @@ Módulos opcionais disponíveis no MOVA (sugira só os que fazem sentido para ES
 ${MODULOS_SUGERIVEIS.map((id) => `- "${id}": ${MODULOS[id].nome} — ${MODULOS[id].descricao}`).join("\n")}
 
 Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
-{"trabalhaComProdutos": true|false, "trabalhaComServicos": true|false, "modulosSugeridos": ["id1", "id2", ...], "resumo": "uma frase curta e simples, em português, tipo 'uma empresa que vende produtos e também presta serviços' — sem jargão técnico, sem mencionar 'módulo' ou nomes de sistema"}
+{"trabalhaComProdutos": true|false, "trabalhaComServicos": true|false, "modulosSugeridos": ["id1", "id2", ...], "resumo": "uma frase curta e simples, em português, tipo 'uma empresa que vende produtos e também presta serviços' — sem jargão técnico, sem mencionar 'módulo' ou nomes de sistema", "perguntaPendente": "uma pergunta curta e simples em português, só se a descrição não deixou claro o que a empresa vende/presta, ou null se já ficou claro"}
 
-Regras: use APENAS os ids de módulo listados acima em "modulosSugeridos" (nunca invente um id novo). Uma empresa majoritariamente de serviços sem venda de mercadoria geralmente não precisa de "estoque". Uma empresa que só vende produtos prontos (sem prestar serviço) pode não precisar de "pedidos" se ela já usa "vendas" diretamente — use julgamento razoável, isso é só uma sugestão inicial que o empresário pode mudar a qualquer momento.`;
+Regras: use APENAS os ids de módulo listados acima em "modulosSugeridos" (nunca invente um id novo). Uma empresa majoritariamente de serviços sem venda de mercadoria geralmente não precisa de "estoque". Uma empresa que só vende produtos prontos (sem prestar serviço) pode não precisar de "pedidos" se ela já usa "vendas" diretamente — use julgamento razoável, isso é só uma sugestão inicial que o empresário pode mudar a qualquer momento. "perguntaPendente" deve ser null sempre que a descrição já permitir identificar com razoável confiança o que a empresa faz — só pergunte quando a descrição for genuinamente vaga ou incompleta demais para isso (ex.: "tenho uma empresa" sem dizer do quê); nunca pergunte por excesso de cautela.`;
 
   const modelo = MODELOS[PROVEDOR].simples;
   return chamarModelo(modelo, prompt, 500);
@@ -840,6 +861,7 @@ export function interpretarPerfilHeuristico(descricaoNegocio: string, ofertaDesc
     trabalhaComServicos,
     modulosSugeridos: [...new Set(modulosSugeridos)].filter((id) => MODULOS_SUGERIVEIS.includes(id)),
     resumo,
+    perguntaPendente: ambiguo ? "O que sua empresa vende ou qual serviço ela presta?" : null,
   };
 }
 
@@ -986,7 +1008,10 @@ export async function executarCapacidadeIA(
       break;
     }
     case "rascunhar_mensagem_cliente": {
-      prompt = `Escreva uma mensagem curta, cordial e profissional em português para enviar a um cliente${contexto?.clienteNome ? ` chamado ${contexto.clienteNome}` : ""}. Contexto/observações do usuário: ${contexto?.observacoes ?? "nenhuma"}. Não invente promessas, preços ou prazos que não foram informados.`;
+      const [memoria, resumoPerfil] = await Promise.all([buscarMemoriaEmpresa(empresaId), buscarResumoPerfilOperacional(empresaId)]);
+      prompt = `Escreva uma mensagem curta, cordial e profissional em português para enviar a um cliente${contexto?.clienteNome ? ` chamado ${contexto.clienteNome}` : ""}.
+${resumoPerfil.startsWith("(") ? "" : `Contexto do negócio (use só para o tom/vocabulário fazerem sentido, nunca para inventar algo sobre o pedido): esta empresa é ${resumoPerfil}.\n`}Regras e preferências que esta empresa configurou (respeite o tom pedido; se não houver nada relevante, use um tom profissional neutro): ${memoria}
+Contexto/observações do usuário: ${contexto?.observacoes ?? "nenhuma"}. Não invente promessas, preços ou prazos que não foram informados.`;
       break;
     }
     case "rascunhar_orcamento": {

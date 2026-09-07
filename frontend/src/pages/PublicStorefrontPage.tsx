@@ -27,6 +27,19 @@ export function PublicStorefrontPage() {
       .finally(() => setCarregando(false));
   }, [slug]);
 
+  // Título da aba reflete a empresa, não o app — importante para quem abre
+  // várias abas e para o preview ao compartilhar o link (algumas plataformas
+  // usam o <title> vigente como reserva quando não há Open Graph).
+  useEffect(() => {
+    const tituloAnterior = document.title;
+    if (pagina) {
+      document.title = `${pagina.empresa.nome} — Página criada com MOVA`;
+    }
+    return () => {
+      document.title = tituloAnterior;
+    };
+  }, [pagina]);
+
   if (carregando) {
     return (
       <div className="min-h-svh bg-ink-50 px-4 py-10">
@@ -52,6 +65,7 @@ export function PublicStorefrontPage() {
 
   return (
     <div className="min-h-svh bg-ink-50">
+      <div className="h-1.5 w-full" style={{ backgroundColor: cor ?? "var(--color-brand-600)" }} aria-hidden="true" />
       <div className="border-b border-ink-200 bg-surface px-4 py-10 sm:py-14">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {pagina.empresa.logoUrl ? (
@@ -61,7 +75,7 @@ export function PublicStorefrontPage() {
               {pagina.empresa.nome.charAt(0).toUpperCase()}
             </div>
           )}
-          <h1 className="mt-4 text-2xl font-bold text-ink-900">{pagina.empresa.nome}</h1>
+          <h1 className="mt-4 text-2xl font-bold text-ink-900" style={cor ? { color: cor } : undefined}>{pagina.empresa.nome}</h1>
           {pagina.empresa.descricao && <p className="mt-2 max-w-xl text-sm text-ink-600">{pagina.empresa.descricao}</p>}
 
           <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-ink-500">

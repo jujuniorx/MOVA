@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -8,6 +8,7 @@ import { Alert } from "../ui/Alert";
 import { cn } from "../../lib/cn";
 import { ApiError, iaApi, produtosApi } from "../../lib/api";
 import type { CapacidadeIA } from "../../lib/api";
+import { useGravacaoAudio } from "../../hooks/useGravacaoAudio";
 
 interface PropostaItem {
   chave: string;
@@ -39,13 +40,16 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
   const [erro, setErro] = useState<string | null>(null);
   const [limiteAtingido, setLimiteAtingido] = useState(false);
   const [processando, setProcessando] = useState(false);
-  const [gravando, setGravando] = useState(false);
-  const [transcrevendo, setTranscrevendo] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [progressoSalvar, setProgressoSalvar] = useState<{ feitos: number; total: number } | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const {
+    gravando,
+    transcrevendo,
+    erro: erroAudio,
+    iniciarGravacao,
+    pararGravacao,
+  } = useGravacaoAudio((transcrito) => setTexto((atual) => (atual ? `${atual} ${transcrito}` : transcrito)));
 
   useEffect(() => {
     if (aberto) {
@@ -94,40 +98,6 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
     }
   }
 
-  async function iniciarGravacao() {
-    setErro(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (evento) => chunksRef.current.push(evento.data);
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        setTranscrevendo(true);
-        try {
-          const base64 = await blobParaBase64(blob);
-          const { texto: transcrito } = await iaApi.transcreverAudio(base64, blob.type || "audio/webm");
-          setTexto((atual) => (atual ? `${atual} ${transcrito}` : transcrito));
-        } catch (e) {
-          setErro(e instanceof ApiError ? e.message : "Não foi possível transcrever o áudio.");
-        } finally {
-          setTranscrevendo(false);
-        }
-      };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setGravando(true);
-    } catch {
-      setErro("Não foi possível acessar o microfone. Verifique a permissão do navegador.");
-    }
-  }
-
-  function pararGravacao() {
-    mediaRecorderRef.current?.stop();
-    setGravando(false);
-  }
-
   function atualizarProposta(chave: string, campo: "nome" | "preco", valor: string) {
     setPropostas((atual) => atual?.map((p) => (p.chave === chave ? { ...p, [campo]: valor } : p)) ?? null);
   }
@@ -171,7 +141,7 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
   return (
     <Modal titulo="Cadastrar catálogo com IA" aberto={aberto} aoFechar={aoFechar} tamanho="grande">
       <div className="flex flex-col gap-4">
-        {erro && !limiteAtingido && <Alert tipo="erro">{erro}</Alert>}
+        {(erro || erroAudio) && !limiteAtingido && <Alert tipo="erro">{erro || erroAudio}</Alert>}
         {limiteAtingido && (
           <Alert tipo="aviso">
             Você já experimentou o poder da IA do MOVA — seu plano atual atingiu o limite deste recurso este mês.{" "}
@@ -306,16 +276,4 @@ export function AssistenteCatalogoModal({ aberto, aoFechar, aoConcluir, capacida
       </div>
     </Modal>
   );
-}
-
-function blobParaBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const resultado = reader.result as string;
-      resolve(resultado.split(",")[1] ?? "");
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }

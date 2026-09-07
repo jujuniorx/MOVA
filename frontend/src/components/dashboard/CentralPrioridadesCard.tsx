@@ -21,6 +21,7 @@ const LINK_POR_TIPO: Partial<Record<TipoPrioridade, (entidadeId: string) => stri
   ESTOQUE_BAIXO: () => `/operacoes?aba=estoque`,
   ESTOQUE_ZERADO: () => `/operacoes?aba=estoque`,
   INTEGRACAO_COM_ERRO: () => `/configuracoes`,
+  EMPRESA_INCOMPLETA: () => `/configuracoes`,
 };
 
 // Rótulo da ação rápida — visível e específico por tipo, em vez de deixar a
@@ -33,6 +34,7 @@ const ACAO_POR_TIPO: Partial<Record<TipoPrioridade, string>> = {
   ESTOQUE_BAIXO: "Ver estoque",
   ESTOQUE_ZERADO: "Ver estoque",
   INTEGRACAO_COM_ERRO: "Ver integrações",
+  EMPRESA_INCOMPLETA: "Configurar empresa",
 };
 
 /**

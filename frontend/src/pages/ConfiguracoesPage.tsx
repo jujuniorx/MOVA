@@ -14,6 +14,7 @@ import { CamposClienteCard } from "../components/configuracoes/CamposClienteCard
 import { MemoriaEmpresaCard } from "../components/configuracoes/MemoriaEmpresaCard";
 import { PerfilTrabalhoCard } from "../components/configuracoes/PerfilTrabalhoCard";
 import { PerfilOperacionalCard } from "../components/configuracoes/PerfilOperacionalCard";
+import { LogoUploadField } from "../components/configuracoes/LogoUploadField";
 import { ProcessoOrcamentoCard } from "../components/configuracoes/ProcessoOrcamentoCard";
 import { ModulosCard } from "../components/configuracoes/ModulosCard";
 import { useAuth } from "../context/AuthContext";
@@ -27,8 +28,7 @@ type CamposTexto =
   | "whatsapp"
   | "email"
   | "endereco"
-  | "descricao"
-  | "logoUrl";
+  | "descricao";
 
 const COR_PADRAO = "#0f172a";
 
@@ -42,7 +42,6 @@ export function ConfiguracoesPage() {
     email: "",
     endereco: "",
     descricao: "",
-    logoUrl: "",
     corPrimaria: COR_PADRAO,
     corSecundaria: COR_PADRAO,
   });
@@ -62,7 +61,6 @@ export function ConfiguracoesPage() {
       email: empresa.email ?? "",
       endereco: empresa.endereco ?? "",
       descricao: empresa.descricao ?? "",
-      logoUrl: empresa.logoUrl ?? "",
       corPrimaria: empresa.corPrimaria ?? COR_PADRAO,
       corSecundaria: empresa.corSecundaria ?? COR_PADRAO,
     });
@@ -178,13 +176,7 @@ export function ConfiguracoesPage() {
             />
 
             <div className="mt-4 flex flex-col gap-4">
-              <Input
-                rotulo="URL do logotipo"
-                placeholder="https://..."
-                value={valores.logoUrl}
-                onChange={(evento) => atualizarCampo("logoUrl", evento.target.value)}
-                erro={erros.logoUrl}
-              />
+              <LogoUploadField />
 
               <div className="flex gap-6">
                 <div>
@@ -277,9 +269,9 @@ export function ConfiguracoesPage() {
             </p>
             <div className="overflow-hidden rounded-xl border border-ink-200 bg-surface shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-3 border-b border-ink-100 p-5">
-                {valores.logoUrl ? (
+                {empresa?.logoUrl ? (
                   <img
-                    src={valores.logoUrl}
+                    src={empresa.logoUrl}
                     alt="Pré-visualização do logotipo"
                     className="h-10 w-10 rounded-lg border border-ink-200 object-contain"
                   />

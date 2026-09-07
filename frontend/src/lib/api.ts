@@ -64,6 +64,35 @@ async function apiFetch<T>(caminho: string, opcoes: RequestInit = {}): Promise<T
   return corpo as T;
 }
 
+/**
+ * Envio de arquivo (multipart/form-data) — nunca define Content-Type manualmente
+ * (o navegador precisa gerar o boundary correto); por isso não reaproveita
+ * `apiFetch`, que sempre força "application/json". Mesmo tratamento de erro.
+ */
+async function apiFetchArquivo<T>(caminho: string, formData: FormData, metodo: "POST" | "DELETE" = "POST"): Promise<T> {
+  const token = obterToken();
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      method: metodo,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+  } catch {
+    throw new ApiError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+  }
+
+  const corpo = resposta.status === 204 ? null : await resposta.json().catch(() => null);
+  if (!resposta.ok) {
+    const mensagem =
+      corpo && typeof corpo === "object" && "erro" in corpo
+        ? String((corpo as { erro: unknown }).erro)
+        : "Não foi possível concluir a operação. Tente novamente.";
+    throw new ApiError(mensagem);
+  }
+  return corpo as T;
+}
+
 // --- Cliente administrativo (separado do cliente de usuário comum) --------
 //
 // Chave de localStorage própria — uma sessão de empresa e uma sessão
@@ -203,6 +232,14 @@ export const empresaApi = {
   atualizar: (dados: EmpresaInput) =>
     apiFetch<Empresa>("/empresa", { method: "PATCH", body: JSON.stringify(dados) }),
 
+  enviarLogo: (arquivo: File) => {
+    const formData = new FormData();
+    formData.append("logo", arquivo);
+    return apiFetchArquivo<Empresa>("/empresa/logo", formData, "POST");
+  },
+
+  removerLogo: () => apiFetch<Empresa>("/empresa/logo", { method: "DELETE" }),
+
   // Processo configurável (Etapa 2) — null quando a empresa ainda não
   // configurou nada; o app continua funcionando normalmente nesse caso.
   obterProcesso: (contexto: ContextoProcesso) =>
@@ -297,10 +334,13 @@ export interface PerfilOperacionalRascunho {
   trabalhaComServicos: boolean;
   modulosSugeridos: string[];
   resumo: string;
+  perguntaPendente: string | null;
   origem: "ia" | "heuristica";
 }
 
-export interface PerfilOperacional extends PerfilOperacionalRascunho {
+// O persistido nunca grava `perguntaPendente` (é só um sinal transitório da
+// tela de revisão) — por isso é Omit, não extends direto.
+export interface PerfilOperacional extends Omit<PerfilOperacionalRascunho, "perguntaPendente"> {
   geradoEm: string;
 }
 
@@ -1026,7 +1066,8 @@ export type TipoPrioridade =
   | "ESTOQUE_ZERADO"
   | "DEVOLUCAO_PENDENTE"
   | "INTEGRACAO_COM_ERRO"
-  | "SUGESTAO_MODULO";
+  | "SUGESTAO_MODULO"
+  | "EMPRESA_INCOMPLETA";
 
 export interface ItemPrioridade {
   tipo: TipoPrioridade;
@@ -1379,6 +1420,11 @@ export const adminApi = {
 
   reativarEmpresa: (id: string, motivo?: string) =>
     apiFetchAdmin<EmpresaAdmin>(`/admin/api/empresas/${id}/reativar`, { method: "POST", body: JSON.stringify({ motivo }) }),
+
+  // Exclusão definitiva — sem volta. `confirmarNome` precisa bater com o
+  // nome exato da empresa (validado no backend, nunca só no frontend).
+  excluirEmpresa: (id: string, confirmarNome: string, motivo: string) =>
+    apiFetchAdmin<null>(`/admin/api/empresas/${id}`, { method: "DELETE", body: JSON.stringify({ confirmarNome, motivo }) }),
 
   concederAcessoEspecial: (id: string, dados: { planoTipo: Exclude<PlanoTipo, "GRATUITO">; duracao: DuracaoAcessoEspecial; motivo?: string }) =>
     apiFetchAdmin<AcessoEspecialInfo>(`/admin/api/empresas/${id}/acesso-especial`, { method: "POST", body: JSON.stringify(dados) }),

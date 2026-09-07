@@ -10,6 +10,33 @@ import { registrarEvento } from "../lib/historico";
 
 const router = Router();
 
+// Serve os bytes da logo enviada por upload (ver POST /empresa/logo). Rota
+// pública por natureza — a logo aparece tanto na página pública (que já é
+// pública) quanto em orçamentos compartilhados com o cliente (que também não
+// exigem login) — por isso não é gated por paginaPublicaAtiva, e é por ID
+// (não por slug) para funcionar nos dois casos. Não expõe nada além da
+// imagem: nenhum outro campo da empresa é lido aqui.
+router.get("/logo/:empresaId", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.empresaId);
+  if (!idResultado.success) return res.status(400).send();
+
+  try {
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: idResultado.data },
+      select: { logoBytes: true, logoMimeType: true },
+    });
+    if (!empresa?.logoBytes || !empresa.logoMimeType) {
+      return res.status(404).send();
+    }
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Content-Type", empresa.logoMimeType);
+    return res.send(empresa.logoBytes);
+  } catch (erro) {
+    console.error("Erro ao servir logo da empresa:", erro);
+    return res.status(500).send();
+  }
+});
+
 // Escrita pública (criação de solicitação de orçamento) precisa de um limite
 // bem mais rígido que a leitura da vitrine — é a única rota deste arquivo
 // capaz de gravar dados, e fica exposta a qualquer visitante sem login.

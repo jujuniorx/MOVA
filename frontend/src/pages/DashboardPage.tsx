@@ -12,6 +12,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { OnboardingWizard } from "../components/onboarding/OnboardingWizard";
 import { AssistenteIACard } from "../components/dashboard/AssistenteIACard";
 import { CentralPrioridadesCard } from "../components/dashboard/CentralPrioridadesCard";
+import { MinhaPaginaCard } from "../components/dashboard/MinhaPaginaCard";
 import { Modal } from "../components/ui/Modal";
 import { PerfilOperacionalForm } from "../components/configuracoes/PerfilOperacionalCard";
 import { useAuth } from "../context/AuthContext";
@@ -331,6 +332,10 @@ export function DashboardPage() {
 
       <div className="mt-6">
         <AssistenteIACard />
+      </div>
+
+      <div className="mt-6">
+        <MinhaPaginaCard />
       </div>
 
       {mostrarOnboarding && (

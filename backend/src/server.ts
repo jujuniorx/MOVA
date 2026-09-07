@@ -28,6 +28,13 @@ import buscaRoutes from "./routes/busca.routes";
 
 const app = express();
 
+// Railway (e qualquer host atrás de proxy reverso) termina TLS e repassa a
+// requisição por HTTP internamente — sem isto, req.protocol/req.ip sempre
+// devolveriam o lado interno (http / IP do proxy), nunca o real. "1" confia
+// só no primeiro hop (o próprio proxy da Railway), nunca em headers vindos
+// direto do cliente.
+app.set("trust proxy", 1);
+
 // Em produção, a origem do frontend precisa vir explicitamente do ambiente —
 // nunca cair silenciosamente para localhost, o que quebraria o CORS em
 // produção de um jeito difícil de diagnosticar (parece bug no frontend).

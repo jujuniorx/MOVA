@@ -141,11 +141,13 @@ function DetalheEmpresaModal({
   const [auditoria, setAuditoria] = useState<LogAuditoriaAdmin[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [acao, setAcao] = useState<"nenhuma" | "suspender" | "conceder">("nenhuma");
+  const [acao, setAcao] = useState<"nenhuma" | "suspender" | "conceder" | "excluir">("nenhuma");
   const [motivoSuspensao, setMotivoSuspensao] = useState("");
   const [planoEspecial, setPlanoEspecial] = useState<Exclude<PlanoTipo, "GRATUITO">>("START");
   const [duracaoEspecial, setDuracaoEspecial] = useState<DuracaoAcessoEspecial>("DIAS_30");
   const [motivoEspecial, setMotivoEspecial] = useState("");
+  const [confirmarNomeExclusao, setConfirmarNomeExclusao] = useState("");
+  const [motivoExclusao, setMotivoExclusao] = useState("");
   const [processando, setProcessando] = useState(false);
 
   function carregar() {
@@ -191,6 +193,20 @@ function DetalheEmpresaModal({
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível reativar.");
     } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function excluir() {
+    if (!empresaId || !detalhe || confirmarNomeExclusao !== detalhe.empresa.nome || !motivoExclusao.trim()) return;
+    setProcessando(true);
+    setErro(null);
+    try {
+      await adminApi.excluirEmpresa(empresaId, confirmarNomeExclusao.trim(), motivoExclusao.trim());
+      aoAtualizar();
+      aoFechar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Não foi possível excluir.");
       setProcessando(false);
     }
   }
@@ -289,6 +305,9 @@ function DetalheEmpresaModal({
                 Revogar acesso especial
               </Button>
             )}
+            <Button variante="perigo" tamanho="sm" onClick={() => setAcao(acao === "excluir" ? "nenhuma" : "excluir")}>
+              Excluir empresa
+            </Button>
           </div>
 
           {acao === "suspender" && (
@@ -319,6 +338,33 @@ function DetalheEmpresaModal({
               <Input rotulo="Motivo (opcional)" value={motivoEspecial} onChange={(e) => setMotivoEspecial(e.target.value)} />
               <Button onClick={concederAcesso} carregando={processando} className="w-fit">
                 Conceder
+              </Button>
+            </Card>
+          )}
+
+          {acao === "excluir" && (
+            <Card className="flex flex-col gap-3 border-danger-600 p-4">
+              <p className="text-sm font-semibold text-danger-700">
+                Isso apaga definitivamente esta empresa e todos os dados dela (clientes, produtos, orçamentos, vendas,
+                usuários) — não tem como desfazer.
+              </p>
+              <p className="text-sm text-ink-600">
+                Use apenas para empresas de teste. Para digitar "{detalhe.empresa.nome}" e confirmar:
+              </p>
+              <Input
+                rotulo={`Digite "${detalhe.empresa.nome}" para confirmar`}
+                value={confirmarNomeExclusao}
+                onChange={(e) => setConfirmarNomeExclusao(e.target.value)}
+              />
+              <Input rotulo="Motivo da exclusão" value={motivoExclusao} onChange={(e) => setMotivoExclusao(e.target.value)} required />
+              <Button
+                variante="perigo"
+                onClick={excluir}
+                carregando={processando}
+                disabled={confirmarNomeExclusao !== detalhe.empresa.nome || !motivoExclusao.trim()}
+                className="w-fit"
+              >
+                Excluir definitivamente
               </Button>
             </Card>
           )}
