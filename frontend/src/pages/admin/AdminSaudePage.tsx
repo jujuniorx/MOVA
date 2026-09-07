@@ -66,8 +66,8 @@ export function AdminSaudePage() {
         <Skeleton className="mt-6 h-64" />
       ) : (
         <>
-          <Card className="mt-6 flex items-center justify-between">
-            <div>
+          <Card className="mt-6 flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-sm text-ink-500">Status geral</p>
               <Badge className={`mt-1 ${CLASSES[saude.geral]}`}>{ROTULOS[saude.geral]}</Badge>
             </div>
@@ -77,8 +77,8 @@ export function AdminSaudePage() {
           <ul className="mt-4 flex flex-col gap-2">
             {Object.entries(saude.servicos).map(([chave, info]) => (
               <li key={chave}>
-                <Card className="flex items-center justify-between">
-                  <div>
+                <Card className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-ink-900">{NOMES[chave] ?? chave}</p>
                     {info.detalhe && <p className="text-xs text-ink-500">{info.detalhe}</p>}
                     {info.latenciaMs != null && <p className="text-xs text-ink-400">{info.latenciaMs}ms</p>}

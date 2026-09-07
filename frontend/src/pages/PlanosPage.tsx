@@ -22,10 +22,10 @@ const NOMES_PLANO: Record<PlanoTipo, string> = {
 };
 
 const DESCRICOES_PLANO: Record<PlanoTipo, string> = {
-  GRATUITO: "Para experimentar o MOVA sem compromisso.",
+  GRATUITO: "Para começar a organizar seu negócio de verdade, sem custo.",
   START: "Para pequenos negócios que estão começando a se organizar.",
-  BUSINESS: "Para operações comerciais mais estruturadas.",
-  PRO: "Para centralizar toda a operação comercial.",
+  BUSINESS: "Para empresas que já vendem todos os dias.",
+  PRO: "Para quem quer extrair o máximo do MOVA.",
 };
 
 function textoLimite(valor: number | null, unidade: string): string {
@@ -233,7 +233,7 @@ export function PlanosPage() {
 
       <ConfirmDialog
         titulo="Cancelar assinatura"
-        mensagem="Tem certeza que deseja cancelar sua assinatura? Seu plano volta imediatamente para o Gratuito."
+        mensagem="Tem certeza que deseja cancelar sua assinatura? Seu plano volta imediatamente para o Gratuito. Seus dados não são apagados — só ficam indisponíveis novos cadastros que ultrapassem os limites do plano Gratuito."
         aberto={confirmandoCancelamento}
         confirmando={cancelando}
         rotuloConfirmar="Cancelar assinatura"

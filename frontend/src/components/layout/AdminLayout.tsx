@@ -41,7 +41,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-svh bg-ink-50">
       <header className="sticky top-0 z-30 border-b border-ink-200 bg-surface/95 backdrop-blur-[2px]">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center justify-between gap-4 sm:justify-start">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:justify-start sm:flex-nowrap">
             <div className="flex items-center gap-3">
               <Link to="/admin" className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
                 <Logo />

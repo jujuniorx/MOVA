@@ -14,10 +14,10 @@ const NOMES_PLANO: Record<PlanoTipo, string> = {
 };
 
 const DESCRICOES_PLANO: Record<PlanoTipo, string> = {
-  GRATUITO: "Para experimentar o MOVA sem compromisso.",
+  GRATUITO: "Para começar a organizar seu negócio de verdade, sem custo.",
   START: "O plano de entrada para organizar seu negócio.",
-  BUSINESS: "Para operações comerciais mais estruturadas.",
-  PRO: "Para centralizar toda a operação comercial.",
+  BUSINESS: "Para empresas que já vendem todos os dias.",
+  PRO: "Para quem quer extrair o máximo do MOVA.",
 };
 
 export function Planos() {
@@ -27,8 +27,6 @@ export function Planos() {
     planosApi.listar().then(setPlanos).catch(() => {});
   }, []);
 
-  const planosPagos = planos.filter((plano) => plano.planoTipo !== "GRATUITO");
-
   return (
     <section id="planos" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl text-center">
@@ -36,16 +34,18 @@ export function Planos() {
         <p className="mt-3 text-ink-600">Comece grátis e evolua conforme sua empresa cresce.</p>
       </div>
 
-      {planosPagos.length > 0 && (
-        <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {planosPagos.map((plano) => {
+      {planos.length > 0 && (
+        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {planos.map((plano) => {
             const destaque = plano.planoTipo === "BUSINESS";
+            const gratuito = plano.planoTipo === "GRATUITO";
             const beneficios = [
               plano.limiteClientes === null ? "Clientes ilimitados" : `Até ${plano.limiteClientes} clientes`,
               plano.limiteProdutos === null ? "Produtos ilimitados" : `Até ${plano.limiteProdutos} produtos/serviços`,
               plano.limiteOrcamentos === null
                 ? "Orçamentos ilimitados"
-                : `${plano.limiteOrcamentos} orçamentos${plano.limiteOrcamentosMensal ? "/mês" : ""}`,
+                : `${plano.limiteOrcamentos} orçamentos${plano.limiteOrcamentosMensal ? "/mês" : " no total"}`,
+              plano.limiteUsuarios === null ? "Usuários ilimitados" : `${plano.limiteUsuarios} usuário${plano.limiteUsuarios > 1 ? "s" : ""}`,
               plano.recursos.estoqueCompleto && "Estoque completo",
               plano.recursos.automacoes && "Automações",
               plano.recursos.iaCompleta ? "IA completa" : plano.recursos.iaLimitada && "IA (recursos limitados)",
@@ -67,11 +67,13 @@ export function Planos() {
                 <p className="mt-1 text-sm text-ink-500">{DESCRICOES_PLANO[plano.planoTipo]}</p>
 
                 <p className="mt-4">
-                  <span className="text-3xl font-bold text-ink-900">{formatoMoeda.format(Number(plano.precoMensal))}</span>
-                  <span className="text-sm text-ink-500">/mês</span>
+                  <span className="text-3xl font-bold text-ink-900">
+                    {gratuito ? "Grátis" : formatoMoeda.format(Number(plano.precoMensal))}
+                  </span>
+                  {!gratuito && <span className="text-sm text-ink-500">/mês</span>}
                 </p>
                 <p className="mt-1 text-xs text-ink-400">
-                  ou {formatoMoeda.format(Number(plano.precoAnual))}/ano — economize o equivalente a 2 meses
+                  {gratuito ? "Sem cartão de crédito." : `ou ${formatoMoeda.format(Number(plano.precoAnual))}/ano — economize o equivalente a 2 meses`}
                 </p>
 
                 <ul className="mt-5 flex flex-col gap-2.5">
@@ -87,7 +89,7 @@ export function Planos() {
 
                 <Link to="/registrar" className="mt-6 block">
                   <Button variante={destaque ? "primario" : "secundario"} className="w-full">
-                    Começar agora
+                    {gratuito ? "Criar conta grátis" : "Começar agora"}
                   </Button>
                 </Link>
               </div>
@@ -97,7 +99,7 @@ export function Planos() {
       )}
 
       <p className="mt-8 text-center text-xs text-ink-400">
-        Crie sua conta agora, sem custo, e comece a organizar sua operação.
+        Crie sua conta agora, sem custo, e comece a organizar sua operação. Evolua de plano quando seu negócio precisar de mais.
       </p>
     </section>
   );

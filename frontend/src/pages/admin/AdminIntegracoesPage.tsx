@@ -10,9 +10,9 @@ import type { StatusTecnico } from "../../lib/api";
 
 function LinhaIntegracao({ nome, configurado, empresasConectadas }: { nome: string; configurado: boolean; empresasConectadas?: number }) {
   return (
-    <div className="flex items-center justify-between border-b border-ink-100 py-3 last:border-b-0">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 py-3 last:border-b-0">
       <p className="text-sm font-medium text-ink-900">{nome}</p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {empresasConectadas !== undefined && <span className="text-xs text-ink-500">{empresasConectadas} empresa(s) conectada(s)</span>}
         <Badge className={configurado ? "bg-success-100 text-success-700" : "bg-ink-100 text-ink-500"}>
           {configurado ? "Configurado" : "Não configurado"}
