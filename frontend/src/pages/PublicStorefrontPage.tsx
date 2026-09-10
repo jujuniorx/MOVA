@@ -102,8 +102,34 @@ export function PublicStorefrontPage() {
       definirMeta("property", "og:image", pagina.empresa.logoUrl);
     }
 
+    // O <link rel="canonical"> padrão (no index.html) aponta pra "/" — errado
+    // aqui, onde cada slug é uma URL com conteúdo próprio. Ajusta enquanto a
+    // vitrine está aberta e devolve o valor original ao sair da página.
+    const linkCanonico = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const hrefOriginal = linkCanonico?.getAttribute("href") ?? null;
+    linkCanonico?.setAttribute("href", window.location.href);
+
+    // Dados estruturados (Schema.org) — só campos que a empresa realmente
+    // cadastrou; nunca inventa endereço estruturado a partir de um campo de
+    // texto livre nem preenche algo que não foi informado.
+    const dadosEstruturados: Record<string, unknown> = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: pagina.empresa.nome,
+      description: descricaoConteudo,
+      url: window.location.href,
+    };
+    if (pagina.empresa.telefone) dadosEstruturados.telephone = pagina.empresa.telefone;
+    if (pagina.empresa.logoUrl) dadosEstruturados.image = pagina.empresa.logoUrl;
+    const scriptLd = document.createElement("script");
+    scriptLd.type = "application/ld+json";
+    scriptLd.textContent = JSON.stringify(dadosEstruturados);
+    document.head.appendChild(scriptLd);
+
     return () => {
       tagsCriadas.forEach((tag) => tag.remove());
+      scriptLd.remove();
+      if (linkCanonico && hrefOriginal) linkCanonico.setAttribute("href", hrefOriginal);
     };
   }, [pagina]);
 
