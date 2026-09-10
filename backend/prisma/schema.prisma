@@ -247,6 +247,7 @@ model Usuario {
   tokensRecuperacaoSenha     TokenRecuperacaoSenha[]
   convitesEnviados           ConviteUsuario[]
   indicacoesClienteIndicadas IndicacaoCliente[]
+  leiturasNovidades          NovidadeLeitura[]
 
   @@index([empresaId])
 }
@@ -1354,4 +1355,51 @@ model FeatureFlag {
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+enum CategoriaNovidade {
+  NOVO
+  MELHORIA
+  CORRECAO
+  IMPORTANTE
+}
+
+/// Central de Novidades: conteúdo curado pela equipe do MOVA (não por
+/// empresa), em linguagem simples — "o que mudou e por que isso é útil pra
+/// você", nunca um changelog técnico. Visível para todo usuário autenticado;
+/// a leitura é rastreada por usuário (ver NovidadeLeitura), não por empresa,
+/// porque cada pessoa da equipe decide sozinha o que já viu.
+model Novidade {
+  id String @id @default(uuid())
+
+  categoria CategoriaNovidade
+  titulo    String
+  descricao String
+
+  /// Rota interna opcional pra onde a novidade aponta (ex.: "/configuracoes")
+  /// — nunca uma URL externa arbitrária.
+  link String?
+
+  publicadoEm DateTime @default(now())
+
+  leituras NovidadeLeitura[]
+
+  @@index([publicadoEm])
+}
+
+/// Uma linha por (usuário, novidade) que a pessoa já visualizou — existência
+/// da linha = lida. Nunca apaga a Novidade nem a leitura; "não lida" é
+/// simplesmente a ausência de uma linha aqui.
+model NovidadeLeitura {
+  id String @id @default(uuid())
+
+  novidadeId String
+  novidade   Novidade @relation(fields: [novidadeId], references: [id], onDelete: Cascade)
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  lidoEm DateTime @default(now())
+
+  @@unique([novidadeId, usuarioId])
 }

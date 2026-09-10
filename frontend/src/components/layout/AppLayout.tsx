@@ -5,8 +5,10 @@ import { Logo, LogoSimbolo } from "../Logo";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { BuscaGlobal } from "../busca/BuscaGlobal";
+import { NovidadesPanel } from "../novidades/NovidadesPanel";
 import { useAuth } from "../../context/AuthContext";
 import { useModulos } from "../../context/ModulosContext";
+import { novidadesApi } from "../../lib/api";
 import { cn } from "../../lib/cn";
 
 type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/operacoes" | "/indicacoes-clientes" | "/configuracoes";
@@ -47,6 +49,15 @@ function IconeIndicacoes() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.5 3 15l1.5-4.5L3 6l5.5 2.5L12 5l3.5 3.5L21 6l-1.5 4.5L21 15l-5.5-2.5L12 16z" />
+    </svg>
+  );
+}
+
+function IconeSino() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   );
 }
@@ -123,6 +134,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [maisAberto, setMaisAberto] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [novidadesAberto, setNovidadesAberto] = useState(false);
+  const [novidadesNaoLidas, setNovidadesNaoLidas] = useState(0);
   const location = useLocation();
   const caminhoAtual = location.pathname;
 
@@ -136,6 +149,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
     document.addEventListener("keydown", aoPressionarTecla);
     return () => document.removeEventListener("keydown", aoPressionarTecla);
   }, []);
+
+  useEffect(() => {
+    novidadesApi
+      .listar()
+      .then((r) => setNovidadesNaoLidas(r.naoLidas))
+      .catch(() => {});
+  }, []);
+
+  // Fechar o painel some com o "não lidas" residual assim que a pessoa abre
+  // (o próprio painel marca cada item lido ao clicar) — aqui só zera o badge
+  // pra não ficar pedindo atenção de novo por algo que ela já viu.
+  function aoFecharNovidades() {
+    setNovidadesAberto(false);
+    novidadesApi.listar().then((r) => setNovidadesNaoLidas(r.naoLidas)).catch(() => {});
+  }
 
   const itensNav = itensNavBase.filter((item) => !item.requerAlgumModulo || item.requerAlgumModulo.some(moduloAtivo));
   // No mobile só cabem 2 destinos + a ação central — o restante entra em "Mais".
@@ -175,15 +203,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <IconeMais />
             Novo orçamento
           </Link>
-          <button
-            type="button"
-            onClick={() => setBuscaAberta(true)}
-            className="flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-sm text-ink-500 transition-colors duration-150 hover:bg-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-          >
-            <IconeBusca />
-            <span className="flex-1 text-left">Buscar...</span>
-            <kbd className="rounded border border-ink-200 px-1.5 py-0.5 text-xs text-ink-400">Ctrl K</kbd>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBuscaAberta(true)}
+              className="flex min-h-9 flex-1 items-center gap-2 rounded-lg border border-ink-200 px-3 text-sm text-ink-500 transition-colors duration-150 hover:bg-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <IconeBusca />
+              <span className="flex-1 text-left">Buscar...</span>
+              <kbd className="rounded border border-ink-200 px-1.5 py-0.5 text-xs text-ink-400">Ctrl K</kbd>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNovidadesAberto(true)}
+              aria-label="Novidades do MOVA"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ink-200 text-ink-500 transition-colors duration-150 hover:bg-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <IconeSino />
+              {novidadesNaoLidas > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger-600" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
 
         <nav className="mt-6 flex flex-1 flex-col gap-1 px-4">
@@ -245,6 +286,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
               className="rounded-lg border border-ink-200 p-2 text-ink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
               <IconeBusca />
+            </button>
+            <button
+              type="button"
+              onClick={() => setNovidadesAberto(true)}
+              aria-label="Novidades do MOVA"
+              className="relative rounded-lg border border-ink-200 p-2 text-ink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <IconeSino />
+              {novidadesNaoLidas > 0 && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger-600" aria-hidden="true" />
+              )}
             </button>
             <ThemeToggle />
             <button
@@ -388,6 +440,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       />
 
       <BuscaGlobal aberto={buscaAberta} aoFechar={() => setBuscaAberta(false)} />
+      <NovidadesPanel aberto={novidadesAberto} aoFechar={aoFecharNovidades} />
 
       <span className="hidden">
         <LogoSimbolo />

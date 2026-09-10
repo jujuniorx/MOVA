@@ -141,11 +141,17 @@ export function ConfiguracoesPage() {
         ))}
       </nav>
 
-      <form className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3" onSubmit={aoEnviar} noValidate>
+      {/* Div (não <form>) porque o restante da página tem cards com seus
+          próprios <form> independentes (ex.: convite de equipe) — dois
+          <form> aninhados são HTML inválido e o de dentro herda o submit do
+          de fora. Só "Minha empresa"/"Aparência" formam o <form> de
+          aoEnviar, logo abaixo; o resto usa botões próprios. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
           {sucesso && <Alert tipo="sucesso">Configurações salvas com sucesso.</Alert>}
 
+          <form className="flex flex-col gap-6" onSubmit={aoEnviar} noValidate>
           <Card id="sec-empresa">
             <CardHeader titulo="Minha empresa" descricao="Nome e contato usados para falar com seus clientes." />
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -243,6 +249,13 @@ export function ConfiguracoesPage() {
             </div>
           </Card>
 
+          <div className="flex justify-end">
+            <Button type="submit" carregando={salvando}>
+              Salvar empresa e aparência
+            </Button>
+          </div>
+          </form>
+
           <Card id="sec-plano">
             <CardHeader
               titulo="Plano e indicação"
@@ -306,12 +319,6 @@ export function ConfiguracoesPage() {
               </Button>
             </div>
           </Card>
-
-          <div className="flex justify-end">
-            <Button type="submit" carregando={salvando}>
-              Salvar configurações
-            </Button>
-          </div>
         </div>
 
         <div className="lg:col-span-1">
@@ -364,7 +371,7 @@ export function ConfiguracoesPage() {
             </p>
           </div>
         </div>
-      </form>
+      </div>
 
       {mostrarOnboarding && (
         <OnboardingWizard passoInicial={0} aoFechar={() => setMostrarOnboarding(false)} />

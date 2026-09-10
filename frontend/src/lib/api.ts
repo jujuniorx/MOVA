@@ -1327,6 +1327,24 @@ export const buscaApi = {
   buscar: (q: string) => apiFetch<{ resultados: ResultadoBusca[] }>(`/busca?q=${encodeURIComponent(q)}`),
 };
 
+export type CategoriaNovidade = "NOVO" | "MELHORIA" | "CORRECAO" | "IMPORTANTE";
+
+export interface Novidade {
+  id: string;
+  categoria: CategoriaNovidade;
+  titulo: string;
+  descricao: string;
+  link: string | null;
+  publicadoEm: string;
+  lida: boolean;
+}
+
+export const novidadesApi = {
+  listar: () => apiFetch<{ itens: Novidade[]; naoLidas: number }>("/novidades"),
+  marcarLida: (id: string) => apiFetch<void>(`/novidades/${id}/marcar-lida`, { method: "POST" }),
+  marcarTodasLidas: () => apiFetch<void>("/novidades/marcar-todas-lidas", { method: "POST" }),
+};
+
 export interface DadosIndicacao {
   codigoIndicacao: string;
   trialBonusAteEm: string | null;

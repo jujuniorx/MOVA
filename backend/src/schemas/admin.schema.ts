@@ -51,6 +51,21 @@ export const planoAdminUpdateSchema = z.object({
   recursos: z.record(z.string(), z.boolean()).optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: "Informe ao menos um campo para atualizar." });
 
+// Central de Novidades: conteúdo curado pela equipe do MOVA. `link` é
+// sempre uma rota INTERNA (começa com "/") — nunca uma URL externa
+// arbitrária, pra não virar um vetor de link aberto dentro do produto.
+export const novidadeCreateSchema = z.object({
+  categoria: z.enum(["NOVO", "MELHORIA", "CORRECAO", "IMPORTANTE"], { error: "Categoria inválida." }),
+  titulo: z.string().trim().min(3, "Informe um título.").max(120),
+  descricao: z.string().trim().min(3, "Informe uma descrição.").max(1000),
+  link: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((v) => v === "" || v.startsWith("/"), "O link precisa ser uma rota interna, começando com \"/\".")
+    .optional(),
+});
+
 export const featureFlagCreateSchema = z.object({
   chave: z
     .string()

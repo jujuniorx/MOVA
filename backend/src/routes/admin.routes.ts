@@ -12,6 +12,7 @@ import {
   planoAdminUpdateSchema,
   featureFlagCreateSchema,
   featureFlagUpdateSchema,
+  novidadeCreateSchema,
 } from "../schemas/admin.schema";
 import { registrarAcaoAdmin } from "../lib/adminAuditoria";
 import { excluirEmpresaCompleta } from "../lib/empresaExclusao";
@@ -675,6 +676,49 @@ router.patch("/feature-flags/:id", async (req, res) => {
   } catch (erro) {
     console.error("Erro ao atualizar feature flag:", erro);
     return res.status(500).json({ erro: "Não foi possível atualizar a funcionalidade experimental." });
+  }
+});
+
+// ===========================================================================
+// CENTRAL DE NOVIDADES — conteúdo curado pela equipe do MOVA, visível para
+// toda empresa. Só criar/excluir por aqui; edição de uma novidade já
+// publicada não existe de propósito (se algo saiu errado, publica uma nova
+// em vez de reescrever silenciosamente o que as pessoas já leram).
+// ===========================================================================
+
+router.get("/novidades", async (_req, res) => {
+  const novidades = await prisma.novidade.findMany({ orderBy: { publicadoEm: "desc" } });
+  return res.json(novidades);
+});
+
+router.post("/novidades", async (req, res) => {
+  const corpo = novidadeCreateSchema.safeParse(req.body);
+  if (!corpo.success) return res.status(400).json({ erro: corpo.error.issues[0].message });
+
+  try {
+    const novidade = await prisma.novidade.create({ data: corpo.data });
+    await registrarAcaoAdmin({ adminId: req.admin!.id, acao: "NOVIDADE_CRIADA", estadoNovo: novidade });
+    return res.status(201).json(novidade);
+  } catch (erro) {
+    console.error("Erro ao criar novidade:", erro);
+    return res.status(500).json({ erro: "Não foi possível publicar a novidade." });
+  }
+});
+
+router.delete("/novidades/:id", async (req, res) => {
+  const idResultado = idParamSchema.safeParse(req.params.id);
+  if (!idResultado.success) return res.status(400).json({ erro: "ID inválido." });
+
+  try {
+    const existente = await prisma.novidade.findUnique({ where: { id: idResultado.data } });
+    if (!existente) return res.status(404).json({ erro: "Novidade não encontrada." });
+
+    await prisma.novidade.delete({ where: { id: existente.id } });
+    await registrarAcaoAdmin({ adminId: req.admin!.id, acao: "NOVIDADE_REMOVIDA", estadoAnterior: existente });
+    return res.status(204).send();
+  } catch (erro) {
+    console.error("Erro ao remover novidade:", erro);
+    return res.status(500).json({ erro: "Não foi possível remover a novidade." });
   }
 });
 

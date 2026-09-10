@@ -26,6 +26,7 @@ import publicoRoutes from "./routes/publico.routes";
 import adminAuthRoutes from "./routes/adminAuth.routes";
 import adminRoutes from "./routes/admin.routes";
 import buscaRoutes from "./routes/busca.routes";
+import novidadesRoutes from "./routes/novidades.routes";
 
 const app = express();
 
@@ -115,6 +116,7 @@ app.use("/usuarios", usuariosRoutes);
 app.use("/planos", planosRoutes);
 app.use("/indicacao", indicacaoRoutes);
 app.use("/indicacoes-clientes", indicacaoClienteRoutes);
+app.use("/novidades", novidadesRoutes);
 app.use("/assinaturas", assinaturasRoutes);
 app.use("/webhooks", webhooksRoutes);
 app.use("/estoque", estoqueRoutes);
