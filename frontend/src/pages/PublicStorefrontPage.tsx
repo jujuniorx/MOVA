@@ -4,11 +4,38 @@ import { Alert } from "../components/ui/Alert";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Skeleton } from "../components/ui/Skeleton";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LogoSimbolo } from "../components/Logo";
 import { SolicitarOrcamentoModal } from "../components/publico/SolicitarOrcamentoModal";
 import { ApiError, publicoApi } from "../lib/api";
 import type { PaginaPublicaEmpresa } from "../lib/api";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function IconeTelefone({ className = "h-4 w-4 shrink-0" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.97.76l1.2 4.8a1 1 0 01-.5 1.11l-1.7.85a12.05 12.05 0 006.5 6.5l.85-1.7a1 1 0 011.11-.5l4.8 1.2a1 1 0 01.76.97V19a2 2 0 01-2 2h-1C9.16 21 3 14.84 3 7V5z" />
+    </svg>
+  );
+}
+
+function IconeLocal({ className = "h-4 w-4 shrink-0" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-6.5 7-11.5A7 7 0 105 9.5C5 14.5 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconeCatalogo({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5 12 12l8-4.5M12 12v9" />
+    </svg>
+  );
+}
 
 export function PublicStorefrontPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -16,6 +43,7 @@ export function PublicStorefrontPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<string | null>(null);
+  const [logoQuebrada, setLogoQuebrada] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -42,9 +70,21 @@ export function PublicStorefrontPage() {
 
   if (carregando) {
     return (
-      <div className="min-h-svh bg-ink-50 px-4 py-10">
-        <div className="mx-auto max-w-3xl">
-          <Skeleton className="h-40" />
+      <div className="tema-claro-forcado min-h-svh bg-ink-50">
+        <div className="border-b border-ink-200 bg-surface px-4 py-14 sm:py-20">
+          <div className="mx-auto flex max-w-xl flex-col items-center gap-4">
+            <Skeleton className="h-20 w-20 rounded-2xl" />
+            <Skeleton className="h-7 w-52" />
+            <Skeleton className="h-4 w-72" />
+            <Skeleton className="mt-2 h-11 w-40" />
+          </div>
+        </div>
+        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-56" />
+            <Skeleton className="h-56" />
+            <Skeleton className="h-56" />
+          </div>
         </div>
       </div>
     );
@@ -52,8 +92,8 @@ export function PublicStorefrontPage() {
 
   if (erro || !pagina) {
     return (
-      <div className="min-h-svh bg-ink-50 px-4 py-10">
-        <div className="mx-auto max-w-3xl">
+      <div className="tema-claro-forcado min-h-svh bg-ink-50 px-4 py-10">
+        <div className="mx-auto max-w-lg pt-10">
           <Alert tipo="erro">{erro ?? "Página não encontrada."}</Alert>
         </div>
       </div>
@@ -61,82 +101,110 @@ export function PublicStorefrontPage() {
   }
 
   const cor = pagina.empresa.corPrimaria ?? undefined;
-  const corDestaque = pagina.empresa.corSecundaria ?? undefined;
+  // A cor de destaque dos botões usa a secundária; se a empresa não tiver
+  // configurado uma, cai para a primária em vez de ficar sem nenhuma cor —
+  // é o mesmo comportamento já previsto no preview de Configurações.
+  const corAcao = pagina.empresa.corSecundaria ?? cor;
+  const estiloAcao = corAcao ? { backgroundColor: corAcao, color: "#fff" } : undefined;
+  const temContato = Boolean(pagina.empresa.telefone || pagina.empresa.endereco || pagina.empresa.whatsapp);
+  const linkWhatsapp = pagina.empresa.whatsapp
+    ? `https://wa.me/${pagina.empresa.whatsapp.replace(/\D/g, "")}`
+    : null;
 
   return (
-    <div className="min-h-svh bg-ink-50">
-      <div className="h-1.5 w-full" style={{ backgroundColor: cor ?? "var(--color-brand-600)" }} aria-hidden="true" />
-      <div className="border-b border-ink-200 bg-surface px-4 py-10 sm:py-14">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          {pagina.empresa.logoUrl ? (
-            <img src={pagina.empresa.logoUrl} alt={pagina.empresa.nome} className="h-16 w-16 rounded-xl object-cover" />
+    <div className="tema-claro-forcado min-h-svh bg-ink-50">
+      {/* CABEÇALHO / HERO — identidade da empresa em primeiro plano */}
+      <header
+        className="border-b border-ink-200 bg-surface"
+        style={cor ? { backgroundImage: `linear-gradient(180deg, ${cor}14, transparent 65%)` } : undefined}
+      >
+        <div className="mx-auto flex max-w-xl flex-col items-center px-4 py-14 text-center sm:py-20">
+          {pagina.empresa.logoUrl && !logoQuebrada ? (
+            <img
+              src={pagina.empresa.logoUrl}
+              alt={pagina.empresa.nome}
+              onError={() => setLogoQuebrada(true)}
+              className="h-20 w-20 rounded-2xl border border-ink-200 bg-surface object-contain shadow-[var(--shadow-card)] sm:h-24 sm:w-24"
+            />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-bold text-white" style={{ backgroundColor: cor ?? "var(--color-brand-600)" }}>
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-2xl text-3xl font-bold text-white shadow-[var(--shadow-card)] sm:h-24 sm:w-24"
+              style={{ backgroundColor: cor ?? "var(--color-brand-600)" }}
+            >
               {pagina.empresa.nome.charAt(0).toUpperCase()}
             </div>
           )}
-          <h1 className="mt-4 text-2xl font-bold text-ink-900" style={cor ? { color: cor } : undefined}>{pagina.empresa.nome}</h1>
-          {pagina.empresa.descricao && <p className="mt-2 max-w-xl text-sm text-ink-600">{pagina.empresa.descricao}</p>}
 
-          <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-ink-500">
-            {pagina.empresa.telefone && (
-              <span className="inline-flex items-center gap-1.5">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.97.76l1.2 4.8a1 1 0 01-.5 1.11l-1.7.85a12.05 12.05 0 006.5 6.5l.85-1.7a1 1 0 011.11-.5l4.8 1.2a1 1 0 01.76.97V19a2 2 0 01-2 2h-1C9.16 21 3 14.84 3 7V5z" />
-                </svg>
-                {pagina.empresa.telefone}
-              </span>
-            )}
-            {pagina.empresa.endereco && (
-              <span className="inline-flex items-center gap-1.5">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-6.5 7-11.5A7 7 0 105 9.5C5 14.5 12 21 12 21z" />
-                  <circle cx="12" cy="9.5" r="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {pagina.empresa.endereco}
-              </span>
+          <h1
+            className="mt-5 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl"
+            style={cor ? { color: cor } : undefined}
+          >
+            {pagina.empresa.nome}
+          </h1>
+
+          {pagina.empresa.descricao && (
+            <p className="mt-3 max-w-md text-base text-ink-600">{pagina.empresa.descricao}</p>
+          )}
+
+          <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            {pagina.produtos.length > 0 ? (
+              <a href="#catalogo" className="w-full sm:w-auto">
+                <Button tamanho="lg" className="w-full sm:w-auto" style={estiloAcao}>
+                  Ver produtos e serviços
+                </Button>
+              </a>
+            ) : (
+              linkWhatsapp && (
+                <a href={linkWhatsapp} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                  <Button variante="whatsapp" tamanho="lg" className="w-full sm:w-auto">
+                    Falar no WhatsApp
+                  </Button>
+                </a>
+              )
             )}
           </div>
-
-          {pagina.empresa.whatsapp && (
-            <a
-              href={`https://wa.me/${pagina.empresa.whatsapp.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#128C4A] px-5 text-sm font-semibold text-white hover:bg-[#0f7a40]"
-            >
-              Falar no WhatsApp
-            </a>
-          )}
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      {/* PRODUTOS / SERVIÇOS */}
+      <section id="catalogo" className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-16">
+        <div className="mb-8 text-center sm:text-left">
+          <h2 className="text-xl font-bold text-ink-900 sm:text-2xl">Produtos e serviços</h2>
+          <p className="mt-1 text-sm text-ink-500">Escolha um item para solicitar um orçamento.</p>
+        </div>
+
         {pagina.produtos.length === 0 ? (
-          <p className="text-center text-sm text-ink-500">Nenhum produto ou serviço divulgado no momento.</p>
+          <EmptyState
+            icone={<IconeCatalogo />}
+            titulo="Nenhum produto ou serviço divulgado no momento."
+            descricao="Fale diretamente com a empresa pelos dados de contato abaixo."
+          />
         ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {pagina.produtos.map((produto) => (
               <li key={produto.id}>
-                <Card className="flex h-full flex-col gap-2">
+                <Card className="flex h-full flex-col gap-3 p-5">
                   {produto.imagemUrl && (
-                    <img src={produto.imagemUrl} alt={produto.nome} className="mb-2 h-32 w-full rounded-lg object-cover" />
+                    <img
+                      src={produto.imagemUrl}
+                      alt={produto.nome}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                      className="h-36 w-full rounded-lg object-cover"
+                    />
                   )}
-                  <p className="font-medium text-ink-900">{produto.nome}</p>
-                  {produto.descricao && <p className="text-sm text-ink-500">{produto.descricao}</p>}
+                  <div className="flex-1">
+                    <p className="font-semibold text-ink-900">{produto.nome}</p>
+                    {produto.descricao && <p className="mt-1 text-sm text-ink-500">{produto.descricao}</p>}
+                  </div>
                   {pagina.exibirPrecos && produto.preco && (
-                    <p className="pt-2 text-sm font-semibold text-ink-900">
+                    <p className="text-lg font-bold text-ink-900" style={cor ? { color: cor } : undefined}>
                       {formatoMoeda.format(Number(produto.preco))}
-                      {produto.unidade ? ` / ${produto.unidade}` : ""}
+                      {produto.unidade ? <span className="text-sm font-medium text-ink-500"> / {produto.unidade}</span> : ""}
                     </p>
                   )}
-                  <Button
-                    tamanho="sm"
-                    variante={corDestaque ? undefined : "secundario"}
-                    className="mt-auto"
-                    style={corDestaque ? { backgroundColor: corDestaque, color: "#fff" } : undefined}
-                    onClick={() => setProdutoSelecionadoId(produto.id)}
-                  >
+                  <Button className="mt-auto w-full" style={estiloAcao} onClick={() => setProdutoSelecionadoId(produto.id)}>
                     Solicitar orçamento
                   </Button>
                 </Card>
@@ -144,9 +212,46 @@ export function PublicStorefrontPage() {
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <p className="pb-8 text-center text-xs text-ink-400">Página criada com MOVA</p>
+      {/* CONTATO */}
+      {temContato && (
+        <section className="border-t border-ink-200 bg-surface">
+          <div className="mx-auto max-w-xl px-4 py-14 text-center sm:px-6">
+            <h2 className="text-lg font-bold text-ink-900">Contato</h2>
+            <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-ink-600">
+              {pagina.empresa.telefone && (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconeTelefone />
+                  {pagina.empresa.telefone}
+                </span>
+              )}
+              {pagina.empresa.endereco && (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconeLocal />
+                  {pagina.empresa.endereco}
+                </span>
+              )}
+            </div>
+
+            {linkWhatsapp && (
+              <a href={linkWhatsapp} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block">
+                <Button variante="whatsapp" tamanho="lg">
+                  Falar no WhatsApp
+                </Button>
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* RODAPÉ — marca do MOVA discreta, sem competir com a da empresa */}
+      <footer className="px-4 py-8">
+        <p className="flex items-center justify-center gap-1.5 text-xs text-ink-400">
+          <LogoSimbolo className="w-4 text-ink-300" />
+          Página criada com MOVA
+        </p>
+      </footer>
 
       {slug && (
         <SolicitarOrcamentoModal
