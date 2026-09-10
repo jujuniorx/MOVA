@@ -112,7 +112,7 @@ export function OperacoesPage() {
         </div>
       ) : (
         <>
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+          <div className="mt-5 flex flex-wrap gap-2">
             {abasDisponiveis.map((item) => (
               <button
                 key={item.valor}

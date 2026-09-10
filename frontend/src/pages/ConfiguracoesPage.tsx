@@ -33,6 +33,22 @@ type CamposTexto =
 
 const COR_PADRAO = "#0f172a";
 
+const SECOES = [
+  { id: "sec-empresa", rotulo: "Minha empresa" },
+  { id: "sec-aparencia", rotulo: "Aparência" },
+  { id: "sec-plano", rotulo: "Plano" },
+  { id: "sec-perfil-operacional", rotulo: "Como sua empresa trabalha" },
+  { id: "sec-equipe", rotulo: "Equipe" },
+  { id: "sec-modulos", rotulo: "Recursos do MOVA" },
+  { id: "sec-pagina-publica", rotulo: "Página pública" },
+  { id: "sec-processo", rotulo: "Processo de orçamento" },
+  { id: "sec-campos-cliente", rotulo: "Informações do cliente" },
+  { id: "sec-memoria-ia", rotulo: "Preferências da IA" },
+  { id: "sec-perfil-trabalho", rotulo: "Como você trabalha" },
+  { id: "sec-integracoes", rotulo: "Integrações" },
+  { id: "sec-ajuda", rotulo: "Ajuda" },
+] as const;
+
 export function ConfiguracoesPage() {
   const { empresa, atualizarEmpresa } = useAuth();
 
@@ -110,12 +126,27 @@ export function ConfiguracoesPage() {
         subtitulo="Essas informações aparecem nos orçamentos enviados aos seus clientes — é a identidade da sua empresa, não do MOVA."
       />
 
+      {/* Configurações reúne muita coisa numa página só (empresa, equipe,
+          módulos, página pública, IA...) — este índice deixa quem já sabe o
+          que quer pular direto para a seção, sem rolar tudo toda vez. */}
+      <nav aria-label="Seções de configurações" className="mt-5 flex flex-wrap gap-2">
+        {SECOES.map((secao) => (
+          <a
+            key={secao.id}
+            href={`#${secao.id}`}
+            className="shrink-0 rounded-full border border-ink-200 bg-surface px-3 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50"
+          >
+            {secao.rotulo}
+          </a>
+        ))}
+      </nav>
+
       <form className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3" onSubmit={aoEnviar} noValidate>
         <div className="flex flex-col gap-6 lg:col-span-2">
           {erroGeral && <Alert tipo="erro">{erroGeral}</Alert>}
           {sucesso && <Alert tipo="sucesso">Configurações salvas com sucesso.</Alert>}
 
-          <Card>
+          <Card id="sec-empresa">
             <CardHeader titulo="Minha empresa" descricao="Nome e contato usados para falar com seus clientes." />
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
@@ -170,7 +201,7 @@ export function ConfiguracoesPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card id="sec-aparencia">
             <CardHeader
               titulo="Aparência"
               descricao="Logo e cores que aparecem no cabeçalho dos orçamentos enviados aos clientes."
@@ -212,7 +243,7 @@ export function ConfiguracoesPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card id="sec-plano">
             <CardHeader
               titulo="Plano e indicação"
               descricao={`Você está no plano ${empresa?.planoTipo === "GRATUITO" ? "gratuito" : empresa?.planoTipo}. Veja os planos disponíveis ou indique o MOVA para outras empresas.`}
@@ -231,25 +262,43 @@ export function ConfiguracoesPage() {
             </div>
           </Card>
 
-          <PerfilOperacionalCard />
+          <div id="sec-perfil-operacional">
+            <PerfilOperacionalCard />
+          </div>
 
-          <EquipeCard />
+          <div id="sec-equipe">
+            <EquipeCard />
+          </div>
 
-          <ModulosCard />
+          <div id="sec-modulos">
+            <ModulosCard />
+          </div>
 
-          <PaginaPublicaCard />
+          <div id="sec-pagina-publica">
+            <PaginaPublicaCard />
+          </div>
 
-          <ProcessoOrcamentoCard />
+          <div id="sec-processo">
+            <ProcessoOrcamentoCard />
+          </div>
 
-          <CamposClienteCard />
+          <div id="sec-campos-cliente">
+            <CamposClienteCard />
+          </div>
 
-          <MemoriaEmpresaCard />
+          <div id="sec-memoria-ia">
+            <MemoriaEmpresaCard />
+          </div>
 
-          <PerfilTrabalhoCard />
+          <div id="sec-perfil-trabalho">
+            <PerfilTrabalhoCard />
+          </div>
 
-          <IntegracoesCard />
+          <div id="sec-integracoes">
+            <IntegracoesCard />
+          </div>
 
-          <Card>
+          <Card id="sec-ajuda">
             <CardHeader titulo="Ajuda" descricao="Reveja as dicas de como configurar sua empresa, cadastrar produtos e criar orçamentos." />
             <div className="mt-3">
               <Button type="button" variante="secundario" onClick={() => setMostrarOnboarding(true)}>
