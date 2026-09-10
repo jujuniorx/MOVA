@@ -145,6 +145,8 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
   const [faseInicial, setFaseInicial] = useState<"pergunta" | "interpretando" | "confirmacao" | "aplicando">("pergunta");
   const [descricaoNegocio, setDescricaoNegocio] = useState("");
   const [perfilRascunho, setPerfilRascunho] = useState<PerfilOperacionalRascunho | null>(null);
+  const [respostaPendente, setRespostaPendente] = useState("");
+  const [respondendoPergunta, setRespondendoPergunta] = useState(false);
   const [erroPerfil, setErroPerfil] = useState<string | null>(null);
   const navigate = useNavigate();
   const { empresa, atualizarEmpresa } = useAuth();
@@ -198,6 +200,26 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
     } catch (e) {
       setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível entender a descrição agora.");
       setFaseInicial("pergunta");
+    }
+  }
+
+  // Responde só a pergunta pendente (mesmo princípio do Perfil Operacional
+  // em Configurações): preserva a descrição original e anexa a resposta a
+  // ela, sem forçar a pessoa a reescrever tudo de novo neste passo rápido.
+  async function aoResponderPergunta() {
+    if (!perfilRascunho || !respostaPendente.trim()) return;
+    const textoCombinado = `${perfilRascunho.descricaoNegocio}\n${respostaPendente.trim()}`.slice(0, 1000);
+    setErroPerfil(null);
+    setRespondendoPergunta(true);
+    try {
+      const rascunho = await empresaApi.interpretarPerfilOperacional(textoCombinado);
+      setDescricaoNegocio(textoCombinado);
+      setPerfilRascunho(rascunho);
+      setRespostaPendente("");
+    } catch (e) {
+      setErroPerfil(e instanceof ApiError ? e.message : "Não foi possível entender a resposta agora.");
+    } finally {
+      setRespondendoPergunta(false);
     }
   }
 
@@ -318,12 +340,48 @@ export function OnboardingWizard({ aoFechar, passoInicial = 0 }: OnboardingWizar
                   Entendi! Vou configurar o MOVA para {perfilRascunho.resumo}. Você pode alterar isso quando quiser em
                   Configurações → Recursos do MOVA.
                 </p>
+                {perfilRascunho.perguntaPendente && (
+                  <div className="mt-3 rounded-lg border border-warning-200 bg-warning-50 p-3">
+                    <p className="text-sm font-medium text-warning-800">{perfilRascunho.perguntaPendente}</p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="text"
+                        value={respostaPendente}
+                        onChange={(e) => setRespostaPendente(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            aoResponderPergunta();
+                          }
+                        }}
+                        placeholder="Digite sua resposta aqui"
+                        disabled={respondendoPergunta || faseInicial === "aplicando"}
+                        className="min-h-10 flex-1 rounded-lg border border-warning-300 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      />
+                      <Button
+                        type="button"
+                        tamanho="sm"
+                        onClick={aoResponderPergunta}
+                        carregando={respondendoPergunta}
+                        disabled={!respostaPendente.trim() || faseInicial === "aplicando"}
+                      >
+                        Responder
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-warning-700">Ou continue assim mesmo e ajuste depois quando quiser.</p>
+                  </div>
+                )}
               </div>
             )}
 
             <div className="mt-6 flex flex-col items-center gap-3">
               {faseInicial === "confirmacao" || faseInicial === "aplicando" ? (
-                <Button onClick={confirmarEAplicarPerfil} carregando={faseInicial === "aplicando"} className="w-full sm:w-auto">
+                <Button
+                  onClick={confirmarEAplicarPerfil}
+                  carregando={faseInicial === "aplicando"}
+                  disabled={respondendoPergunta}
+                  className="w-full sm:w-auto"
+                >
                   Continuar
                 </Button>
               ) : (

@@ -13,6 +13,7 @@ import { ClienteHistoricoModal } from "../components/clientes/ClienteHistoricoMo
 import { ImportacaoModal } from "../components/importacao/ImportacaoModal";
 import { ApiError, clientesApi } from "../lib/api";
 import type { Cliente } from "../lib/api";
+import { montarLinkChat } from "../lib/whatsapp";
 
 function IniciaisAvatar({ nome }: { nome: string }) {
   const iniciais = nome
@@ -247,6 +248,21 @@ export function ClientesPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  {(cliente.whatsapp || cliente.telefone) && (
+                    <Button
+                      tamanho="sm"
+                      variante="whatsapp"
+                      onClick={() =>
+                        window.open(
+                          montarLinkChat(cliente.whatsapp || cliente.telefone),
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                    >
+                      WhatsApp
+                    </Button>
+                  )}
                   <Button tamanho="sm" variante="secundario" onClick={() => setClienteEmHistorico(cliente)}>
                     Histórico
                   </Button>

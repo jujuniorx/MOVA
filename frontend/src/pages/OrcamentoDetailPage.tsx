@@ -13,7 +13,8 @@ import { DocumentoOrcamento } from "../components/orcamentos/DocumentoOrcamento"
 import { SugerirFollowupModal } from "../components/orcamentos/SugerirFollowupModal";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { ApiError, empresaApi, orcamentosApi } from "../lib/api";
+import { useModulos } from "../context/ModulosContext";
+import { ApiError, empresaApi, orcamentosApi, vendasApi } from "../lib/api";
 import type { OrcamentoDetalhe, ProcessoConfig, StatusOrcamento } from "../lib/api";
 import { montarLinkCompartilhamento } from "../lib/whatsapp";
 
@@ -38,6 +39,7 @@ export function OrcamentoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { empresa } = useAuth();
   const { mostrarSucesso } = useToast();
+  const { moduloAtivo } = useModulos();
   const [orcamento, setOrcamento] = useState<OrcamentoDetalhe | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -45,6 +47,9 @@ export function OrcamentoDetailPage() {
   const [statusEmConfirmacao, setStatusEmConfirmacao] = useState<StatusOrcamento | null>(null);
   const [atualizandoStatus, setAtualizandoStatus] = useState(false);
   const [erroStatus, setErroStatus] = useState<string | null>(null);
+
+  const [convertendoVenda, setConvertendoVenda] = useState(false);
+  const [erroConversao, setErroConversao] = useState<string | null>(null);
 
   const [processo, setProcesso] = useState<ProcessoConfig | null>(null);
   const [atualizandoEtapa, setAtualizandoEtapa] = useState(false);
@@ -108,6 +113,29 @@ export function OrcamentoDetailPage() {
       setStatusEmConfirmacao(novoStatus);
     } else {
       executarMudancaStatus(novoStatus);
+    }
+  }
+
+  async function aoConverterEmVenda() {
+    if (!orcamento || orcamento.status !== "APROVADO" || orcamento.vendaGerada) return;
+    setConvertendoVenda(true);
+    setErroConversao(null);
+    try {
+      await vendasApi.criarAPartirDeOrcamento(orcamento.id);
+      const atualizado = await orcamentosApi.obter(orcamento.id);
+      setOrcamento(atualizado);
+      mostrarSucesso("Venda registrada a partir deste orçamento");
+    } catch (erroCapturado) {
+      // 409 cobre tanto "já existe venda" (corrida entre duas abas) quanto
+      // "não está mais aprovado" — em ambos os casos recarregamos o
+      // orçamento para a tela refletir o estado real em vez de ficar presa
+      // num botão que não pode mais funcionar.
+      setErroConversao(
+        erroCapturado instanceof ApiError ? erroCapturado.message : "Não foi possível converter o orçamento em venda."
+      );
+      orcamentosApi.obter(orcamento.id).then(setOrcamento).catch(() => {});
+    } finally {
+      setConvertendoVenda(false);
     }
   }
 
@@ -233,6 +261,32 @@ export function OrcamentoDetailPage() {
             )}
           </div>
         </div>
+
+        {orcamento.status === "APROVADO" && (
+          <div className="mt-3 border-t border-ink-100 pt-3">
+            {orcamento.vendaGerada ? (
+              <p className="text-sm text-success-700">
+                Este orçamento já virou a{" "}
+                <Link to="/operacoes?aba=vendas" className="font-medium underline">
+                  venda #{orcamento.vendaGerada.numero}
+                </Link>
+                .
+              </p>
+            ) : moduloAtivo("vendas") ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-ink-600">Orçamento aprovado — pronto para virar uma venda.</p>
+                <Button carregando={convertendoVenda} onClick={aoConverterEmVenda}>
+                  Converter em venda
+                </Button>
+              </div>
+            ) : null}
+            {erroConversao && (
+              <div className="mt-2">
+                <Alert tipo="erro">{erroConversao}</Alert>
+              </div>
+            )}
+          </div>
+        )}
 
         {orcamento.respondidoPeloClienteEm && (
           <div className="mt-3 border-t border-ink-100 pt-3">

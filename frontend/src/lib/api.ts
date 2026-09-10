@@ -466,6 +466,7 @@ export interface OrcamentoDetalhe {
   itens: ItemOrcamentoDetalhe[];
   etapaProcessoId: string | null;
   etapaProcesso: EtapaProcesso | null;
+  vendaGerada: { id: string; numero: number } | null;
 }
 
 export interface ItemOrcamentoPublico {
@@ -1060,6 +1061,7 @@ export interface CatalogoEstruturadoResposta {
 
 export type TipoPrioridade =
   | "ORCAMENTO_PARADO"
+  | "ORCAMENTO_RESPONDIDO_CLIENTE"
   | "CLIENTE_INATIVO"
   | "CONTATO_AGUARDANDO_RETORNO"
   | "ESTOQUE_BAIXO"

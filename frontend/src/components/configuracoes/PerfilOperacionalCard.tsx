@@ -24,6 +24,8 @@ export function PerfilOperacionalForm({ aoConcluir }: { aoConcluir?: () => void 
   const [fase, setFase] = useState<"pergunta" | "interpretando" | "confirmacao" | "aplicando">("pergunta");
   const [erro, setErro] = useState<string | null>(null);
   const [temAudio, setTemAudio] = useState(false);
+  const [respostaPendente, setRespostaPendente] = useState("");
+  const [respondendoPergunta, setRespondendoPergunta] = useState(false);
 
   const {
     gravando,
@@ -56,6 +58,27 @@ export function PerfilOperacionalForm({ aoConcluir }: { aoConcluir?: () => void 
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível entender a descrição agora.");
       setFase("pergunta");
+    }
+  }
+
+  // Responde só a pergunta pendente, sem reescrever a descrição inteira: o
+  // texto original é preservado e a resposta é anexada a ele antes de pedir
+  // ao MOVA para entender de novo — o mesmo ciclo ENTENDE→PERGUNTA que pode
+  // se repetir se a resposta ainda deixar algo em aberto.
+  async function aoResponderPergunta() {
+    if (!rascunho || !respostaPendente.trim()) return;
+    const textoCombinado = `${rascunho.descricaoNegocio}\n${respostaPendente.trim()}`.slice(0, 1000);
+    setErro(null);
+    setRespondendoPergunta(true);
+    try {
+      const resultado = await empresaApi.interpretarPerfilOperacional(textoCombinado);
+      setDescricaoNegocio(textoCombinado);
+      setRascunho(resultado);
+      setRespostaPendente("");
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Não foi possível entender a resposta agora.");
+    } finally {
+      setRespondendoPergunta(false);
     }
   }
 
@@ -144,16 +167,48 @@ export function PerfilOperacionalForm({ aoConcluir }: { aoConcluir?: () => void 
           </div>
           {rascunho.perguntaPendente && (
             <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
-              {rascunho.perguntaPendente} Se quiser, clique em "Corrigir" e complete a descrição — ou confirme assim
-              mesmo e ajuste depois quando quiser.
+              <p className="font-medium">{rascunho.perguntaPendente}</p>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={respostaPendente}
+                  onChange={(e) => setRespostaPendente(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      aoResponderPergunta();
+                    }
+                  }}
+                  placeholder="Digite sua resposta aqui"
+                  disabled={respondendoPergunta || fase === "aplicando"}
+                  className="min-h-10 flex-1 rounded-lg border border-warning-300 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+                <Button
+                  type="button"
+                  tamanho="sm"
+                  onClick={aoResponderPergunta}
+                  carregando={respondendoPergunta}
+                  disabled={!respostaPendente.trim() || fase === "aplicando"}
+                >
+                  Responder
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-warning-700">
+                Ou confirme assim mesmo e ajuste depois quando quiser.
+              </p>
             </div>
           )}
           <div className="flex gap-3">
-            <Button type="button" onClick={confirmar} carregando={fase === "aplicando"}>
+            <Button type="button" onClick={confirmar} carregando={fase === "aplicando"} disabled={respondendoPergunta}>
               Confirmar
             </Button>
-            <Button type="button" variante="secundario" onClick={() => setFase("pergunta")} disabled={fase === "aplicando"}>
-              {rascunho.perguntaPendente ? "Corrigir" : "Cancelar"}
+            <Button
+              type="button"
+              variante="secundario"
+              onClick={() => setFase("pergunta")}
+              disabled={fase === "aplicando" || respondendoPergunta}
+            >
+              {rascunho.perguntaPendente ? "Reescrever do zero" : "Cancelar"}
             </Button>
           </div>
         </>

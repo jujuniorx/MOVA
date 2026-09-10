@@ -355,7 +355,12 @@ router.get("/:id", async (req, res) => {
   try {
     const orcamento = await prisma.orcamento.findFirst({
       where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
-      include: { itens: true, cliente: true, etapaProcesso: true },
+      include: {
+        itens: true,
+        cliente: true,
+        etapaProcesso: true,
+        vendaGerada: { select: { id: true, numero: true } },
+      },
     });
 
     if (!orcamento) {
@@ -474,7 +479,12 @@ router.patch("/:id/status", async (req, res) => {
 
     const orcamento = await prisma.orcamento.findFirst({
       where: { id: idResultado.data, empresaId: req.usuario!.empresaId },
-      include: { itens: true, cliente: { select: { id: true, nome: true } }, etapaProcesso: true },
+      include: {
+        itens: true,
+        cliente: { select: { id: true, nome: true } },
+        etapaProcesso: true,
+        vendaGerada: { select: { id: true, numero: true } },
+      },
     });
 
     if (orcamento) {

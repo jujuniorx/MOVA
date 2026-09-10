@@ -4,6 +4,8 @@ import { prisma } from "../lib/prisma";
 import { idParamSchema } from "../schemas/common.schema";
 import { recusarOrcamentoSchema } from "../schemas/orcamentoResposta.schema";
 import { registrarEvento } from "../lib/historico";
+import { enviarEmail, escaparHtml } from "../lib/mailer";
+import { frontendUrlPrincipal } from "../lib/config";
 
 const router = Router();
 
@@ -96,7 +98,14 @@ async function responderOrcamento(
 
   const orcamento = await prisma.orcamento.findUnique({
     where: { id },
-    select: { id: true, numero: true, empresaId: true, status: true },
+    select: {
+      id: true,
+      numero: true,
+      empresaId: true,
+      status: true,
+      cliente: { select: { nome: true } },
+      empresa: { select: { nome: true } },
+    },
   });
 
   if (orcamento) {
@@ -110,9 +119,50 @@ async function responderOrcamento(
           ? `Orçamento #${orcamento.numero} aprovado pelo cliente pelo link público.`
           : `Orçamento #${orcamento.numero} recusado pelo cliente pelo link público${motivoRecusa ? `: "${motivoRecusa}"` : "."}`,
     }).catch((e) => console.error("Erro ao registrar histórico:", e));
+
+    notificarEmpresaRespostaCliente(orcamento, novoStatus, motivoRecusa).catch((e) =>
+      console.error("Erro ao notificar empresa sobre resposta do cliente:", e)
+    );
   }
 
   return { status: 200, corpo: { status: novoStatus } };
+}
+
+// Notificação por e-mail (best-effort, nunca bloqueia a resposta do
+// cliente) para todo usuário ATIVO da empresa — ainda não existe distinção
+// de dono/funcionário (RBAC), então "todo usuário ativo" é o equivalente
+// mais correto disponível hoje a "avisar quem decide". Sem
+// RESEND_API_KEY/EMAIL_REMETENTE configurados, `enviarEmail` só loga em
+// desenvolvimento — nunca finge um envio real.
+async function notificarEmpresaRespostaCliente(
+  orcamento: { id: string; numero: number; empresaId: string; cliente: { nome: string }; empresa: { nome: string } },
+  status: "APROVADO" | "RECUSADO",
+  motivoRecusa?: string
+): Promise<void> {
+  const usuarios = await prisma.usuario.findMany({
+    where: { empresaId: orcamento.empresaId, ativo: true },
+    select: { email: true },
+  });
+  if (usuarios.length === 0) return;
+
+  const linkOrcamento = `${frontendUrlPrincipal}/orcamentos/${orcamento.id}`;
+  const acao = status === "APROVADO" ? "aprovou" : "recusou";
+  const assunto = `${orcamento.cliente.nome} ${acao} o orçamento #${orcamento.numero}`;
+  const motivoTexto = status === "RECUSADO" && motivoRecusa ? `\nMotivo informado: "${motivoRecusa}"` : "";
+  const textoSimples = `${orcamento.cliente.nome} ${acao} o orçamento #${orcamento.numero} da ${orcamento.empresa.nome}.${motivoTexto}\n\nVeja os detalhes: ${linkOrcamento}`;
+  const motivoHtml =
+    status === "RECUSADO" && motivoRecusa
+      ? `<p>Motivo informado: "${escaparHtml(motivoRecusa)}"</p>`
+      : "";
+  const textoHtml = `<p>${escaparHtml(orcamento.cliente.nome)} <b>${acao}</b> o orçamento #${orcamento.numero}.</p>${motivoHtml}<p><a href="${linkOrcamento}">Ver o orçamento no MOVA</a></p>`;
+
+  await Promise.all(
+    usuarios.map((u) =>
+      enviarEmail({ para: u.email, assunto, textoSimples, textoHtml }).catch((e) =>
+        console.error(`Erro ao enviar e-mail de notificação para ${u.email}:`, e)
+      )
+    )
+  );
 }
 
 router.post("/:id/aprovar", limiteConsultaPublica, async (req, res) => {

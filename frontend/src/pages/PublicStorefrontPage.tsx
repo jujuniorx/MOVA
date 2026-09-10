@@ -9,6 +9,7 @@ import { LogoSimbolo } from "../components/Logo";
 import { SolicitarOrcamentoModal } from "../components/publico/SolicitarOrcamentoModal";
 import { ApiError, publicoApi } from "../lib/api";
 import type { PaginaPublicaEmpresa } from "../lib/api";
+import { montarLinkChat } from "../lib/whatsapp";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -107,9 +108,7 @@ export function PublicStorefrontPage() {
   const corAcao = pagina.empresa.corSecundaria ?? cor;
   const estiloAcao = corAcao ? { backgroundColor: corAcao, color: "#fff" } : undefined;
   const temContato = Boolean(pagina.empresa.telefone || pagina.empresa.endereco || pagina.empresa.whatsapp);
-  const linkWhatsapp = pagina.empresa.whatsapp
-    ? `https://wa.me/${pagina.empresa.whatsapp.replace(/\D/g, "")}`
-    : null;
+  const linkWhatsapp = pagina.empresa.whatsapp ? montarLinkChat(pagina.empresa.whatsapp) : null;
 
   return (
     <div className="tema-claro-forcado min-h-svh bg-ink-50">

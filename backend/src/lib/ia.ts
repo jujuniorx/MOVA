@@ -301,6 +301,7 @@ async function buscarClientesTop(empresaId: string) {
 export interface ItemPrioridade {
   tipo:
     | "ORCAMENTO_PARADO"
+    | "ORCAMENTO_RESPONDIDO_CLIENTE"
     | "CLIENTE_INATIVO"
     | "CONTATO_AGUARDANDO_RETORNO"
     | "ESTOQUE_BAIXO"
@@ -322,6 +323,7 @@ export interface ItemPrioridade {
 // nem que nenhum item deixe de existir para os outros usuários.
 const TAGS_POR_TIPO_PRIORIDADE: Record<ItemPrioridade["tipo"], AreaFoco[]> = {
   ORCAMENTO_PARADO: ["atendimento", "crm", "vendas", "orcamentos"],
+  ORCAMENTO_RESPONDIDO_CLIENTE: ["atendimento", "crm", "vendas", "orcamentos"],
   CLIENTE_INATIVO: ["atendimento", "crm"],
   CONTATO_AGUARDANDO_RETORNO: ["atendimento", "crm"],
   ESTOQUE_BAIXO: ["estoque"],
@@ -385,6 +387,41 @@ export async function detectarPrioridades(empresaId: string, usuarioId?: string)
       descricao: `Cliente ${o.cliente.nome} — considere fazer um follow-up.`,
       entidadeId: o.id,
       urgencia: dias >= 7 ? "alta" : "media",
+    });
+  }
+
+  // Cliente respondeu (aprovou/recusou) pelo link público e a empresa ainda
+  // não agiu — some sozinho quando deixa de fazer sentido: um APROVADO some
+  // assim que virar venda (área 12 do diagnóstico), um RECUSADO some depois
+  // de 7 dias (não há uma "próxima ação" clara para marcar como resolvida).
+  const respostasClienteRecentes = await prisma.orcamento.findMany({
+    where: {
+      empresaId,
+      respondidoPeloClienteEm: { gte: diasAtras(7) },
+      OR: [
+        { status: "RECUSADO" },
+        { status: "APROVADO", vendaGerada: null },
+      ],
+    },
+    select: { id: true, numero: true, status: true, motivoRecusa: true, cliente: { select: { nome: true } } },
+    orderBy: { respondidoPeloClienteEm: "desc" },
+    take: 10,
+  });
+  for (const o of respostasClienteRecentes) {
+    itens.push({
+      tipo: "ORCAMENTO_RESPONDIDO_CLIENTE",
+      titulo:
+        o.status === "APROVADO"
+          ? `${o.cliente.nome} aprovou o orçamento #${o.numero}`
+          : `${o.cliente.nome} recusou o orçamento #${o.numero}`,
+      descricao:
+        o.status === "APROVADO"
+          ? "Pronto para virar uma venda."
+          : o.motivoRecusa
+            ? `Motivo informado: "${o.motivoRecusa}"`
+            : "Considere entrar em contato para entender o motivo.",
+      entidadeId: o.id,
+      urgencia: o.status === "APROVADO" ? "alta" : "media",
     });
   }
 
