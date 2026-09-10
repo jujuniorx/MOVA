@@ -17,6 +17,24 @@ function formatarNumeroWhatsapp(numero: string): string {
   return jaTemDDI ? digitos : `55${digitos}`;
 }
 
+/**
+ * O formulário de cliente não valida formato de telefone (só limita o
+ * tamanho do campo) — um cadastro incompleto ("(11" ou similar) não pode
+ * virar um link wa.me quebrado. Um número plausível, com ou sem DDI, tem
+ * 10-13 dígitos; fora disso tratamos como se não houvesse contato.
+ */
+function numeroPlausivel(numero: string): boolean {
+  const digitos = numero.replace(/\D/g, "");
+  return digitos.length >= 10 && digitos.length <= 13;
+}
+
+function primeiroNumeroValido(...candidatos: Array<string | null | undefined>): string | null {
+  for (const candidato of candidatos) {
+    if (candidato && numeroPlausivel(candidato)) return candidato;
+  }
+  return null;
+}
+
 interface DadosMensagemOrcamento {
   nomeCliente: string;
   nomeEmpresa: string;
@@ -40,7 +58,7 @@ export function montarLinkCompartilhamento(
   dados: DadosMensagemOrcamento & { whatsappCliente?: string | null; telefoneCliente?: string | null }
 ): string {
   const mensagem = montarMensagem(dados);
-  const numero = dados.whatsappCliente || dados.telefoneCliente;
+  const numero = primeiroNumeroValido(dados.whatsappCliente, dados.telefoneCliente);
   const base = numero
     ? `https://wa.me/${formatarNumeroWhatsapp(numero)}`
     : "https://wa.me/";
@@ -63,5 +81,6 @@ export function montarLinkWhatsappTexto(numero: string | null | undefined, texto
  * pública, botão "Chamar no WhatsApp" na lista de clientes).
  */
 export function montarLinkChat(numero: string | null | undefined): string {
-  return numero ? `https://wa.me/${formatarNumeroWhatsapp(numero)}` : "https://wa.me/";
+  const valido = primeiroNumeroValido(numero);
+  return valido ? `https://wa.me/${formatarNumeroWhatsapp(valido)}` : "https://wa.me/";
 }

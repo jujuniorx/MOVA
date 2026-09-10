@@ -10,13 +10,26 @@ import { registrarEvento } from "../lib/historico";
 
 const router = Router();
 
+// Leitura pública (página da vitrine, detalhe de produto, logo): sem login e
+// sem empresaId de sessão, então qualquer um na internet pode bater aqui —
+// generoso o bastante para uma visita normal (vitrine + vários produtos +
+// imagens), mas presente, para não deixar a única rota pública deste arquivo
+// sem NENHUM limite de requisições por IP.
+const limiteLeituraPublica = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: "Muitas requisições. Tente novamente em alguns minutos." },
+});
+
 // Serve os bytes da logo enviada por upload (ver POST /empresa/logo). Rota
 // pública por natureza — a logo aparece tanto na página pública (que já é
 // pública) quanto em orçamentos compartilhados com o cliente (que também não
 // exigem login) — por isso não é gated por paginaPublicaAtiva, e é por ID
 // (não por slug) para funcionar nos dois casos. Não expõe nada além da
 // imagem: nenhum outro campo da empresa é lido aqui.
-router.get("/logo/:empresaId", async (req, res) => {
+router.get("/logo/:empresaId", limiteLeituraPublica, async (req, res) => {
   const idResultado = idParamSchema.safeParse(req.params.empresaId);
   if (!idResultado.success) return res.status(400).send();
 
@@ -52,8 +65,8 @@ const limiteSolicitacao = rateLimit({
 // filtro de identidade é o `slug` da URL. Por isso o `select` abaixo é uma
 // allowlist estrita: nunca incluir clientes, orçamentos, vendas, estoque,
 // SKU/custos internos ou dados de qualquer outra empresa.
-router.get("/:slug", async (req, res) => {
-  const slug = req.params.slug?.toLowerCase().trim();
+router.get("/:slug", limiteLeituraPublica, async (req, res) => {
+  const slug = String(req.params.slug ?? "").toLowerCase().trim();
   if (!slug) return res.status(400).json({ erro: "Endereço inválido." });
 
   try {
@@ -114,8 +127,8 @@ router.get("/:slug", async (req, res) => {
 // (mesmos usados no orçamento interno) para o visitante preencher antes de
 // pedir o orçamento. Nunca retorna produtos que a empresa não marcou como
 // públicos, mesmo que o ID seja válido para outro produto da mesma empresa.
-router.get("/:slug/produtos/:produtoId", async (req, res) => {
-  const slug = req.params.slug?.toLowerCase().trim();
+router.get("/:slug/produtos/:produtoId", limiteLeituraPublica, async (req, res) => {
+  const slug = String(req.params.slug ?? "").toLowerCase().trim();
   const idResultado = idParamSchema.safeParse(req.params.produtoId);
   if (!slug || !idResultado.success) return res.status(400).json({ erro: "Requisição inválida." });
 

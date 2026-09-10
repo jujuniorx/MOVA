@@ -69,6 +69,44 @@ export function PublicStorefrontPage() {
     };
   }, [pagina]);
 
+  // SEO básico + preview ao compartilhar: como o MOVA é uma SPA sem
+  // renderização no servidor, robôs de preview de link (WhatsApp, Facebook,
+  // etc.) que não executam JavaScript não veem estas tags — isso exigiria
+  // SSR, fora do escopo agora. Ainda assim vale a pena: ajuda o Google (que
+  // executa JavaScript ao indexar) e deixa a página pronta para SSR futuro
+  // sem precisar revisitar isto.
+  useEffect(() => {
+    if (!pagina) return;
+    const descricaoConteudo =
+      pagina.empresa.descricao?.trim() || `Confira os produtos e serviços de ${pagina.empresa.nome} e peça um orçamento.`;
+    const tagsCriadas: HTMLElement[] = [];
+
+    function definirMeta(atributo: "name" | "property", chave: string, conteudo: string) {
+      let tag = document.head.querySelector<HTMLMetaElement>(`meta[${atributo}="${chave}"]`);
+      if (!tag) {
+        tag = document.createElement("meta");
+        tag.setAttribute(atributo, chave);
+        document.head.appendChild(tag);
+        tagsCriadas.push(tag);
+      }
+      tag.setAttribute("content", conteudo);
+    }
+
+    definirMeta("name", "description", descricaoConteudo);
+    definirMeta("property", "og:type", "website");
+    definirMeta("property", "og:title", pagina.empresa.nome);
+    definirMeta("property", "og:description", descricaoConteudo);
+    definirMeta("property", "og:url", window.location.href);
+    definirMeta("name", "twitter:card", pagina.empresa.logoUrl ? "summary_large_image" : "summary");
+    if (pagina.empresa.logoUrl) {
+      definirMeta("property", "og:image", pagina.empresa.logoUrl);
+    }
+
+    return () => {
+      tagsCriadas.forEach((tag) => tag.remove());
+    };
+  }, [pagina]);
+
   if (carregando) {
     return (
       <div className="tema-claro-forcado min-h-svh bg-ink-50">

@@ -42,6 +42,15 @@ describe("montarLinkChat", () => {
   it("aceita '+' na frente (formato internacional digitado manualmente)", () => {
     expect(montarLinkChat("+55 11 98888-7777")).toBe("https://wa.me/5511988887777");
   });
+
+  it("telefone incompleto/inválido (poucos dígitos) cai no link sem destinatário", () => {
+    expect(montarLinkChat("(11")).toBe("https://wa.me/");
+    expect(montarLinkChat("119")).toBe("https://wa.me/");
+  });
+
+  it("sequência de dígitos absurdamente longa cai no link sem destinatário", () => {
+    expect(montarLinkChat("551198888777712345")).toBe("https://wa.me/");
+  });
 });
 
 describe("montarLinkWhatsappTexto", () => {
@@ -76,6 +85,18 @@ describe("montarLinkCompartilhamento", () => {
       total: "150.5",
       link: "https://mova.tec.br/o/1",
       whatsappCliente: null,
+      telefoneCliente: "1133224455",
+    });
+    expect(link.startsWith("https://wa.me/551133224455?text=")).toBe(true);
+  });
+
+  it("whatsapp cadastrado incompleto ignora e usa o telefone válido", () => {
+    const link = montarLinkCompartilhamento({
+      nomeCliente: "Maria",
+      nomeEmpresa: "Regusto",
+      total: "150.5",
+      link: "https://mova.tec.br/o/1",
+      whatsappCliente: "(11",
       telefoneCliente: "1133224455",
     });
     expect(link.startsWith("https://wa.me/551133224455?text=")).toBe(true);
