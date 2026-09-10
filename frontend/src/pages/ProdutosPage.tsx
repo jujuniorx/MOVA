@@ -346,7 +346,12 @@ export function ProdutosPage() {
         capacidadesIA={capacidadesIA}
       />
 
-      <EstimarPrecoImagemModal aberto={precoImagemAberto} aoFechar={() => setPrecoImagemAberto(false)} />
+      <EstimarPrecoImagemModal
+        aberto={precoImagemAberto}
+        aoFechar={() => setPrecoImagemAberto(false)}
+        produtos={produtos}
+        aoAplicarPreco={carregarProdutos}
+      />
 
       <ImportacaoModal
         titulo="Importar produtos"
