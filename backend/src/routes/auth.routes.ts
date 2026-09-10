@@ -51,7 +51,7 @@ router.post("/registrar", limiteAuth, async (req, res) => {
 
     return res.status(201).json({
       token,
-      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email },
+      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel },
       empresa,
     });
   } catch (erro) {
@@ -98,7 +98,7 @@ router.post("/login", limiteAuth, async (req, res) => {
 
     return res.json({
       token,
-      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email },
+      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel },
       empresa: usuario.empresa,
     });
   } catch (erro) {
@@ -198,7 +198,7 @@ router.get("/me", autenticar, async (req, res) => {
     }
 
     return res.json({
-      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email },
+      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel },
       empresa: usuario.empresa,
     });
   } catch (erro) {

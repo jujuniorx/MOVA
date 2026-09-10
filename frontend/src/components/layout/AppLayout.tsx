@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useModulos } from "../../context/ModulosContext";
 import { cn } from "../../lib/cn";
 
-type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/operacoes" | "/configuracoes";
+type Caminho = "/painel" | "/orcamentos" | "/clientes" | "/produtos" | "/operacoes" | "/indicacoes-clientes" | "/configuracoes";
 
 function IconeInicio() {
   return (
@@ -39,6 +39,14 @@ function IconeProdutos() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5 12 12l8-4.5M12 12v9" />
+    </svg>
+  );
+}
+
+function IconeIndicacoes() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.5 3 15l1.5-4.5L3 6l5.5 2.5L12 5l3.5 3.5L21 6l-1.5 4.5L21 15l-5.5-2.5L12 16z" />
     </svg>
   );
 }
@@ -95,6 +103,7 @@ const itensNavBase: Array<{ rotulo: string; caminho: Caminho; icone: ReactNode; 
   { rotulo: "Clientes", caminho: "/clientes", icone: <IconeClientes /> },
   { rotulo: "Produtos", caminho: "/produtos", icone: <IconeProdutos /> },
   { rotulo: "Operações", caminho: "/operacoes", icone: <IconeOperacoes />, requerAlgumModulo: ["estoque", "vendas", "pedidos"] },
+  { rotulo: "Indicações", caminho: "/indicacoes-clientes", icone: <IconeIndicacoes /> },
   { rotulo: "Configurações", caminho: "/configuracoes", icone: <IconeConfig /> },
 ];
 

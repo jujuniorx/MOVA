@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ApiError, authApi, limparToken, obterToken, salvarToken } from "../lib/api";
+import { ApiError, authApi, usuariosApi, limparToken, obterToken, salvarToken } from "../lib/api";
 import type { Empresa, Usuario } from "../lib/api";
 
 interface AuthContextValor {
@@ -15,6 +15,7 @@ interface AuthContextValor {
     senha: string,
     codigoIndicacao?: string
   ) => Promise<void>;
+  aceitarConvite: (token: string, nome: string, senha: string) => Promise<void>;
   sair: () => void;
   atualizarEmpresa: (empresa: Empresa) => void;
 }
@@ -65,6 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setEmpresa(resposta.empresa);
   }
 
+  async function aceitarConvite(token: string, nome: string, senha: string) {
+    const resposta = await usuariosApi.aceitarConvite(token, nome, senha);
+    salvarToken(resposta.token);
+    setUsuario(resposta.usuario);
+    setEmpresa(resposta.empresa);
+  }
+
   function sair() {
     limparToken();
     setUsuario(null);
@@ -77,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ usuario, empresa, carregando, login, registrar, sair, atualizarEmpresa }}
+      value={{ usuario, empresa, carregando, login, registrar, aceitarConvite, sair, atualizarEmpresa }}
     >
       {children}
     </AuthContext.Provider>

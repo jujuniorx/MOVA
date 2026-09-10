@@ -22,9 +22,13 @@ export const excluirEmpresaSchema = z.object({
   motivo: z.string().trim().min(3, "Informe o motivo da exclusão.").max(500),
 });
 
+// Regra oficial de duração: só 7/14/30 dias ou Vitalício para NOVAS
+// concessões. DIAS_15/DIAS_90/ANO_1 continuam existindo no enum do Prisma
+// (ver schema.prisma) só para não invalidar acessos concedidos antes desta
+// regra — nunca aparecem aqui como opção para conceder de novo.
 export const concederAcessoEspecialSchema = z.object({
   planoTipo: z.enum(["START", "BUSINESS", "PRO"], { error: "Plano inválido." }),
-  duracao: z.enum(["DIAS_15", "DIAS_30", "DIAS_90", "ANO_1", "VITALICIO"], { error: "Duração inválida." }),
+  duracao: z.enum(["DIAS_7", "DIAS_14", "DIAS_30", "VITALICIO"], { error: "Duração inválida." }),
   motivo: z.string().trim().max(500).optional(),
 });
 

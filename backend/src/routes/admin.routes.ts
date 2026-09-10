@@ -255,10 +255,9 @@ router.post("/empresas/:id/acesso-especial", async (req, res) => {
     if (!empresa) return res.status(404).json({ erro: "Empresa não encontrada." });
 
     const DURACAO_EM_DIAS: Record<string, number | null> = {
-      DIAS_15: 15,
+      DIAS_7: 7,
+      DIAS_14: 14,
       DIAS_30: 30,
-      DIAS_90: 90,
-      ANO_1: 365,
       VITALICIO: null,
     };
     const dias = DURACAO_EM_DIAS[corpo.data.duracao];

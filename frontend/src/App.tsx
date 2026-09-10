@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { EsqueciSenhaPage } from "./pages/EsqueciSenhaPage";
 import { RedefinirSenhaPage } from "./pages/RedefinirSenhaPage";
+import { AceitarConvitePage } from "./pages/AceitarConvitePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrcamentosPage } from "./pages/OrcamentosPage";
 import { ClientesPage } from "./pages/ClientesPage";
@@ -16,6 +17,7 @@ import { ConfiguracoesPage } from "./pages/ConfiguracoesPage";
 import { PlanosPage } from "./pages/PlanosPage";
 import { IndicacaoPage } from "./pages/IndicacaoPage";
 import { OperacoesPage } from "./pages/OperacoesPage";
+import { IndicacoesClientesPage } from "./pages/IndicacoesClientesPage";
 import { PublicStorefrontPage } from "./pages/PublicStorefrontPage";
 import { AdminProtectedRoute } from "./components/layout/AdminProtectedRoute";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
@@ -41,6 +43,7 @@ function App() {
       <Route path="/registrar" element={<RegisterPage />} />
       <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
       <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+      <Route path="/aceitar-convite" element={<AceitarConvitePage />} />
       <Route
         path="/painel"
         element={
@@ -96,6 +99,14 @@ function App() {
         element={
           <ProtectedRoute>
             <OperacoesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/indicacoes-clientes"
+        element={
+          <ProtectedRoute>
+            <IndicacoesClientesPage />
           </ProtectedRoute>
         }
       />

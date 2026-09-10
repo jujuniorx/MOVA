@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 type TransacaoPrisma = Prisma.TransactionClient;
 
 export interface LimiteExcedidoInfo {
-  recurso: "clientes" | "produtos" | "orcamentos";
+  recurso: "clientes" | "produtos" | "orcamentos" | "usuarios";
   planoAtual: PlanoTipo;
   limiteAtual: number;
   sugestao: { planoTipo: PlanoTipo; limite: number | null; precoMensal: string } | null;
@@ -64,13 +64,19 @@ export async function obterConfigPlano(planoTipo: PlanoTipo) {
  */
 export async function verificarLimite(
   empresa: Pick<Empresa, "id" | "planoTipo" | "trialBonusAteEm">,
-  recurso: "clientes" | "produtos" | "orcamentos"
+  recurso: "clientes" | "produtos" | "orcamentos" | "usuarios"
 ): Promise<LimiteExcedidoInfo | null> {
   const efetivo = await planoEfetivo(empresa);
   const config = await obterConfigPlano(efetivo);
 
   const limiteCampo =
-    recurso === "clientes" ? config.limiteClientes : recurso === "produtos" ? config.limiteProdutos : config.limiteOrcamentos;
+    recurso === "clientes"
+      ? config.limiteClientes
+      : recurso === "produtos"
+        ? config.limiteProdutos
+        : recurso === "usuarios"
+          ? config.limiteUsuarios
+          : config.limiteOrcamentos;
 
   if (limiteCampo === null) return null; // ilimitado neste plano
 
@@ -85,6 +91,18 @@ export async function verificarLimite(
     contagemAtual = await prisma.cliente.count({ where: { empresaId: empresa.id } });
   } else if (recurso === "produtos") {
     contagemAtual = await prisma.produto.count({ where: { empresaId: empresa.id } });
+  } else if (recurso === "usuarios") {
+    // Conta usuários ativos + convites pendentes (ainda não aceitos, não
+    // revogados, não expirados) — sem isso, dar vários convites de uma vez
+    // furaria o limite do plano antes de qualquer um ser aceito.
+    const agora = new Date();
+    const [usuariosAtivos, convitesPendentes] = await Promise.all([
+      prisma.usuario.count({ where: { empresaId: empresa.id, ativo: true } }),
+      prisma.conviteUsuario.count({
+        where: { empresaId: empresa.id, aceitoEm: null, revogadoEm: null, expiraEm: { gt: agora } },
+      }),
+    ]);
+    contagemAtual = usuariosAtivos + convitesPendentes;
   } else {
     contagemAtual = await prisma.orcamento.count({ where: { empresaId: empresa.id } });
   }
@@ -100,7 +118,9 @@ export async function verificarLimite(
         ? configProximo.limiteClientes
         : recurso === "produtos"
           ? configProximo.limiteProdutos
-          : configProximo.limiteOrcamentos;
+          : recurso === "usuarios"
+            ? configProximo.limiteUsuarios
+            : configProximo.limiteOrcamentos;
     sugestao = { planoTipo: proximoPlano, limite: limiteProximo, precoMensal: configProximo.precoMensal.toString() };
   }
 
@@ -125,6 +145,7 @@ const NOMES_RECURSO: Record<LimiteExcedidoInfo["recurso"], string> = {
   clientes: "clientes",
   produtos: "produtos",
   orcamentos: "orçamentos",
+  usuarios: "usuários",
 };
 
 /** Monta a mensagem completa de upsell já pronta para exibir ao usuário. */

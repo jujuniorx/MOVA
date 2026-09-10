@@ -142,10 +142,13 @@ async function apiFetchAdmin<T>(caminho: string, opcoes: RequestInit = {}): Prom
   return corpo as T;
 }
 
+export type PapelUsuario = "DONO" | "FUNCIONARIO";
+
 export interface Usuario {
   id: string;
   nome: string;
   email: string;
+  papel: PapelUsuario;
 }
 
 export type PlanoTipo = "GRATUITO" | "START" | "BUSINESS" | "PRO";
@@ -299,6 +302,28 @@ export const usuariosApi = {
       method: "POST",
       body: JSON.stringify(rascunho),
     }),
+
+  // Equipe da empresa e RBAC leve (Dono/Funcionário) — ver equipe abaixo.
+  listar: () => apiFetch<UsuarioEquipe[]>("/usuarios"),
+
+  atualizarAtivo: (id: string, ativo: boolean) =>
+    apiFetch<{ id: string; ativo: boolean }>(`/usuarios/${id}/ativo`, {
+      method: "PATCH",
+      body: JSON.stringify({ ativo }),
+    }),
+
+  listarConvites: () => apiFetch<ConviteUsuario[]>("/usuarios/convites"),
+
+  convidar: (email: string, papel: PapelUsuario) =>
+    apiFetch<ConviteUsuario>("/usuarios/convites", { method: "POST", body: JSON.stringify({ email, papel }) }),
+
+  revogarConvite: (id: string) => apiFetch<null>(`/usuarios/convites/${id}`, { method: "DELETE" }),
+
+  aceitarConvite: (token: string, nome: string, senha: string) =>
+    apiFetch<RespostaAutenticacao>(`/usuarios/convites/${token}/aceitar`, {
+      method: "POST",
+      body: JSON.stringify({ nome, senha }),
+    }),
 };
 
 export interface PerfilTrabalhoRascunho {
@@ -390,6 +415,28 @@ export const authApi = {
       body: JSON.stringify({ token, novaSenha }),
     }),
 };
+
+// --- Equipe (RBAC leve: Dono/Funcionário) e convites -----------------------
+// (métodos de equipe/convite ficam dentro de `usuariosApi`, acima, junto
+// com os de perfil de trabalho — mesmo recurso REST /usuarios)
+
+export interface UsuarioEquipe {
+  id: string;
+  nome: string;
+  email: string;
+  papel: PapelUsuario;
+  ativo: boolean;
+  cargo: string | null;
+  criadoEm: string;
+}
+
+export interface ConviteUsuario {
+  id: string;
+  email: string;
+  papel: PapelUsuario;
+  criadoEm: string;
+  expiraEm: string;
+}
 
 export type StatusOrcamento = "RASCUNHO" | "ENVIADO" | "APROVADO" | "RECUSADO";
 
@@ -644,6 +691,81 @@ export const clientesApi = {
       method: "POST",
       body: JSON.stringify({ arquivoBase64, mapeamento, importarDuplicados }),
     }),
+};
+
+// --- Indicação de clientes (programa de indicação da empresa para os
+// próprios clientes dela — sem relação com /indicacao, que é o programa do
+// MOVA para uma empresa indicar OUTRA empresa a assinar o MOVA) -----------
+
+export type StatusIndicacaoCliente = "PENDENTE" | "CONVERTIDA" | "CANCELADA";
+
+export interface IndicacaoCliente {
+  id: string;
+  indicadorUsuarioId: string | null;
+  indicadorUsuario: { id: string; nome: string; email: string } | null;
+  indicadorNome: string;
+  indicadorWhatsapp: string | null;
+  indicadorInstagram: string | null;
+  clienteId: string | null;
+  cliente: { id: string; nome: string } | null;
+  indicadoNome: string;
+  indicadoWhatsapp: string | null;
+  indicadoInstagram: string | null;
+  codigoVoucher: string | null;
+  valorRecompensa: string | null;
+  pontuacao: number | null;
+  status: StatusIndicacaoCliente;
+  vendaConvertidaId: string | null;
+  vendaConvertida: { id: string; numero: number; total: string } | null;
+  convertidoEm: string | null;
+  motivoCancelamento: string | null;
+  observacoes: string | null;
+  criadoEm: string;
+}
+
+export interface IndicacaoClienteInput {
+  indicadorUsuarioId?: string;
+  indicadorNome: string;
+  indicadorWhatsapp?: string;
+  indicadorInstagram?: string;
+  clienteId?: string;
+  indicadoNome: string;
+  indicadoWhatsapp?: string;
+  indicadoInstagram?: string;
+  codigoVoucher?: string;
+  valorRecompensa?: number;
+  pontuacao?: number;
+  observacoes?: string;
+}
+
+export interface ResumoIndicador {
+  indicadorNome: string;
+  indicadorUsuarioId: string | null;
+  totalConvertidas: number;
+  totalValor: number;
+  totalPontos: number;
+}
+
+export const indicacoesClientesApi = {
+  listar: (status?: StatusIndicacaoCliente) =>
+    apiFetch<IndicacaoCliente[]>(`/indicacoes-clientes${status ? `?status=${status}` : ""}`),
+
+  resumo: () => apiFetch<ResumoIndicador[]>("/indicacoes-clientes/resumo"),
+
+  criar: (dados: IndicacaoClienteInput) =>
+    apiFetch<IndicacaoCliente>("/indicacoes-clientes", { method: "POST", body: JSON.stringify(dados) }),
+
+  atualizar: (id: string, dados: Partial<IndicacaoClienteInput>) =>
+    apiFetch<IndicacaoCliente>(`/indicacoes-clientes/${id}`, { method: "PATCH", body: JSON.stringify(dados) }),
+
+  converter: (id: string, vendaId: string) =>
+    apiFetch<IndicacaoCliente>(`/indicacoes-clientes/${id}/converter`, {
+      method: "POST",
+      body: JSON.stringify({ vendaId }),
+    }),
+
+  cancelar: (id: string, motivo?: string) =>
+    apiFetch<null>(`/indicacoes-clientes/${id}/cancelar`, { method: "POST", body: JSON.stringify({ motivo }) }),
 };
 
 export type TipoCampo = "TEXTO" | "NUMERO" | "SELECAO_UNICA" | "SELECAO_MULTIPLA" | "DATA" | "BOOLEANO";
@@ -1266,7 +1388,11 @@ export interface EmpresaAdmin {
   _count: { usuarios: number; clientes: number; produtos: number; orcamentos: number };
 }
 
-export type DuracaoAcessoEspecial = "DIAS_15" | "DIAS_30" | "DIAS_90" | "ANO_1" | "VITALICIO";
+// DIAS_15/DIAS_90/ANO_1 só existem para exibir acessos concedidos antes da
+// regra oficial (7/14/30 dias ou Vitalício) virar 7/14/30/Vitalício — nunca
+// oferecidos ao conceder um acesso novo (ver DURACOES_OFICIAIS nas telas de
+// Admin).
+export type DuracaoAcessoEspecial = "DIAS_7" | "DIAS_14" | "DIAS_15" | "DIAS_30" | "DIAS_90" | "ANO_1" | "VITALICIO";
 
 export interface AcessoEspecialInfo {
   id: string;

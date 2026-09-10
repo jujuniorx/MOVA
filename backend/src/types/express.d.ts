@@ -5,6 +5,7 @@ declare global {
         id: string;
         empresaId: string;
         email: string;
+        papel: "DONO" | "FUNCIONARIO";
       };
       admin?: {
         id: string;

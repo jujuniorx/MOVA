@@ -293,10 +293,11 @@ router.get("/:id/historico", async (req, res) => {
     const cliente = await prisma.cliente.findFirst({ where: { id: idResultado.data, empresaId } });
     if (!cliente) return res.status(404).json({ erro: "Cliente não encontrado." });
 
-    const [orcamentos, vendas, pedidos] = await Promise.all([
+    const [orcamentos, vendas, pedidos, indicacoesClientes] = await Promise.all([
       prisma.orcamento.findMany({ where: { clienteId: cliente.id }, select: { id: true } }),
       prisma.venda.findMany({ where: { clienteId: cliente.id }, select: { id: true } }),
       prisma.pedido.findMany({ where: { clienteId: cliente.id }, select: { id: true } }),
+      prisma.indicacaoCliente.findMany({ where: { clienteId: cliente.id }, select: { id: true } }),
     ]);
     const vendaIds = vendas.map((v) => v.id);
     const pedidoIds = pedidos.map((p) => p.id);
@@ -315,6 +316,7 @@ router.get("/:id/historico", async (req, res) => {
       ...vendaIds,
       ...pedidoIds,
       ...devolucoes.map((d) => d.id),
+      ...indicacoesClientes.map((i) => i.id),
     ];
 
     const eventos = await prisma.eventoHistorico.findMany({

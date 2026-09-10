@@ -23,7 +23,7 @@ export async function autenticar(req: Request, res: Response, next: NextFunction
     // recuperação de senha.
     const usuario = await prisma.usuario.findUnique({
       where: { id: payload.sub },
-      select: { ativo: true, senhaAlteradaEm: true, empresa: { select: { suspensa: true } } },
+      select: { ativo: true, senhaAlteradaEm: true, papel: true, empresa: { select: { suspensa: true } } },
     });
     if (!usuario) {
       return res.status(401).json({ erro: "Token inválido ou expirado." });
@@ -38,7 +38,7 @@ export async function autenticar(req: Request, res: Response, next: NextFunction
       return res.status(401).json({ erro: "Sua sessão expirou porque a senha foi alterada. Faça login novamente." });
     }
 
-    req.usuario = { id: payload.sub, empresaId: payload.empresaId, email: payload.email };
+    req.usuario = { id: payload.sub, empresaId: payload.empresaId, email: payload.email, papel: usuario.papel };
     next();
   } catch {
     return res.status(401).json({ erro: "Token inválido ou expirado." });

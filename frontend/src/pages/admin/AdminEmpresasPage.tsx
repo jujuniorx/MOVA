@@ -12,16 +12,9 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Badge } from "../../components/ui/Badge";
 import { ApiError, adminApi } from "../../lib/api";
 import type { DuracaoAcessoEspecial, EmpresaAdmin, EmpresaAdminDetalhe, LogAuditoriaAdmin, PlanoTipo } from "../../lib/api";
+import { DURACOES_OFICIAIS, ROTULOS_DURACAO_ACESSO_ESPECIAL } from "../../lib/acessoEspecial";
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-
-const ROTULOS_DURACAO: Record<DuracaoAcessoEspecial, string> = {
-  DIAS_15: "15 dias",
-  DIAS_30: "30 dias",
-  DIAS_90: "90 dias",
-  ANO_1: "1 ano",
-  VITALICIO: "Vitalício",
-};
 
 export function AdminEmpresasPage() {
   const [termo, setTermo] = useState("");
@@ -263,7 +256,7 @@ function DetalheEmpresaModal({
                 <>
                   <p className="mt-1 text-sm font-medium text-ink-900">{detalhe.acessoEspecial.planoTipo}</p>
                   <p className="text-xs text-ink-500">
-                    {ROTULOS_DURACAO[detalhe.acessoEspecial.duracao]}
+                    {ROTULOS_DURACAO_ACESSO_ESPECIAL[detalhe.acessoEspecial.duracao]}
                     {detalhe.acessoEspecial.expiraEm ? ` · até ${formatoData.format(new Date(detalhe.acessoEspecial.expiraEm))}` : ""}
                   </p>
                 </>
@@ -328,9 +321,9 @@ function DetalheEmpresaModal({
                   <option value="PRO">Pro</option>
                 </Select>
                 <Select rotulo="Duração" value={duracaoEspecial} onChange={(e) => setDuracaoEspecial(e.target.value as DuracaoAcessoEspecial)}>
-                  {Object.entries(ROTULOS_DURACAO).map(([valor, rotulo]) => (
+                  {DURACOES_OFICIAIS.map((valor) => (
                     <option key={valor} value={valor}>
-                      {rotulo}
+                      {ROTULOS_DURACAO_ACESSO_ESPECIAL[valor]}
                     </option>
                   ))}
                 </Select>

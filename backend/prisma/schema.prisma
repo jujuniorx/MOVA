@@ -25,6 +25,17 @@ enum StatusIndicacao {
   BLOQUEADA
 }
 
+/// RBAC leve: só duas posições, sem granularidade por módulo/ação. DONO é
+/// quem criou a empresa (ou foi promovido) — pode convidar/gerenciar outros
+/// usuários. FUNCIONARIO tem acesso operacional igual ao de hoje (clientes,
+/// orçamentos, vendas, produtos, estoque etc) só SEM gerenciar usuários.
+/// Todo usuário existente antes desta feature virou DONO na migração (não
+/// muda nada do acesso que já tinham).
+enum PapelUsuario {
+  DONO
+  FUNCIONARIO
+}
+
 /// Preço e limites de cada plano — fonte de verdade única, editável sem
 /// deploy. Nunca hardcode número de plano em código; leia sempre daqui.
 model PlanoConfig {
@@ -166,6 +177,9 @@ model Empresa {
 
   acessosEspeciais AcessoEspecial[]
   logsAdmin        LogAuditoriaAdmin[]
+
+  convitesUsuario    ConviteUsuario[]
+  indicacoesClientes IndicacaoCliente[]
 }
 
 /// Um registro por empresa indicada (relação 1:1 com quem foi indicado —
@@ -210,6 +224,11 @@ model Usuario {
   /// Empresa.suspensa). Nunca apaga nenhum dado do usuário.
   ativo Boolean @default(true)
 
+  /// RBAC leve (ver enum PapelUsuario) — default DONO preserva o acesso de
+  /// todo usuário criado antes desta feature existir. Só usuários aceitos
+  /// por convite (ver ConviteUsuario) nascem FUNCIONARIO.
+  papel PapelUsuario @default(DONO)
+
   /// Perfil de trabalho do usuário ("como você trabalha"), estruturado pela
   /// mesma lógica de interpretar→mostrar→confirmar→aplicar do Perfil
   /// Operacional da empresa (ver perfilOperacional em Empresa) — só que numa
@@ -223,9 +242,36 @@ model Usuario {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  movimentacoesEstoque  MovimentacaoEstoque[]
-  conferenciasDevolucao ConferenciaDevolucao[]
-  tokensRecuperacaoSenha TokenRecuperacaoSenha[]
+  movimentacoesEstoque       MovimentacaoEstoque[]
+  conferenciasDevolucao      ConferenciaDevolucao[]
+  tokensRecuperacaoSenha     TokenRecuperacaoSenha[]
+  convitesEnviados           ConviteUsuario[]
+  indicacoesClienteIndicadas IndicacaoCliente[]
+
+  @@index([empresaId])
+}
+
+/// Convite para um segundo (ou mais) usuário entrar na empresa — só o DONO
+/// pode criar. Mesmo padrão de token de uso único do TokenRecuperacaoSenha:
+/// nunca guarda o token em texto puro, só o hash; expira sozinho.
+model ConviteUsuario {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  email String
+  papel PapelUsuario @default(FUNCIONARIO)
+
+  tokenHash String @unique
+
+  convidadoPorId String
+  convidadoPor   Usuario @relation(fields: [convidadoPorId], references: [id])
+
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  aceitoEm   DateTime?
+  revogadoEm DateTime?
 
   @@index([empresaId])
 }
@@ -289,10 +335,11 @@ model Cliente {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  orcamentos        Orcamento[]
-  vendas            Venda[]
-  pedidos           Pedido[]
-  conversasWhatsApp ConversaWhatsApp[]
+  orcamentos          Orcamento[]
+  vendas              Venda[]
+  pedidos             Pedido[]
+  conversasWhatsApp   ConversaWhatsApp[]
+  indicacoesRecebidas IndicacaoCliente[]
 
   @@index([empresaId])
 }
@@ -813,8 +860,9 @@ model Venda {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  itens      ItemVenda[]
-  devolucoes Devolucao[]
+  itens                      ItemVenda[]
+  devolucoes                 Devolucao[]
+  indicacaoClienteConvertida IndicacaoCliente?
 
   @@index([empresaId])
   @@index([clienteId])
@@ -842,6 +890,65 @@ model ItemVenda {
   @@index([vendaId])
   @@index([produtoId])
   @@index([variacaoId])
+}
+
+enum StatusIndicacaoCliente {
+  PENDENTE
+  CONVERTIDA
+  CANCELADA
+}
+
+/// Programa de indicação de CLIENTES da empresa (ideia do Glauber) — sem
+/// relação nenhuma com o model `Indicacao` (esse é o programa do MOVA para
+/// uma empresa indicar OUTRA empresa a assinar o MOVA). Aqui é o inverso:
+/// alguém (um profissional da equipe, um parceiro, um influenciador ou o
+/// próprio cliente) indica um cliente novo PARA a empresa.
+///
+/// Estrutura de propósito flexível, sem regra comercial embutida: quem
+/// indica não precisa ter cadastro (indicadorNome sempre existe;
+/// indicadorUsuarioId só quando for alguém da equipe, usado pra notificar
+/// na conversão), e o indicado não precisa já estar no CRM (indicadoNome
+/// sempre existe; clienteId vincula quando o cadastro existir — antes ou
+/// depois da indicação, nas duas ordens).
+model IndicacaoCliente {
+  id String @id @default(uuid())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  indicadorUsuarioId String?
+  indicadorUsuario   Usuario? @relation(fields: [indicadorUsuarioId], references: [id])
+  indicadorNome      String
+  indicadorWhatsapp  String?
+  /// @usuario ou URL do Instagram — sempre texto/link clicável, nunca
+  /// integração com a API do Instagram.
+  indicadorInstagram String?
+
+  clienteId         String?
+  cliente           Cliente? @relation(fields: [clienteId], references: [id])
+  indicadoNome      String
+  indicadoWhatsapp  String?
+  indicadoInstagram String?
+
+  codigoVoucher String?
+
+  /// Os dois jeitos de recompensa mais comuns (R$ e/ou pontuação) —
+  /// independentes e opcionais, sem conversão automática entre eles.
+  valorRecompensa Decimal? @db.Decimal(12, 2)
+  pontuacao       Int?
+
+  status             StatusIndicacaoCliente @default(PENDENTE)
+  vendaConvertidaId  String?                @unique
+  vendaConvertida    Venda?                 @relation(fields: [vendaConvertidaId], references: [id])
+  convertidoEm       DateTime?
+  motivoCancelamento String?
+
+  observacoes String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId])
+  @@index([clienteId])
 }
 
 enum StatusPedido {
@@ -1165,11 +1272,18 @@ model AdminUsuario {
 }
 
 enum DuracaoAcessoEspecial {
+  /// Não oferecido mais para novas concessões (regra oficial virou
+  /// 7/14/30 dias ou Vitalício) — mantido só para não invalidar acessos já
+  /// concedidos com este valor.
   DIAS_15
   DIAS_30
+  /// Não oferecido mais para novas concessões — ver nota em DIAS_15.
   DIAS_90
+  /// Não oferecido mais para novas concessões — ver nota em DIAS_15.
   ANO_1
   VITALICIO
+  DIAS_7
+  DIAS_14
 }
 
 /// Acesso especial administrativo — SEPARADO do plano comercial
@@ -1238,6 +1352,6 @@ model FeatureFlag {
 
   empresasHabilitadas Json?
 
-  criadoEm    DateTime @default(now())
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

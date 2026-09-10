@@ -8,17 +8,10 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ApiError, adminApi } from "../../lib/api";
-import type { AcessoEspecialAdmin, DuracaoAcessoEspecial } from "../../lib/api";
+import type { AcessoEspecialAdmin } from "../../lib/api";
+import { ROTULOS_DURACAO_ACESSO_ESPECIAL } from "../../lib/acessoEspecial";
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-
-const ROTULOS_DURACAO: Record<DuracaoAcessoEspecial, string> = {
-  DIAS_15: "15 dias",
-  DIAS_30: "30 dias",
-  DIAS_90: "90 dias",
-  ANO_1: "1 ano",
-  VITALICIO: "Vitalício",
-};
 
 export function AdminAcessosEspeciaisPage() {
   const [apenasAtivos, setApenasAtivos] = useState(true);
@@ -99,7 +92,7 @@ export function AdminAcessosEspeciaisPage() {
                     <Badge className="bg-brand-50 text-brand-700">{a.planoTipo}</Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-500">
-                    {ROTULOS_DURACAO[a.duracao]} · concedido por {a.concedidoPorAdmin.nome} em {formatoData.format(new Date(a.concedidoEm))}
+                    {ROTULOS_DURACAO_ACESSO_ESPECIAL[a.duracao]} · concedido por {a.concedidoPorAdmin.nome} em {formatoData.format(new Date(a.concedidoEm))}
                     {a.expiraEm ? ` · expira em ${formatoData.format(new Date(a.expiraEm))}` : ""}
                     {a.motivo ? ` · ${a.motivo}` : ""}
                   </p>

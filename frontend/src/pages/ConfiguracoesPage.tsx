@@ -17,6 +17,7 @@ import { PerfilOperacionalCard } from "../components/configuracoes/PerfilOperaci
 import { LogoUploadField } from "../components/configuracoes/LogoUploadField";
 import { ProcessoOrcamentoCard } from "../components/configuracoes/ProcessoOrcamentoCard";
 import { ModulosCard } from "../components/configuracoes/ModulosCard";
+import { EquipeCard } from "../components/configuracoes/EquipeCard";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, empresaApi } from "../lib/api";
 import { empresaFormSchema } from "../schemas/empresa.schema";
@@ -231,6 +232,8 @@ export function ConfiguracoesPage() {
           </Card>
 
           <PerfilOperacionalCard />
+
+          <EquipeCard />
 
           <ModulosCard />
 
