@@ -47,7 +47,7 @@ export function MinhaPaginaCard() {
       ) : (
         <div className="mt-3">
           <p className="text-sm text-ink-500">Sua página pública ainda não está pronta.</p>
-          <Link to="/configuracoes" className="mt-3 inline-block">
+          <Link to="/configuracoes/marca" className="mt-3 inline-block">
             <Button type="button" tamanho="sm">
               Configurar página
             </Button>

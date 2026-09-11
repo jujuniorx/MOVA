@@ -19,8 +19,6 @@ export const empresaFormSchema = z.object({
   email: emailOpcional,
   endereco: stringOpcional(200),
   descricao: stringOpcional(500),
-  corPrimaria: z.string(),
-  corSecundaria: z.string(),
 });
 
 export type EmpresaFormInput = z.infer<typeof empresaFormSchema>;

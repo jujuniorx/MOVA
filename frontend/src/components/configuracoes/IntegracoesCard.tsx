@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardHeader } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -104,7 +105,13 @@ export function IntegracoesCard() {
         <div className="rounded-lg border border-ink-200 p-4">
           <p className="text-sm font-semibold text-ink-900">Mercado Livre</p>
           {!mercadoLivreAtivo && (
-            <p className="mt-1 text-sm text-ink-500">Ative o recurso "Mercado Livre" em Recursos do MOVA, acima, para conectar.</p>
+            <p className="mt-1 text-sm text-ink-500">
+              Primeiro ative o recurso Mercado Livre em{" "}
+              <Link to="/configuracoes/recursos" className="font-medium text-brand-600 hover:underline">
+                Recursos do MOVA
+              </Link>
+              . Depois você poderá conectar sua conta.
+            </p>
           )}
           {mercadoLivreAtivo && ml && !ml.configurado && (
             <p className="mt-1 text-sm text-ink-500">Integração ainda não configurada neste ambiente pelo administrador do MOVA.</p>
@@ -154,7 +161,13 @@ export function IntegracoesCard() {
         <div className="rounded-lg border border-ink-200 p-4">
           <p className="text-sm font-semibold text-ink-900">WhatsApp</p>
           {!whatsappAtivo && (
-            <p className="mt-1 text-sm text-ink-500">Ative o recurso "WhatsApp" em Recursos do MOVA, acima, para conectar.</p>
+            <p className="mt-1 text-sm text-ink-500">
+              Primeiro ative o recurso WhatsApp em{" "}
+              <Link to="/configuracoes/recursos" className="font-medium text-brand-600 hover:underline">
+                Recursos do MOVA
+              </Link>
+              . Depois você poderá conectar sua conta.
+            </p>
           )}
           {whatsappAtivo && wa && !wa.configurado && (
             <p className="mt-1 text-sm text-ink-500">

@@ -75,7 +75,7 @@ export function CamposClienteCard() {
       />
       <div className="mt-4 flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
-        {sucesso && <Alert tipo="sucesso">Informações salvas.</Alert>}
+        {sucesso && <Alert tipo="sucesso">Alterações salvas.</Alert>}
 
         <CamposBuilder campos={campos} aoAlterar={setCampos} />
 

@@ -13,7 +13,16 @@ import { ProdutosPage } from "./pages/ProdutosPage";
 import { NovoOrcamentoPage } from "./pages/NovoOrcamentoPage";
 import { OrcamentoDetailPage } from "./pages/OrcamentoDetailPage";
 import { PublicOrcamentoPage } from "./pages/PublicOrcamentoPage";
-import { ConfiguracoesPage } from "./pages/ConfiguracoesPage";
+import { ConfiguracoesVisaoGeralPage } from "./pages/configuracoes/ConfiguracoesVisaoGeralPage";
+import { ConfiguracoesEmpresaPage } from "./pages/configuracoes/ConfiguracoesEmpresaPage";
+import { ConfiguracoesMarcaPage } from "./pages/configuracoes/ConfiguracoesMarcaPage";
+import { ConfiguracoesNegocioPage } from "./pages/configuracoes/ConfiguracoesNegocioPage";
+import { ConfiguracoesRecursosPage } from "./pages/configuracoes/ConfiguracoesRecursosPage";
+import { ConfiguracoesOrcamentosPage } from "./pages/configuracoes/ConfiguracoesOrcamentosPage";
+import { ConfiguracoesIAPage } from "./pages/configuracoes/ConfiguracoesIAPage";
+import { ConfiguracoesIntegracoesPage } from "./pages/configuracoes/ConfiguracoesIntegracoesPage";
+import { ConfiguracoesPlanoPage } from "./pages/configuracoes/ConfiguracoesPlanoPage";
+import { ConfiguracoesAjudaPage } from "./pages/configuracoes/ConfiguracoesAjudaPage";
 import { PlanosPage } from "./pages/PlanosPage";
 import { IndicacaoPage } from "./pages/IndicacaoPage";
 import { OperacoesPage } from "./pages/OperacoesPage";
@@ -114,7 +123,79 @@ function App() {
         path="/configuracoes"
         element={
           <ProtectedRoute>
-            <ConfiguracoesPage />
+            <ConfiguracoesVisaoGeralPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/empresa"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesEmpresaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/marca"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesMarcaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/negocio"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesNegocioPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/recursos"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesRecursosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/orcamentos"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesOrcamentosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/ia"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesIAPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/integracoes"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesIntegracoesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/plano"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesPlanoPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes/ajuda"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesAjudaPage />
           </ProtectedRoute>
         }
       />

@@ -114,7 +114,7 @@ export function ProcessoOrcamentoCard() {
       />
       <div className="mt-4 flex flex-col gap-5">
         {erro && <Alert tipo="erro">{erro}</Alert>}
-        {sucesso && <Alert tipo="sucesso">Processo salvo.</Alert>}
+        {sucesso && <Alert tipo="sucesso">Alterações salvas.</Alert>}
 
         {etapas.length > 0 && (
           <Input

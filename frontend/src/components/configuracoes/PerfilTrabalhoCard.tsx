@@ -91,7 +91,7 @@ export function PerfilTrabalhoCard() {
       />
       <div className="mt-4 flex flex-col gap-4">
         {erro && <Alert tipo="erro">{erro}</Alert>}
-        {sucessoCargo && <Alert tipo="sucesso">Salvo.</Alert>}
+        {sucessoCargo && <Alert tipo="sucesso">Alterações salvas.</Alert>}
 
         <Input
           rotulo="Sua função na empresa"
