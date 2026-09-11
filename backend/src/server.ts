@@ -49,7 +49,15 @@ if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
   );
 }
 
-app.use(helmet());
+// crossOriginResourcePolicy "same-origin" (padrão do helmet) bloqueia o
+// navegador de carregar QUALQUER resposta desta API a partir de outra
+// origem — inclusive um <img src> apontando pra logo da empresa
+// (GET /publico/logo/:id), porque o frontend sempre roda em origem diferente
+// do backend (localhost:5173 x :3000 em dev, mova.tec.br x domínio do
+// Railway em produção). Toda esta API já é consumida cross-origin por
+// design (é o único frontend dela); "cross-origin" aqui não expõe nada que
+// a própria API não sirva de propósito para ser consumido de fora.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(
   cors({
     origin(origin, callback) {
