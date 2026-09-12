@@ -9,7 +9,7 @@ import { Modal } from "../components/ui/Modal";
 import { Textarea } from "../components/ui/Textarea";
 import { DocumentoOrcamento } from "../components/orcamentos/DocumentoOrcamento";
 import { Logo } from "../components/Logo";
-import { ApiError, orcamentosApi } from "../lib/api";
+import { ApiError, orcamentosApi, resolverUrlArquivo } from "../lib/api";
 import type { OrcamentoPublico } from "../lib/api";
 
 export function PublicOrcamentoPage() {
@@ -84,7 +84,7 @@ export function PublicOrcamentoPage() {
           <>
             <DocumentoOrcamento
               nomeEmpresa={orcamento.empresa.nome}
-              logoUrl={orcamento.empresa.logoUrl}
+              logoUrl={resolverUrlArquivo(orcamento.empresa.logoUrl)}
               corPrimaria={orcamento.empresa.corPrimaria}
               numero={orcamento.numero}
               data={orcamento.data}

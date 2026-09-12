@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { Alert } from "../ui/Alert";
 import { useAuth } from "../../context/AuthContext";
-import { ApiError, empresaApi } from "../../lib/api";
+import { ApiError, empresaApi, resolverUrlArquivo } from "../../lib/api";
 
 const TAMANHO_MAXIMO_MB = 2;
 
@@ -59,7 +59,7 @@ export function LogoUploadField() {
       {erro && <Alert tipo="erro">{erro}</Alert>}
       <div className="flex flex-wrap items-center gap-3">
         {empresa?.logoUrl && (
-          <img src={empresa.logoUrl} alt="Logo atual" className="h-12 w-12 rounded-lg border border-ink-200 object-contain" />
+          <img src={resolverUrlArquivo(empresa.logoUrl) ?? undefined} alt="Logo atual" className="h-12 w-12 rounded-lg border border-ink-200 object-contain" />
         )}
         <input
           ref={inputRef}

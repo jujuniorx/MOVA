@@ -1,4 +1,5 @@
 import { useAuth } from "../../context/AuthContext";
+import { resolverUrlArquivo } from "../../lib/api";
 
 /** Prévia de como o cliente recebe um orçamento — usa a identidade real já
  * salva da empresa (logo/nome/cores), com um item ilustrativo de exemplo. */
@@ -11,7 +12,7 @@ export function OrcamentoPreview() {
     <div className="overflow-hidden rounded-xl border border-ink-200 bg-surface shadow-[var(--shadow-card)]">
       <div className="flex items-center gap-3 border-b border-ink-100 p-5">
         {empresa?.logoUrl ? (
-          <img src={empresa.logoUrl} alt="Sua logo" className="h-10 w-10 rounded-lg border border-ink-200 object-contain" />
+          <img src={resolverUrlArquivo(empresa.logoUrl) ?? undefined} alt="Sua logo" className="h-10 w-10 rounded-lg border border-ink-200 object-contain" />
         ) : (
           <span
             className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-semibold text-white"

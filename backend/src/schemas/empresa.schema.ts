@@ -42,6 +42,32 @@ export const memoriaIASchema = z
   })
   .optional();
 
+const redeSocialUrlOpcional = z.preprocess(
+  paraUndefinedSeVazio,
+  z.string().trim().max(200).url("Informe um link válido (começando com https://).").optional()
+);
+
+// Personalização da página pública além de logo/cores (que já têm campo
+// próprio) — estrutura fixa (não é JSON livre), mesmo espírito de
+// memoriaIASchema: previsível para validar e para o frontend consumir.
+export const sitePersonalizacaoSchema = z
+  .object({
+    tema: z.enum(["claro", "escuro"]).optional(),
+    estilo: z.enum(["minimalista", "moderno", "elegante", "impactante"]).optional(),
+    sobreTexto: stringOpcional(1000),
+    diferenciais: z.array(z.string().trim().min(1).max(120)).max(6).optional(),
+    redesSociais: z
+      .object({
+        instagram: redeSocialUrlOpcional,
+        facebook: redeSocialUrlOpcional,
+        tiktok: redeSocialUrlOpcional,
+      })
+      .optional(),
+    horarioAtendimento: stringOpcional(200),
+    secoesAtivas: z.array(z.enum(["produtos", "sobre", "diferenciais", "contato"])).max(4).optional(),
+  })
+  .optional();
+
 export const empresaUpdateSchema = z
   .object({
     nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres.").max(120).optional(),
@@ -69,6 +95,7 @@ export const empresaUpdateSchema = z
     ),
     exibirPrecosPublico: z.boolean().optional(),
     memoriaIA: memoriaIASchema,
+    sitePersonalizacao: sitePersonalizacaoSchema,
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualizar.",

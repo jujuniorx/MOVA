@@ -82,6 +82,7 @@ router.get("/:slug", limiteLeituraPublica, async (req, res) => {
         whatsapp: true,
         endereco: true,
         exibirPrecosPublico: true,
+        sitePersonalizacao: true,
       },
     });
 
@@ -115,6 +116,7 @@ router.get("/:slug", limiteLeituraPublica, async (req, res) => {
         endereco: empresa.endereco,
       },
       exibirPrecos: empresa.exibirPrecosPublico,
+      personalizacao: empresa.sitePersonalizacao ?? null,
       produtos,
     });
   } catch (erro) {

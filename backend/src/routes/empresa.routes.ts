@@ -64,10 +64,29 @@ router.patch("/", async (req, res) => {
     return res.status(400).json({ erro: resultado.error.issues[0].message });
   }
 
+  const dados: typeof resultado.data & { sitePersonalizacao?: object } = { ...resultado.data };
+
   try {
+    // sitePersonalizacao é um JSON único no banco — um PATCH que manda só
+    // {tema: "escuro"} não pode apagar diferenciais/redesSociais/etc já
+    // salvos. Mescla no nível raiz com o que já existe antes de gravar (o
+    // chamador ainda deve mandar sub-objetos como redesSociais completos,
+    // já que a mesclagem não é profunda).
+    if (dados.sitePersonalizacao !== undefined) {
+      const atual = await prisma.empresa.findUnique({
+        where: { id: req.usuario!.empresaId },
+        select: { sitePersonalizacao: true },
+      });
+      const baseAtual =
+        atual?.sitePersonalizacao && typeof atual.sitePersonalizacao === "object"
+          ? (atual.sitePersonalizacao as Record<string, unknown>)
+          : {};
+      dados.sitePersonalizacao = { ...baseAtual, ...dados.sitePersonalizacao };
+    }
+
     const empresa = await prisma.empresa.update({
       where: { id: req.usuario!.empresaId },
-      data: resultado.data,
+      data: dados,
       select: empresaSelectPropria,
     });
 
@@ -101,7 +120,16 @@ router.post("/logo", (req, res) => {
 
     try {
       const empresaId = req.usuario!.empresaId;
-      const logoUrl = `${req.protocol}://${req.get("host")}/publico/logo/${empresaId}`;
+      // Caminho RELATIVO de propósito — nunca gravar host/protocolo aqui.
+      // `req.protocol`/`req.get("host")` refletem a requisição de upload de
+      // agora, mas o domínio público da API pode mudar (deploy novo, domínio
+      // próprio depois de um subdomínio temporário etc.); se gravássemos a
+      // URL absoluta, toda logo já enviada quebraria silenciosamente nesse
+      // dia. O frontend resolve este caminho para absoluto na hora de exibir
+      // (ver resolverUrlArquivo em lib/api.ts), sempre a partir da MESMA
+      // variável que já usa para falar com a API — nunca há divergência
+      // entre ambientes.
+      const logoUrl = `/publico/logo/${empresaId}`;
 
       const empresa = await prisma.empresa.update({
         where: { id: empresaId },

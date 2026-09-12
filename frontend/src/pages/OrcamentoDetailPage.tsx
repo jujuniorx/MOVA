@@ -14,7 +14,7 @@ import { SugerirFollowupModal } from "../components/orcamentos/SugerirFollowupMo
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useModulos } from "../context/ModulosContext";
-import { ApiError, empresaApi, orcamentosApi, vendasApi } from "../lib/api";
+import { ApiError, empresaApi, orcamentosApi, resolverUrlArquivo, vendasApi } from "../lib/api";
 import type { OrcamentoDetalhe, ProcessoConfig, StatusOrcamento } from "../lib/api";
 import { montarLinkCompartilhamento } from "../lib/whatsapp";
 
@@ -332,7 +332,7 @@ export function OrcamentoDetailPage() {
       <div className="mt-4">
         <DocumentoOrcamento
           nomeEmpresa={empresa?.nome ?? ""}
-          logoUrl={empresa?.logoUrl}
+          logoUrl={resolverUrlArquivo(empresa?.logoUrl)}
           corPrimaria={empresa?.corPrimaria}
           numero={orcamento.numero}
           data={orcamento.data}

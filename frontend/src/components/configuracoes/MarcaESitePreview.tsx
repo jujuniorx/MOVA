@@ -1,49 +1,73 @@
+import { PaginaPublicaVisual } from "../publico/PaginaPublicaVisual";
+import type { SitePersonalizacao } from "../../lib/sitePersonalizacao";
+import { resolverUrlArquivo } from "../../lib/api";
+
+interface ProdutoPreview {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  imagemUrl: string | null;
+  unidade: string | null;
+  preco?: string;
+}
+
 interface MarcaESitePreviewProps {
   nome: string;
   descricao: string;
   logoUrl: string | null;
   corPrimaria: string;
   corSecundaria: string;
+  telefone: string | null;
+  whatsapp: string | null;
+  endereco: string | null;
+  exibirPrecos: boolean;
+  produtos: ProdutoPreview[];
+  personalizacao: SitePersonalizacao;
 }
 
 /**
- * Prévia de como a empresa aparece pro cliente — atualiza na hora, sem
- * precisar salvar. É um mockup (não a página pública real embutida): a
- * arquitetura de rascunho pra espelhar exatamente a página ao vivo antes de
- * salvar seria complexidade desnecessária aqui; o layout é o mesmo da
- * vitrine real (ver PublicStorefrontPage), só compacto.
+ * Prévia ao vivo de como o site fica pro cliente — usa o MESMO componente
+ * visual da página pública real (PaginaPublicaVisual), só dentro de uma
+ * moldura menor com rolagem. Nenhuma implementação visual paralela: qualquer
+ * mudança na vitrine real aparece igual aqui.
  */
-export function MarcaESitePreview({ nome, descricao, logoUrl, corPrimaria, corSecundaria }: MarcaESitePreviewProps) {
+export function MarcaESitePreview({
+  nome,
+  descricao,
+  logoUrl,
+  corPrimaria,
+  corSecundaria,
+  telefone,
+  whatsapp,
+  endereco,
+  exibirPrecos,
+  produtos,
+  personalizacao,
+}: MarcaESitePreviewProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-ink-200 bg-surface shadow-[var(--shadow-card)]">
-      <div
-        className="flex flex-col items-center gap-3 px-6 py-10 text-center"
-        style={{ backgroundImage: `linear-gradient(180deg, ${corPrimaria}14, transparent 70%)` }}
-      >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt="Sua logo"
-            className="h-16 w-16 rounded-2xl border border-ink-200 bg-surface object-contain shadow-[var(--shadow-card)]"
-          />
-        ) : (
-          <div
-            className="flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-[var(--shadow-card)]"
-            style={{ backgroundColor: corPrimaria }}
-          >
-            {(nome || "?").charAt(0).toUpperCase()}
-          </div>
-        )}
-        <p className="text-lg font-bold tracking-tight" style={{ color: corPrimaria }}>
-          {nome || "Nome da sua empresa"}
-        </p>
-        {descricao && <p className="max-w-xs text-sm text-ink-600">{descricao}</p>}
-        <span
-          className="mt-1 inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-white"
-          style={{ backgroundColor: corSecundaria }}
-        >
-          Ver produtos e serviços
-        </span>
+    <div className="overflow-hidden rounded-xl border border-ink-200 bg-ink-100 shadow-[var(--shadow-card)]">
+      <div className="flex items-center gap-1.5 border-b border-ink-200 bg-surface px-3 py-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-ink-200" />
+        <span className="h-2.5 w-2.5 rounded-full bg-ink-200" />
+        <span className="h-2.5 w-2.5 rounded-full bg-ink-200" />
+      </div>
+      <div className="max-h-[560px] overflow-y-auto">
+        <PaginaPublicaVisual
+          empresa={{
+            nome: nome || "Nome da sua empresa",
+            descricao: descricao || null,
+            corPrimaria,
+            corSecundaria,
+            telefone,
+            whatsapp,
+            endereco,
+          }}
+          logoUrl={resolverUrlArquivo(logoUrl)}
+          produtos={produtos}
+          exibirPrecos={exibirPrecos}
+          personalizacao={personalizacao}
+          modoPreview
+        />
       </div>
     </div>
   );

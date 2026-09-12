@@ -1,6 +1,24 @@
+import type { SitePersonalizacao } from "./sitePersonalizacao";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const CHAVE_TOKEN = "mova_token";
 const CHAVE_TOKEN_ANTIGA = "orcafacil_token";
+
+/**
+ * Resolve um caminho de arquivo servido pela própria API (ex.: a logo da
+ * empresa, guardada como caminho relativo em `logoUrl`) para uma URL
+ * absoluta pronta para `<img src>`, Open Graph etc. — sempre a partir da
+ * MESMA `API_URL` usada por todo o resto do app, nunca de um host
+ * computado em outro lugar. Isso é o que garante que a logo funcione igual
+ * em dev e produção: nenhum domínio fica gravado no banco.
+ * URLs já absolutas (http/https — inclusive logos externas antigas, de
+ * antes do upload próprio existir) passam intactas; vazio/nulo vira null.
+ */
+export function resolverUrlArquivo(caminho: string | null | undefined): string | null {
+  if (!caminho) return null;
+  if (/^https?:\/\//i.test(caminho)) return caminho;
+  return `${API_URL}${caminho.startsWith("/") ? "" : "/"}${caminho}`;
+}
 
 export class ApiError extends Error {
   codigo?: string;
@@ -174,6 +192,7 @@ export interface Empresa {
   slugPublico: string | null;
   exibirPrecosPublico: boolean;
   memoriaIA: MemoriaIA | null;
+  sitePersonalizacao: SitePersonalizacao | null;
 }
 
 export interface MemoriaIA {
@@ -199,6 +218,7 @@ export interface EmpresaInput {
   slugPublico?: string;
   exibirPrecosPublico?: boolean;
   memoriaIA?: MemoriaIA;
+  sitePersonalizacao?: SitePersonalizacao;
 }
 
 export type ContextoProcesso = "ORCAMENTO";
@@ -1262,6 +1282,7 @@ export interface PaginaPublicaEmpresa {
     endereco: string | null;
   };
   exibirPrecos: boolean;
+  personalizacao: SitePersonalizacao | null;
   produtos: { id: string; nome: string; descricao: string | null; imagemUrl: string | null; unidade: string | null; preco?: string }[];
 }
 

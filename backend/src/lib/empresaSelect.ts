@@ -23,4 +23,5 @@ export const empresaSelectPropria = {
   paginaPublicaAtiva: true,
   slugPublico: true,
   exibirPrecosPublico: true,
+  sitePersonalizacao: true,
 } as const;

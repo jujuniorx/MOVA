@@ -74,10 +74,13 @@ model Empresa {
   descricao           String?
   logoUrl             String?
   /// Bytes da logo enviada por upload (ver POST /empresa/logo) — quando
-  /// preenchido, `logoUrl` aponta para a rota própria que serve estes bytes
-  /// (`GET /publico/logo/:id`), nunca para uma URL externa. `null` quando a
-  /// empresa nunca fez upload (ou usa uma URL externa antiga, de antes desta
-  /// funcionalidade existir — continua funcionando normalmente).
+  /// preenchido, `logoUrl` guarda o CAMINHO RELATIVO da rota própria que
+  /// serve estes bytes (`/publico/logo/:id`), nunca host/protocolo (o
+  /// frontend resolve para absoluto via resolverUrlArquivo, usando a mesma
+  /// URL da API que já usa pra tudo — nunca diverge entre ambientes).
+  /// `null` quando a empresa nunca fez upload (ou usa uma URL externa
+  /// antiga, de antes desta funcionalidade existir — continua funcionando
+  /// normalmente, já que resolverUrlArquivo deixa URLs absolutas intactas).
   logoBytes           Bytes?
   logoMimeType        String?
   corPrimaria         String?
@@ -136,6 +139,18 @@ model Empresa {
   paginaPublicaAtiva  Boolean @default(false)
   slugPublico         String? @unique
   exibirPrecosPublico Boolean @default(true)
+
+  /// Personalização visual/conteúdo da página pública além de logo/cores
+  /// (que já tinham campo próprio) — um único JSON de propósito, mesmo
+  /// padrão já usado em modulosAtivos/memoriaIA/perfilOperacional, pra não
+  /// crescer o modelo com uma coluna por preferência solta. Formato:
+  /// { tema?: "claro"|"escuro", estilo?: "minimalista"|"moderno"|"elegante"|
+  ///   "impactante", sobreTexto?: string, diferenciais?: string[],
+  ///   redesSociais?: { instagram?, facebook?, tiktok? }, horarioAtendimento?:
+  ///   string, secoesAtivas?: string[] }. `null` = todos os padrões (tema
+  ///   claro, estilo moderno, todas as seções com dado visíveis) — nunca
+  ///   exige que uma empresa existente preencha nada disso.
+  sitePersonalizacao  Json?
 
   /// Suspensão administrativa (nunca comercial) — bloqueia login e uso da
   /// API imediatamente. Sempre acompanhada de um LogAuditoriaAdmin.
