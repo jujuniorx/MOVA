@@ -84,7 +84,7 @@ router.post("/checkout", limiteCheckout, async (req, res) => {
       update: { planoTipo, cicloFaturamento, status: "PENDENTE", payerEmail: req.usuario!.email },
     });
 
-    const nomesPlano: Record<string, string> = { START: "MOVA Start", BUSINESS: "MOVA Business", PRO: "MOVA Pro" };
+    const nomesPlano: Record<string, string> = { START: "MOVA Basic", BUSINESS: "MOVA Business", PRO: "MOVA Pro" };
 
     const preapproval = await criarAssinaturaMercadoPago({
       referenciaExterna: assinatura.id,

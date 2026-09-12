@@ -1366,6 +1366,24 @@ export const novidadesApi = {
   marcarTodasLidas: () => apiFetch<void>("/novidades/marcar-todas-lidas", { method: "POST" }),
 };
 
+// Visão administrativa de uma novidade — igual à pública, mas sem o campo
+// `lida` (que é por usuário, não faz sentido numa listagem administrativa).
+export interface NovidadeAdmin {
+  id: string;
+  categoria: CategoriaNovidade;
+  titulo: string;
+  descricao: string;
+  link: string | null;
+  publicadoEm: string;
+}
+
+export interface NovidadeAdminInput {
+  categoria: CategoriaNovidade;
+  titulo: string;
+  descricao: string;
+  link?: string;
+}
+
 export interface DadosIndicacao {
   codigoIndicacao: string;
   trialBonusAteEm: string | null;
@@ -1665,5 +1683,15 @@ export const adminApi = {
   buscaGlobal: (q: string) => apiFetchAdmin<BuscaAdminResultado>(`/admin/api/busca?q=${encodeURIComponent(q)}`),
 
   problemas: () => apiFetchAdmin<{ problemas: ProblemaDerivado[]; statusDisponivel: boolean }>("/admin/api/problemas"),
+
+  // Central de Novidades — conteúdo curado pela equipe do MOVA, visível para
+  // toda empresa (sem segmentação por plano/módulo). Só criar/excluir por
+  // aqui; a listagem de leitura (por usuário) é sempre a rota /novidades.
+  listarNovidades: () => apiFetchAdmin<NovidadeAdmin[]>("/admin/api/novidades"),
+
+  criarNovidade: (dados: NovidadeAdminInput) =>
+    apiFetchAdmin<NovidadeAdmin>("/admin/api/novidades", { method: "POST", body: JSON.stringify(dados) }),
+
+  removerNovidade: (id: string) => apiFetchAdmin<null>(`/admin/api/novidades/${id}`, { method: "DELETE" }),
 };
 

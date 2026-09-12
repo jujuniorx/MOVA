@@ -34,6 +34,7 @@ import { AdminInicioPage } from "./pages/admin/AdminInicioPage";
 import { AdminEmpresasPage } from "./pages/admin/AdminEmpresasPage";
 import { AdminUsuariosPage } from "./pages/admin/AdminUsuariosPage";
 import { AdminPlanosPage } from "./pages/admin/AdminPlanosPage";
+import { AdminNovidadesPage } from "./pages/admin/AdminNovidadesPage";
 import { AdminAssinaturasPage } from "./pages/admin/AdminAssinaturasPage";
 import { AdminAcessosEspeciaisPage } from "./pages/admin/AdminAcessosEspeciaisPage";
 import { AdminProblemasPage } from "./pages/admin/AdminProblemasPage";
@@ -245,6 +246,14 @@ function App() {
         element={
           <AdminProtectedRoute>
             <AdminPlanosPage />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/novidades"
+        element={
+          <AdminProtectedRoute>
+            <AdminNovidadesPage />
           </AdminProtectedRoute>
         }
       />

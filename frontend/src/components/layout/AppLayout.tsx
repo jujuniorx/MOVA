@@ -150,11 +150,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", aoPressionarTecla);
   }, []);
 
+  // AppLayout é montado uma única vez por sessão (o usuário navega entre
+  // páginas sem desmontar o layout) — sem isso, uma novidade publicada pelo
+  // Admin nunca aparecia pra quem já estava com o MOVA aberto, só depois de
+  // um F5. Não é polling agressivo: intervalo generoso (3min) + revalida
+  // quando a aba volta a ficar visível/em foco, que é quando de fato importa.
   useEffect(() => {
-    novidadesApi
-      .listar()
-      .then((r) => setNovidadesNaoLidas(r.naoLidas))
-      .catch(() => {});
+    function atualizarContagem() {
+      novidadesApi
+        .listar()
+        .then((r) => setNovidadesNaoLidas(r.naoLidas))
+        .catch(() => {});
+    }
+
+    atualizarContagem();
+    const intervalo = setInterval(atualizarContagem, 3 * 60 * 1000);
+
+    function aoFicarVisivel() {
+      if (document.visibilityState === "visible") atualizarContagem();
+    }
+    document.addEventListener("visibilitychange", aoFicarVisivel);
+    window.addEventListener("focus", atualizarContagem);
+
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", aoFicarVisivel);
+      window.removeEventListener("focus", atualizarContagem);
+    };
   }, []);
 
   // Fechar o painel some com o "não lidas" residual assim que a pessoa abre

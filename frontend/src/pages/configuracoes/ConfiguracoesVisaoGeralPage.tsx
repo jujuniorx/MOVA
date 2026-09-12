@@ -72,7 +72,7 @@ export function ConfiguracoesVisaoGeralPage() {
       titulo: "Recursos do MOVA",
       descricao: "Escolha quais recursos fazem sentido para a sua empresa.",
       icone: <Icone path="M4 6h16M4 12h16M4 18h7" />,
-      linhasResumo: [`${modulosAtivosCount} recurso${modulosAtivosCount === 1 ? "" : "s"} opcional${modulosAtivosCount === 1 ? "" : "is"} ativo${modulosAtivosCount === 1 ? "" : "s"}`],
+      linhasResumo: [`${modulosAtivosCount} recurso${modulosAtivosCount === 1 ? "" : "s"} ativo${modulosAtivosCount === 1 ? "" : "s"}`],
     },
     {
       caminho: "/configuracoes/orcamentos",
@@ -116,7 +116,7 @@ export function ConfiguracoesVisaoGeralPage() {
           <Link
             key={categoria.caminho}
             to={categoria.caminho}
-            className="group flex flex-col gap-3 rounded-xl border border-ink-200 bg-surface p-5 shadow-[var(--shadow-card)] transition-colors hover:border-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="group flex flex-col gap-3 rounded-xl border border-ink-200 bg-surface p-5 shadow-[var(--shadow-card)] transition-colors hover:border-brand-300 dark:hover:border-brand-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
             <div className="flex items-start justify-between gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">

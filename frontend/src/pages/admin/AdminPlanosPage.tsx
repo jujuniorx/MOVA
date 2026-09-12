@@ -11,6 +11,17 @@ import type { PlanoConfig } from "../../lib/api";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
+// Nome comercial ao lado do identificador técnico (enum PlanoTipo no banco) —
+// só para o admin nunca confundir "START" com o nome que o cliente vê hoje
+// ("Basic"). Renomear o enum em si exigiria migration + atualizar todas as
+// referências técnicas sem ganho real; só a apresentação mudou.
+const NOMES_COMERCIAIS: Record<string, string> = {
+  GRATUITO: "Gratuito",
+  START: "Basic",
+  BUSINESS: "Business",
+  PRO: "Pro",
+};
+
 function CardPlano({ plano, aoSalvar }: { plano: PlanoConfig; aoSalvar: (precoMensal: number, precoAnual: number) => Promise<void> }) {
   const [precoMensal, setPrecoMensal] = useState(String(plano.precoMensal));
   const [precoAnual, setPrecoAnual] = useState(String(plano.precoAnual));
@@ -37,7 +48,7 @@ function CardPlano({ plano, aoSalvar }: { plano: PlanoConfig; aoSalvar: (precoMe
   return (
     <Card>
       <CardHeader
-        titulo={plano.planoTipo}
+        titulo={`${NOMES_COMERCIAIS[plano.planoTipo] ?? plano.planoTipo} (${plano.planoTipo})`}
         descricao={`Hoje: ${formatoMoeda.format(Number(plano.precoMensal))}/mês · ${formatoMoeda.format(Number(plano.precoAnual))}/ano`}
       />
       <div className="mt-4 flex flex-col gap-3">

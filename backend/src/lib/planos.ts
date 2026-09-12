@@ -134,9 +134,14 @@ function sugerirProximoPlano(atual: PlanoTipo): PlanoTipo | null {
   return null;
 }
 
+// Nome COMERCIAL exibido ao usuário — "START" é só o identificador interno
+// (enum PlanoTipo, banco, Assinatura, AcessoEspecial); renomear o enum
+// exigiria uma migration de valor de enum e coordenar dezenas de referências
+// sem nenhum ganho real, então só a apresentação mudou de "Start" para
+// "Basic" (decisão comercial já definida).
 const NOMES_PLANO: Record<PlanoTipo, string> = {
   GRATUITO: "acesso gratuito",
-  START: "MOVA Start",
+  START: "MOVA Basic",
   BUSINESS: "MOVA Business",
   PRO: "MOVA Pro",
 };

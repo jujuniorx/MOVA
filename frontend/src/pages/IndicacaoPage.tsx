@@ -48,7 +48,7 @@ export function IndicacaoPage() {
     <AppLayout>
       <PageHeader
         titulo="Indique o MOVA"
-        subtitulo="Cada empresa que você trouxer e ativar te dá dias de acesso ao MOVA Start — e ela também ganha."
+        subtitulo="Cada empresa que você trouxer e ativar te dá dias de acesso ao MOVA Basic — e ela também ganha."
       />
 
       {erro && (
@@ -108,7 +108,7 @@ export function IndicacaoPage() {
 
           {dados.trialBonusAteEm && new Date(dados.trialBonusAteEm) > new Date() && (
             <Alert tipo="sucesso">
-              Seu acesso com os limites do MOVA Start está ativo até {formatoData.format(new Date(dados.trialBonusAteEm))}.
+              Seu acesso com os limites do MOVA Basic está ativo até {formatoData.format(new Date(dados.trialBonusAteEm))}.
             </Alert>
           )}
 
@@ -136,7 +136,7 @@ export function IndicacaoPage() {
             </div>
             <p className="mt-5 text-xs text-ink-400">
               Progressão de bônus: 1ª indicação válida = 7 dias · 2ª = 14 dias no total · 3ª = 21 · 4ª = 28 · 5ª = 30 dias
-              (teto do programa). A pessoa indicada também ganha 14 dias de acesso ao MOVA Start ao ativar a conta.
+              (teto do programa). A pessoa indicada também ganha 14 dias de acesso ao MOVA Basic ao ativar a conta.
             </p>
           </Card>
         </div>

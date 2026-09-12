@@ -8,7 +8,7 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currenc
 
 const NOMES_PLANO: Record<PlanoTipo, string> = {
   GRATUITO: "Gratuito",
-  START: "MOVA Start",
+  START: "MOVA Basic",
   BUSINESS: "MOVA Business",
   PRO: "MOVA Pro",
 };

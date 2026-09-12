@@ -316,7 +316,7 @@ function DetalheEmpresaModal({
             <Card className="flex flex-col gap-3 p-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Select rotulo="Plano" value={planoEspecial} onChange={(e) => setPlanoEspecial(e.target.value as Exclude<PlanoTipo, "GRATUITO">)}>
-                  <option value="START">Start</option>
+                  <option value="START">Basic</option>
                   <option value="BUSINESS">Business</option>
                   <option value="PRO">Pro</option>
                 </Select>

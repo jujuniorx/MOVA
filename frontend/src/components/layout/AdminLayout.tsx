@@ -11,6 +11,7 @@ const itensNav = [
   { rotulo: "Empresas", caminho: "/admin/empresas" },
   { rotulo: "Usuários", caminho: "/admin/usuarios" },
   { rotulo: "Planos", caminho: "/admin/planos" },
+  { rotulo: "Novidades", caminho: "/admin/novidades" },
   { rotulo: "Assinaturas", caminho: "/admin/assinaturas" },
   { rotulo: "Acessos especiais", caminho: "/admin/acessos-especiais" },
   { rotulo: "Problemas", caminho: "/admin/problemas" },
