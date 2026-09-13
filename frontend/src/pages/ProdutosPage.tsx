@@ -32,6 +32,16 @@ function filtroParaAtivo(filtro: Filtro): boolean | undefined {
   return undefined;
 }
 
+// Não existe um campo dedicado "isto é produto ou serviço" no banco — a
+// mesma informação que já rege orçamento/venda/estoque (controlaEstoque)
+// também é o que diferencia os dois aqui, só que em linguagem simples. Ver
+// ProdutoFormModal.tsx (pergunta "O que você oferece?") para a mesma lógica
+// espelhada na hora do cadastro.
+function rotuloOfertaProduto(produto: Produto): string {
+  if (produto.tipoProduto === "KIT") return "Kit";
+  return produto.controlaEstoque ? "Produto" : "Serviço";
+}
+
 function IconeProduto() {
   return (
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-900/10 text-ink-900">
@@ -286,6 +296,9 @@ export function ProdutosPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium text-ink-900">{produto.nome}</p>
+                      <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                        {rotuloOfertaProduto(produto)}
+                      </span>
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",

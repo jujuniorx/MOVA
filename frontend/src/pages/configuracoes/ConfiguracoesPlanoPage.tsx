@@ -8,7 +8,7 @@ export function ConfiguracoesPlanoPage() {
   const { empresa } = useAuth();
 
   return (
-    <CategoriaConfiguracoesLayout titulo="Plano e indicações" descricao="Seu plano atual e o programa de indicação do MOVA.">
+    <CategoriaConfiguracoesLayout titulo="Plano e indique o MOVA" descricao="Seu plano atual e o programa de indicação do MOVA — diferente de 'Indicações' no menu, que é sobre indicar clientes.">
       <Card>
         <CardHeader
           titulo="Plano atual"

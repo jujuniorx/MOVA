@@ -12,8 +12,22 @@ import { ApiError, produtosApi } from "../../lib/api";
 import type { CampoInput, CampoProduto, Produto, VariacaoInput } from "../../lib/api";
 import { produtoFormSchema } from "../../schemas/produto.schema";
 import { useToast } from "../../context/ToastContext";
+import { cn } from "../../lib/cn";
 
 type CamposTexto = "nome" | "descricao" | "preco" | "unidade" | "sku" | "estoqueMinimo";
+
+// "Produto" ou "Serviço" é só uma pergunta em linguagem simples que decide o
+// valor de `controlaEstoque` (o campo que já existe e já é usado em toda a
+// regra de negócio real — orçamento, venda, estoque). Não é um campo novo:
+// é a mesma informação, perguntada de um jeito que não exige saber o que
+// "controlar estoque" significa. Um produto físico que a empresa não quer
+// rastrear em estoque continua podendo escolher "Produto" e deixar a opção
+// de estoque desmarcada — a pergunta só decide se a opção aparece ou não.
+type OfertaTipo = "produto" | "servico";
+
+function inferirOfertaTipo(controlaEstoque: boolean): OfertaTipo {
+  return controlaEstoque ? "produto" : "servico";
+}
 
 interface ProdutoFormModalProps {
   aberto: boolean;
@@ -93,6 +107,7 @@ export function ProdutoFormModal({
   const [mostrarCampos, setMostrarCampos] = useState(false);
   const [campos, setCampos] = useState<CampoRascunho[]>([]);
   const [tinhaCamposAoAbrir, setTinhaCamposAoAbrir] = useState(false);
+  const [ofertaTipo, setOfertaTipo] = useState<OfertaTipo>("servico");
 
   useEffect(() => {
     if (!aberto) return;
@@ -115,6 +130,7 @@ export function ProdutoFormModal({
         exibirNaPaginaPublica: produtoEmEdicao.exibirNaPaginaPublica,
       });
       setFormaCobranca(unidadeAtual === "" ? "" : presetConhecido ? unidadeAtual : "OUTRO");
+      setOfertaTipo(inferirOfertaTipo(produtoEmEdicao.controlaEstoque));
 
       const camposExistentes = paraCampoRascunho(produtoEmEdicao.campos);
       setCampos(camposExistentes);
@@ -122,6 +138,7 @@ export function ProdutoFormModal({
       setTinhaCamposAoAbrir(camposExistentes.length > 0);
     } else {
       setValores(valoresIniciais);
+      setOfertaTipo("servico");
       setFormaCobranca("");
       setCampos([]);
       setMostrarCampos(false);
@@ -146,6 +163,16 @@ export function ProdutoFormModal({
     setMostrarCampos(true);
     if (campos.length === 0) {
       setCampos([campoRascunhoVazio()]);
+    }
+  }
+
+  // Escolher "Serviço" sempre desmarca "controlar estoque" (um serviço não
+  // tem saldo pra rastrear) — escolher "Produto" só revela a opção, nunca a
+  // marca sozinho, a empresa decide se quer mesmo controlar estoque.
+  function escolherOfertaTipo(tipo: OfertaTipo) {
+    setOfertaTipo(tipo);
+    if (tipo === "servico") {
+      setValores((atual) => ({ ...atual, controlaEstoque: false }));
     }
   }
 
@@ -229,7 +256,7 @@ export function ProdutoFormModal({
 
         <Input
           rotulo="Nome"
-          placeholder="Ex: Portão, Limpeza de sofá, Ensaio fotográfico..."
+          placeholder="Nome do produto ou serviço"
           value={valores.nome}
           onChange={(evento) => atualizarCampoTexto("nome", evento.target.value)}
           erro={erros.nome}
@@ -303,17 +330,47 @@ export function ProdutoFormModal({
 
           {valores.tipoProduto === "SIMPLES" && (
             <div className="mt-3 flex flex-col gap-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
-                <input
-                  type="checkbox"
-                  checked={valores.controlaEstoque}
-                  onChange={(evento) => setValores((atual) => ({ ...atual, controlaEstoque: evento.target.checked }))}
-                  className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
-                />
-                Controlar estoque deste produto
-              </label>
+              <div>
+                <p className="text-sm font-medium text-ink-700">O que você oferece?</p>
+                <div className="mt-1.5 inline-flex rounded-lg border border-ink-200 bg-surface p-1">
+                  <button
+                    type="button"
+                    onClick={() => escolherOfertaTipo("produto")}
+                    aria-pressed={ofertaTipo === "produto"}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      ofertaTipo === "produto" ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-ink-50"
+                    )}
+                  >
+                    Produto físico
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => escolherOfertaTipo("servico")}
+                    aria-pressed={ofertaTipo === "servico"}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      ofertaTipo === "servico" ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-ink-50"
+                    )}
+                  >
+                    Serviço
+                  </button>
+                </div>
+              </div>
 
-              {valores.controlaEstoque && (
+              {ofertaTipo === "produto" && (
+                <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
+                  <input
+                    type="checkbox"
+                    checked={valores.controlaEstoque}
+                    onChange={(evento) => setValores((atual) => ({ ...atual, controlaEstoque: evento.target.checked }))}
+                    className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  Controlar quanto tenho em estoque deste produto
+                </label>
+              )}
+
+              {ofertaTipo === "produto" && valores.controlaEstoque && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Input
                     rotulo="SKU (opcional)"

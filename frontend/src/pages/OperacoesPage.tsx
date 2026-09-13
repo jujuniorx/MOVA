@@ -17,16 +17,19 @@ import {
   ApiError,
   clientesApi,
   devolucoesApi,
+  empresaApi,
   estoqueApi,
   pedidosApi,
   produtosApi,
   vendasApi,
 } from "../lib/api";
 import type {
+  CanalPedido,
   Cliente,
   Devolucao,
   ItemEstoque,
   LocalEstoque,
+  OrigemVenda,
   Pedido,
   Produto,
   ResultadoConferencia,
@@ -36,6 +39,32 @@ import type {
   TipoMovimentacaoEstoque,
   Venda,
 } from "../lib/api";
+
+// Estes enums são os valores REAIS gravados no banco (origem de uma venda,
+// canal de um pedido) — o backend continua usando exatamente esses valores;
+// só a apresentação em tela precisa ser em português comum, nunca o texto
+// técnico cru (ex.: "MERCADO_LIVRE").
+const ROTULOS_ORIGEM_VENDA: Record<OrigemVenda, string> = {
+  MOVA: "Venda direta",
+  WHATSAPP: "WhatsApp",
+  MERCADO_LIVRE: "Mercado Livre",
+  SITE_PROPRIO: "Site próprio",
+  OUTRO: "Outro",
+};
+
+const ROTULOS_CANAL_PEDIDO: Record<CanalPedido, string> = {
+  WHATSAPP: "WhatsApp",
+  MERCADO_LIVRE: "Mercado Livre",
+  SITE_PROPRIO: "Site próprio",
+  MANUAL: "Manual",
+};
+
+const ROTULOS_RESULTADO_CONFERENCIA: Record<ResultadoConferencia, string> = {
+  INTEGRO: "Íntegro",
+  AVARIA: "Avaria",
+  INCOMPLETO: "Incompleto",
+  DIVERGENTE: "Divergente",
+};
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -58,8 +87,31 @@ export function OperacoesPage() {
 
   const abasDisponiveis = useMemo(() => ABAS.filter((a) => moduloAtivo(a.modulo)), [moduloAtivo]);
 
+  // Empresa que já contou ao MOVA que só presta serviço (nunca trabalha com
+  // produtos físicos) não tem por que abrir em Estoque por padrão — isso não
+  // esconde a aba nem cria uma regra nova, só escolhe uma aba inicial mais
+  // relevante usando um dado que a própria empresa já informou. Sem acesso
+  // direto pela URL (?aba=...), continua caindo na primeira aba disponível.
+  const [abaPreferida, setAbaPreferida] = useState<Aba | null>(null);
+  useEffect(() => {
+    empresaApi
+      .obterPerfilOperacional()
+      .then((r) => {
+        const perfil = r.perfilOperacional;
+        if (perfil && perfil.trabalhaComServicos && !perfil.trabalhaComProdutos) {
+          setAbaPreferida("vendas");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const abaParam = searchParams.get("aba") as Aba | null;
-  const abaValida = abaParam && abasDisponiveis.some((a) => a.valor === abaParam) ? abaParam : (abasDisponiveis[0]?.valor ?? null);
+  const abaValida =
+    abaParam && abasDisponiveis.some((a) => a.valor === abaParam)
+      ? abaParam
+      : abaPreferida && abasDisponiveis.some((a) => a.valor === abaPreferida)
+        ? abaPreferida
+        : (abasDisponiveis[0]?.valor ?? null);
   const [aba, setAba] = useState<Aba | null>(abaValida);
 
   // Se a aba veio da URL apontando para um módulo desativado (acesso direto
@@ -459,7 +511,7 @@ function AbaVendas() {
                     <Badge className={statusInfo[venda.status].className}>{statusInfo[venda.status].rotulo}</Badge>
                   </div>
                   <p className="mt-0.5 text-sm text-ink-500">
-                    {venda.cliente?.nome ?? "Sem cliente"} · {formatoData.format(new Date(venda.criadoEm))} · {venda.origem}
+                    {venda.cliente?.nome ?? "Sem cliente"} · {formatoData.format(new Date(venda.criadoEm))} · {ROTULOS_ORIGEM_VENDA[venda.origem]}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -721,7 +773,7 @@ function AbaPedidos() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-ink-900">Pedido #{pedido.numero}</p>
                     <Badge className={statusInfo[pedido.status].className}>{statusInfo[pedido.status].rotulo}</Badge>
-                    <Badge className="bg-ink-100 text-ink-600">{pedido.canal}</Badge>
+                    <Badge className="bg-ink-100 text-ink-600">{ROTULOS_CANAL_PEDIDO[pedido.canal]}</Badge>
                   </div>
                   <p className="mt-0.5 text-sm text-ink-500">
                     {pedido.cliente?.nome ?? "Sem cliente"} · {formatoData.format(new Date(pedido.criadoEm))}
@@ -1037,7 +1089,7 @@ function AbaDevolucoes() {
                         item.resultadoConferencia === "INTEGRO" ? "bg-success-100 text-success-700" : "bg-danger-100 text-danger-700"
                       }
                     >
-                      {item.resultadoConferencia}
+                      {ROTULOS_RESULTADO_CONFERENCIA[item.resultadoConferencia]}
                     </Badge>
                   ) : (devolucao.status === "EM_CONFERENCIA" || devolucao.status === "RECEBIDA") ? (
                     <div className="flex gap-1.5">

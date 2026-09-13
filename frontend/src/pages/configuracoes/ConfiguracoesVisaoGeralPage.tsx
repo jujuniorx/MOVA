@@ -94,7 +94,7 @@ export function ConfiguracoesVisaoGeralPage() {
     },
     {
       caminho: "/configuracoes/plano",
-      titulo: "Plano e indicações",
+      titulo: "Plano e indique o MOVA",
       descricao: "Seu plano atual e o programa de indicação do MOVA.",
       icone: <Icone path="M12 8c-1.7 0-3 .9-3 2s1.3 2 3 2 3 .9 3 2-1.3 2-3 2m0-8V6m0 2v8m0 0v2M4 12a8 8 0 1016 0 8 8 0 00-16 0z" />,
       linhasResumo: [`Plano ${empresa?.planoTipo === "GRATUITO" ? "gratuito" : empresa?.planoTipo ?? ""}`],

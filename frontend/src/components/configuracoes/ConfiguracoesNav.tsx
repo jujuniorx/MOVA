@@ -9,7 +9,7 @@ export const CATEGORIAS_CONFIGURACOES = [
   { caminho: "/configuracoes/orcamentos", rotulo: "Orçamentos" },
   { caminho: "/configuracoes/ia", rotulo: "Inteligência do MOVA" },
   { caminho: "/configuracoes/integracoes", rotulo: "Integrações" },
-  { caminho: "/configuracoes/plano", rotulo: "Plano e indicações" },
+  { caminho: "/configuracoes/plano", rotulo: "Plano e indique o MOVA" },
   { caminho: "/configuracoes/ajuda", rotulo: "Ajuda" },
 ] as const;
 

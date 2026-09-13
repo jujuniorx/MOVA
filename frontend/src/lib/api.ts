@@ -359,7 +359,7 @@ export interface PerfilTrabalho extends PerfilTrabalhoRascunho {
 
 export const AREAS_FOCO_ROTULOS: Record<string, string> = {
   atendimento: "Atendimento",
-  crm: "CRM / contatos",
+  crm: "Acompanhamento de clientes",
   agenda: "Agenda",
   vendas: "Vendas",
   orcamentos: "Orçamentos",

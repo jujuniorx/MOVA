@@ -110,7 +110,7 @@ export function ProcessoOrcamentoCard() {
     <Card>
       <CardHeader
         titulo="Como funciona seu processo de orçamento?"
-        descricao='Além de Rascunho, Enviado, Aprovado e Recusado, você pode nomear etapas mais detalhadas (ex.: "Lead", "Em negociação", "Aguardando pagamento"). Opcional — se não configurar nada, o MOVA continua mostrando só o status padrão.'
+        descricao='Além de Rascunho, Enviado, Aprovado e Recusado, você pode nomear etapas mais detalhadas (ex.: "Primeiro contato", "Em negociação", "Aguardando pagamento"). Opcional — se não configurar nada, o MOVA continua mostrando só o status padrão.'
       />
       <div className="mt-4 flex flex-col gap-5">
         {erro && <Alert tipo="erro">{erro}</Alert>}
@@ -126,9 +126,8 @@ export function ProcessoOrcamentoCard() {
 
         {etapas.length === 0 && (
           <p className="text-sm text-ink-500">
-            <strong className="text-ink-700">Exemplo:</strong> uma serralheria pode usar Lead → Aguardando
-            resposta → Em negociação → Fechado. Uma clínica pode usar Avaliação → Orçamento enviado →
-            Confirmado. Crie as etapas que fizerem sentido para o seu negócio.
+            <strong className="text-ink-700">Exemplo:</strong> Primeiro contato → Orçamento enviado →
+            Em negociação → Fechado. Crie as etapas que fizerem sentido para o seu negócio.
           </p>
         )}
 
